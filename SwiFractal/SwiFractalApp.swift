@@ -9,9 +9,11 @@ import SwiftUI
 
 @main
 struct SwiFractalApp: App {
+    var fractal: Mandelbrot = Mandelbrot()
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(fractal: fractal).frame(minWidth: 800, minHeight: 800)
         }
     }
 }

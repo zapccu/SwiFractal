@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		43828CCA2CE8A0DF00B8099C /* ComplexModule in Frameworks */ = {isa = PBXBuildFile; productRef = 43828CC92CE8A0DF00B8099C /* ComplexModule */; };
+		43828CCC2CE8A0DF00B8099C /* Numerics in Frameworks */ = {isa = PBXBuildFile; productRef = 43828CCB2CE8A0DF00B8099C /* Numerics */; };
+		43828CCE2CE8A0DF00B8099C /* RealModule in Frameworks */ = {isa = PBXBuildFile; productRef = 43828CCD2CE8A0DF00B8099C /* RealModule */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		43828CA42CE7CD3A00B8099C /* SwiFractal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiFractal.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +29,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				43828CCC2CE8A0DF00B8099C /* Numerics in Frameworks */,
+				43828CCA2CE8A0DF00B8099C /* ComplexModule in Frameworks */,
+				43828CCE2CE8A0DF00B8099C /* RealModule in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -32,8 +41,8 @@
 		43828C9B2CE7CD3A00B8099C = {
 			isa = PBXGroup;
 			children = (
-				43828CA62CE7CD3A00B8099C /* SwiFractal */,
 				43828CA52CE7CD3A00B8099C /* Products */,
+				43828CA62CE7CD3A00B8099C /* SwiFractal */,
 			);
 			sourceTree = "<group>";
 		};
@@ -65,6 +74,9 @@
 			);
 			name = SwiFractal;
 			packageProductDependencies = (
+				43828CC92CE8A0DF00B8099C /* ComplexModule */,
+				43828CCB2CE8A0DF00B8099C /* Numerics */,
+				43828CCD2CE8A0DF00B8099C /* RealModule */,
 			);
 			productName = SwiFractal;
 			productReference = 43828CA42CE7CD3A00B8099C /* SwiFractal.app */;
@@ -94,6 +106,9 @@
 			);
 			mainGroup = 43828C9B2CE7CD3A00B8099C;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				43828CC82CE8A0DF00B8099C /* XCRemoteSwiftPackageReference "swift-numerics" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 43828CA52CE7CD3A00B8099C /* Products */;
 			projectDirPath = "";
@@ -161,7 +176,7 @@
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_TESTABILITY = YES;
+				ENABLE_TESTABILITY = NO;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
@@ -225,6 +240,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = NO;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -315,6 +331,35 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		43828CC82CE8A0DF00B8099C /* XCRemoteSwiftPackageReference "swift-numerics" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-numerics.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		43828CC92CE8A0DF00B8099C /* ComplexModule */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 43828CC82CE8A0DF00B8099C /* XCRemoteSwiftPackageReference "swift-numerics" */;
+			productName = ComplexModule;
+		};
+		43828CCB2CE8A0DF00B8099C /* Numerics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 43828CC82CE8A0DF00B8099C /* XCRemoteSwiftPackageReference "swift-numerics" */;
+			productName = Numerics;
+		};
+		43828CCD2CE8A0DF00B8099C /* RealModule */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 43828CC82CE8A0DF00B8099C /* XCRemoteSwiftPackageReference "swift-numerics" */;
+			productName = RealModule;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 43828C9C2CE7CD3A00B8099C /* Project object */;
 }
