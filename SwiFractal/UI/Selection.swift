@@ -12,46 +12,79 @@ import SwiftUI
 ///
 @Observable class Selection {
     enum SelectState: Int {
-        case noSelection = 0
-        case pointSelected = 1
-        case areaSelected = 2
+        case noSelection = 0    // No selection
+        case pointSelected = 1  // Point selected
+        case areaSelected = 2   // Area selected
     }
     
-    // Changing these variables will trigger an update of the selection view
-    var area: CGRect = .zero
-    var state: SelectState = .noSelection
+    // Changing these variables will trigger an update
+    // of the selection view
+    var area: CGRect = .zero                            // Selected area
+    var state: SelectState = .noSelection               // Selection state
     
-    @ObservationIgnored let minAreaSize: CGFloat
-    @ObservationIgnored let fromMidPoint: Bool          // Selected area is growing in all direction when dragging
+    // Changes on the following variables are ignored
+    // by the view update process
+    @ObservationIgnored let minAreaSize: CGFloat        // Minimum size of the selected area
+    @ObservationIgnored let fromMidPoint: Bool          // Selected area is growing in all directions from the starting point when dragging
     @ObservationIgnored let keepAspectRatio: Bool       // Keep aspect ratio of underlying canvas when dragging
-    
-    @ObservationIgnored var drawnRect: CGRect = .zero   // Selection rectangle cuurently drawn on canvas
+    @ObservationIgnored var drawnRect: CGRect = .zero   // Selection rectangle currently drawn on canvas
 
     /// Init selection
     init(minAreaSize: CGFloat = 2.0, fromMidPoint: Bool = false, keepAspectRatio: Bool = false) {
-        self.minAreaSize = minAreaSize
-        self.fromMidPoint = fromMidPoint
+        self.minAreaSize     = minAreaSize
+        self.fromMidPoint    = fromMidPoint
         self.keepAspectRatio = keepAspectRatio
     }
     
+    /// Reset selection
+    func reset() {
+        area  = .zero
+        state = .noSelection
+    }
+    
+    /// Return selected point
+    func getPoint(flipped: Bool = false, height: Int = 0) -> CGPoint {
+        return flipped && height > 0 ? CGPoint(x: area.minX, y: CGFloat(height) - area.minY - 1) : area.origin
+    }
+    
+    /// Return selected area
+    func getArea(flipped: Bool = false, height: Int = 0) -> CGRect {
+        if flipped && height >= Int(area.height) {
+            return CGRect(x: area.minX, y: CGFloat(height) - area.maxY, width: area.width, height: area.height)
+        }
+        else {
+            return area
+        }
+    }
+    
     /// Draw rectangle marking the selected area
-    func draw(_ graphics: CGGraphics) {
+    func draw(_ graphics: CanvasGraphics) {
         graphics.setColor(.red)
-        
+
+        // Clear existing rectangle
         if drawnRect != .zero {
-            // Clear existing rectangle
             let blendMode = graphics.setBlendMode(.clear)
             graphics.drawRect(drawnRect)
             _ = graphics.setBlendMode(blendMode)
             drawnRect = .zero
         }
 
+        // Draw selection rectangle
         if area.width > minAreaSize && area.height > minAreaSize {
-            // Draw new rectangle
-            let aspectRatio = CGFloat(Float(graphics.width) / Float(graphics.height))
-            if keepAspectRatio && aspectRatio != 1.0 {
-                drawnRect = CGRect(origin: area.origin, size: CGSize(width: area.width, height: area.height * aspectRatio))
-                graphics.drawRect(drawnRect)
+            // Calculate aspect ratios
+            let screenAR = CGFloat(Float(graphics.width) / Float(graphics.height))
+            let selectAR = CGFloat(Float(area.width) / Float(area.height))
+            
+            // Adjust selected area to keep aspect ratio of view
+            if keepAspectRatio && selectAR != screenAR {
+                if selectAR < 1 {
+                    area = CGRect(origin: area.origin, size: CGSize(width: area.height * screenAR, height: area.height))
+                }
+                else {
+                    area = CGRect(origin: area.origin, size: CGSize(width: area.width, height: area.width / screenAR))
+                }
+                graphics.drawRect(area)
+                drawnRect = area
             }
             else {
                 graphics.drawRect(area)

@@ -1,0 +1,155 @@
+//
+//  based.swift
+//  Swift-Toolbox
+//
+//  Created by Dirk Braner on 07.02.26.
+//
+
+import Foundation
+
+///
+/// EnumOptions can be used to wrap an Int base enum.
+/// The rawValue of the enum must be of type Int and must be conform to protocol CaseIterable.
+///
+/// Example:
+///
+///     enum DrawingAttributes: Int, CaseIterable {
+///         case solid
+///         case rounded
+///         case colored
+///         case filled
+///     }
+///
+///     var options: Options<DrawingAttributes> = Options(.solid)
+///
+/// Options is conform to Codable. An option is converted to a JSON String containing the option name.
+///
+
+struct Options<Element>: RawRepresentable, Codable
+where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int {
+    
+    // ----------------------------------------------------------------------
+    //  Implementation of Options
+    // ----------------------------------------------------------------------
+
+	var rawValue: Int
+    
+    var name: String { String(describing: EnumDrawMethod(rawValue: rawValue)) }
+    
+    /// Return Array with all cases (options) as String
+    var allNames: [String] = Element.allCases.map { String(describing: $0) }
+    
+    /// Return rawValue of last option
+    var maxValue: Int = Array(Element.allCases).last?.rawValue ?? 0
+    
+    // Return the enum element for rawValue
+    var element: Element? {
+        Element(rawValue: rawValue)
+    }
+    
+    /// Default initializer
+	init() {
+		rawValue = 0
+	}
+    
+    /// Init with Int number. If value is > maxValue, initialize with 0
+    init (rawValue: Int) {
+        self.rawValue = rawValue >= 0 && rawValue <= maxValue ? rawValue : 0
+    }
+    
+    // Init from String
+    init(value: String) {
+        if let v = allNames.firstIndex(of: value) {
+            self.rawValue = v
+        }
+        else {
+            self.rawValue = 0
+        }
+    }
+
+    /// Initialize Options with option
+    /// Example: options = Options(.opt1)
+    /// This function is also called for decoding keyed JSON strings like "{ \"key\":  \"opt11\”  }"
+    ///
+    init(_ element: Element) {
+        self.rawValue = element.rawValue
+    }
+    
+    /// Returns name of bit as String
+    func optName(_ option: Element) -> String {
+        return String(describing: option)
+    }
+    
+    func isAny(of: [Element]) -> Bool {
+        return of.contains(where: { self.rawValue == $0.rawValue })
+    }
+    
+    static func == (lhs: Options<Element>, rhs: Options<Element>) -> Bool {
+        return lhs.rawValue == rhs.rawValue
+    }
+    
+    static func != (lhs: Options<Element>, rhs: Options<Element>) -> Bool {
+        return lhs.rawValue != rhs.rawValue
+    }
+    
+    static func == (lhs: Options<Element>, rhs: Element) -> Bool {
+        return lhs.rawValue == rhs.rawValue
+    }
+    
+    static func != (lhs: Options<Element>, rhs: Element) -> Bool {
+        return lhs.rawValue != rhs.rawValue
+    }
+    
+    // ----------------------------------------------------------------------
+    //  JSON encoding / decoding
+    // ----------------------------------------------------------------------
+
+    /// Put bitset bit-names as String array into JSON instead of rawValue
+    ///
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        let name = Element.allCases.filter { self.rawValue == $0.rawValue }.map { String(describing: $0) }
+        try container.encode(name)
+    }
+    
+    /// Decode from JSON string
+    /// This function is called for keyless JSON strings like " \"case1\" "
+    ///
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        self.rawValue = 0
+        let strValue = try container.decode(String.self)
+        if let optIndex = allNames.firstIndex(of: strValue) {
+            rawValue = Element.allCases[optIndex as! Element.AllCases.Index].rawValue
+        }
+    }
+    
+    /// Convert JSON string to BitSet
+    /// Returns true on success, false on error
+    mutating func fromJSON(_ jsonString: String, allowNew: Bool = false) -> Bool {
+        guard let data = jsonString.data(using: .utf8) else { return false }
+        do {
+            let newOptions = try JSONDecoder().decode(Options.self, from: data)
+            self.rawValue = newOptions.rawValue
+            return true
+        }
+        catch {
+            return false
+        }
+    }
+    
+    // Convert BitSet to (optionally) formatted JSON string
+    // Returns JSON string or empty string on error
+    func toJSON(prettyPrinted: Bool = true) -> String {
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = prettyPrinted ? [.prettyPrinted] : []
+            let s = try encoder.encode(self)
+            return String(data: s, encoding: .utf8) ?? ""
+        }
+        catch {
+            return ""
+        }
+    }
+}
+

@@ -4,17 +4,19 @@
 //
 //  Created by Dirk Braner on 09.12.24.
 //
+//  Implementation of a lightning object.
+//
 
+import Foundation
 import Numerics
-import simd
 
 
 //
 // Lightning parameters and methods
 //
 struct Lightning {
-    var angle: Double
-    var elevation: Double
+    var angle: Int
+    var elevation: Int
     var opacity: Double
     var ambient: Double
     var diffuse: Double
@@ -30,46 +32,43 @@ struct Lightning {
     var vecSimple: Vector
     var height: Double
     
+    ///
     /// Initialize lightning object
     ///
     /// Parameters:
     ///
-    /// dict: Dictionary with lightning settings
+    /// parameters: ParameterSet with lightning settings
     ///
-    init(_ dict: DictPar = [:]) {
-        angle     = dict["angle", 45.0]
-        elevation = dict["elevation", 45.0]
-        opacity   = dict["opacity", 0.75]
-        ambient   = dict["ambient", 0.2]
-        diffuse   = dict["diffuse", 0.5]
-        specular  = dict["specular", 0.5]
-        shininess = dict["shininess", 20.0]
-        gamma     = dict["gamma", 1.0]
+    init(_ parameters: ParameterSet) {
+        angle     = parameters["angle",     default: Int(45)]
+        elevation = parameters["elevation", default: Int(45)]
+        opacity   = parameters["opacity",   default: 0.75]
+        ambient   = parameters["ambient",   default: 0.2]
+        diffuse   = parameters["diffuse",   default: 0.5]
+        specular  = parameters["specular",  default: 0.5]
+        shininess = parameters["shininess", default: 20.0]
+        gamma     = parameters["gamma",     default: 1.0]
         
-        let angleRad     = deg2rad(angle)
-        let elevationRad = deg2rad(elevation)
-
+        // Convert angles from degree to rad
+        let angleRad     = deg2rad(Double(angle))
+        let elevationRad = deg2rad(Double(elevation))
+        
         // angle = theta, elevation = phi
+        // light vector = [ cos(theta) * cos(phi), sin(theta) * cos(phi), sin(phi) ]
         self.vecLight = Vector(cos(angleRad) * cos(elevationRad), sin(angleRad) * cos(elevationRad), sin(elevationRad))
 
         // Viewer azimuth, phi2 = average between phi and pi/2
-        let phi2 = (Double.pi / 2 + elevationRad) / 2
+        let phi2 = (_NC.PI12 + elevationRad) / 2.0
         self.vecAzimuth = Vector(cos(angleRad) * sin(phi2), sin(angleRad) * sin(phi2), cos(phi2))
         
-        // 2D Light vector for simple shading
+        // Light vector for simple shading
         self.vecSimple = Vector(cos(angleRad), sin(angleRad), 0)
         
-        // Height factor of the incoming light for simple shading (1.5 = 45 degrees)
-        height = 1 + elevation / 90.0
+        // Height factor of the incoming light for simple shading (45 degrees: 1 + 45 / 90 = 1.5)
+        height = 1.0 + Double(elevation) / 90.0
     }
     
-    /// Convert complex number to vector
     ///
-    func CplxToVector(_ c: Cplx) -> Vector {
-        let v = c / Cplx(c.length)
-        return Vector(v.real, v.imaginary, 1)
-    }
-    
     /// Simple shading
     ///
     /// Parameters:
@@ -79,10 +78,11 @@ struct Lightning {
     /// Return brightness in range 0..1
     ///
     func simple3D(_ normal: Vector) -> Double {
-        let diffuseLight = simd_dot(normal, vecSimple)
-        return diffuseLight / (1 + height)
+        let diffuseLight = mulDot(normal, vecSimple) + height
+        return diffuseLight / (1.0 + height)
     }
     
+    ///
     /// Blinn-Phong-Shading
     /// Calculation is done with double precision
     ///
@@ -94,14 +94,12 @@ struct Lightning {
     ///
     func blinnPhong(_ normal: Vector) -> Double {
         // diffuse light = dotproduct(light, normal)
-        var diffuseLight = simd_dot(normal, vecLight)
-        
+        var diffuseLight = mulDot(normal, vecLight)
         // Normalization
-        diffuseLight = diffuseLight / (1 + vecLight[2])
+        diffuseLight /= (1 + vecLight[2])
         
-        // specular light = dotproduct(phi2, normal)
-        var specularLight = simd_dot(normal, vecAzimuth)
-        
+        // specular light = dotproduct(azimuth, normal)
+        var specularLight = mulDot(normal, vecAzimuth)
         // Normalization
         specularLight = specularLight / (1 + vecAzimuth[2])
         
