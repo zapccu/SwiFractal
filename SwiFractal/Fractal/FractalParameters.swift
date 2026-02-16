@@ -28,7 +28,7 @@ class FractalParameters {
         let light: ParameterSet = parameterset["lightning", default: ParameterSet()]
         corner       = parameterset["corner", default: Cplx(-2.25,-1.5)]
         size         = parameterset["size", default: Cplx(3,3)]
-        diag         = size.length
+        diag         = 1.0 / size.length
         lightning    = Lightning(light)
         oversampling = parameterset["oversampling", default: Int(1)]
     }

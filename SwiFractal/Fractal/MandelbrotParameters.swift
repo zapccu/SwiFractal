@@ -11,6 +11,7 @@
 
 import Foundation
 
+// MUST BE UPATED
 struct MandelbrotComputeParameters {
     var iterations: Int32
     var colors: Int32
@@ -35,18 +36,41 @@ struct MandelbrotComputeParameters {
 
 class MandelbrotParameters: FractalParameters {
     
+    //
     // Constant parameters
-    var iterations: Int,
-        stripes: Int,                   // Stripe density
-        stripeSig: Double,
-        steps: Int,                     // Step density
-        colorMapping: ColorMapping
+    //
+    
+    var iterations: Int                 // Maximum number of iterations. default = 500
+    var bailout: Double                 // Bailout radius. default = 1e10
+    
+    var stripes: Int                    // Stripe density, frequency for stripe average coloring
+                                        // Range 0-32, 0 = No stripes, default = 0
+    var stripeSig: Double               // Memory parameter for stripe average coloring
+                                        // Range 0-1, 0 = No stripes, default = 0.9
+    
+    var steps: Int                      // Step density, frequency for step coloring
+                                        // Range 0-100, 0 = No steps, default = 0
+    
+    var orbitDelta1: Double             // Orbit detection: 1st delta = 1e-15
+    var orbitDelta2: Double             // Orbit detection: 2nd delta = 1e-11
+    var orbitDelta3: Double             // Orbit detection: delta for fast detection = 1e-10
+    var orbitLength: Int                // Limit for fast orbit detection = 20
+    
+    var colorMapping: ColorMapping      // ColorMapping object
 
+    //
     // Parameters calculated or modified based on constant parameters
-    var bailout: Double,                // Bailout radius
-        logBailout: Double,             // Logarithm of bailout radius
-        ncycle: Double,
-        diaScale: Double
+    //
+    
+    var logBailout: Double              // Logarithm of bailout radius
+                                        // logBailout = log(bailout)
+    var log2Bailout: Double             // log2Bailout = 2 / log(bailout)
+    var ncycle: Double                  // Number of iteration before cycling the colortable
+                                        // Range 1-200, 1 = No cycling, default = 1
+    var diaScale: Double                // Scaling for orbit coloring inside Mandelbrot set
+                                        // diaScale = iterations / 10
+    //var diag: Double                    // Distance normalization factor
+                                        // diag = 1 / abs(size)
     
     // Flags
     var bStripes: Bool,                 // Draw stripes
@@ -86,22 +110,28 @@ class MandelbrotParameters: FractalParameters {
         
         // Constant parameters
         iterations   = parameterset["Mandelbrot.iterations", default: 500]
+        bailout      = 1e10
         stripes      = parameterset["Mandelbrot.stripes", default: 0]
         stripeSig    = 0.9
         steps        = parameterset["Mandelbrot.steps", default: 0]
-        ncycle       = parameterset["Mandelbrot.ncycle", default: 1]
+        ncycle       = parameterset["Mandelbrot.ncycle", default: 1.0]
+        orbitDelta1  = 1e-15
+        orbitDelta2  = 1e-11
+        orbitDelta3  = 1e-10
+        orbitLength  = 20
         colorMapping = ColorMapping(parameterset["Mandelbrot"])
 
-        // Dynamoc parameters
-        bailout    = 1e10
-        logBailout = log(bailout)
-        ncycle     = sqrt(ncycle)
-        diaScale   = Double(iterations) / 10.0
+        // Dynamic parameters
+        logBailout  = log(bailout)
+        log2Bailout = 2.0 / logBailout
+        ncycle      = sqrt(ncycle)
+        diaScale    = Double(iterations) / 10.0
+        //diag        = 1.0 / size.length
         
         // Flags
         bStripes = stripes > 0
         bSteps   = steps > 0
-        bOrbits = colorMapping.colorizeInside == .orbits
+        bOrbits  = colorMapping.colorizeInside == .orbits
         bDist    = colorMapping.colorizeMode == .distance || bStripes || bSteps
         bShading = colorMapping.colorizeOutside.isAny(of: [.simple3d, .blinnPhong])
         bHist    = colorMapping.paletteMode == .histogram
@@ -114,7 +144,6 @@ class MandelbrotParameters: FractalParameters {
         
         // Initialize common fractal calculation parameters
         super.init(parameterset)
-
     }
 
 }

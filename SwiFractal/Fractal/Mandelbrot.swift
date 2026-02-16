@@ -40,7 +40,7 @@ class Mandelbrot: Fractal {
             "iterations": 500,
             "stripes": 0,           // Stripe density 0..32
             "steps": 0,             // Step density 0..100
-            "ncycle": 1,            // Color cycling 1..200
+            "ncycle": 1.0,          // Color cycling 1..200
             "colorTable": "Grey",
             "paletteMode": PaletteMode(.linear),
             "colorizeMode": ColorizeMode(.iterations),
@@ -143,12 +143,11 @@ class Mandelbrot: Fractal {
     
     /// Map iteration result to color. Return RGBAColor value.
     ///
-    /// **Parameters**
+    /// - Parameters
+    /// * iterations: Number of iterations including smooth iterations value
     ///
-    /// **iterations**: Number of iterations including smooth iterations value
-    ///
-    /// **nZ**: norm(Z)
-    ///
+    /// *nZ: norm(Z)
+    ///x
     /// **normal**: Z/D
     ///
     /// **distance**: Distance to Mandelbrot set
@@ -158,12 +157,22 @@ class Mandelbrot: Fractal {
     /// **stripeAvg**: Average stripe value
     ///
     func mapColorValue(_ iterations: Double, _ nZ: Double, _ normal: Cplx, _ distance: Double, _ potential: Double, _ stripeAvg: Double) -> RGBAColor {
-        let pLen = Double(MP.colorMapping.colorCount)
+        // Reduce palette lenght by 1 for indexing
+        let pLen = Double(MP.colorMapping.colorCount) - 1
+        
+        // The brightness 0..1
         var brightness: Double = 1.0
+        
+        // The resulting color
         var color = MP.colorMapping.defColor
+        
+        // Color cycling
+        // cycle_iter in range 0..1 (floating point modulo!)
+        let cycleIter = (sqrt(iterations) % MP.ncycle) / MP.ncycle
+        
         let di = iterations / Double(MP.iterations)
         
-        // 3D shading
+        // 3D shading, calculate brightness
         if MP.colorMapping.colorizeOutside.isAny(of: [.blinnPhong, .simple3d]) {
             let absNormal = normal / normal.length
             let vecNormal = Vector(absNormal.real, absNormal.imaginary, 1.0)
@@ -181,27 +190,42 @@ class Mandelbrot: Fractal {
 
         let fBrightness = Float(brightness)
 
-        // Stripes or steps
-        if stripeAvg > 0 || MP.steps > 0 {
+        // Color based on stripes or steps. colorize and palette mode do not matter here
+        if MP.colorMapping.colorizeMode.isAny(of: [.steps, .stripes]) {
             color = shading(iterations, distance, stripeAvg, brightness)
         }
+        
+        // Color based on iterations
         else if MP.colorMapping.colorizeMode == .iterations {
+            
+            // Linear mapping
             if MP.colorMapping.paletteMode == .linear {
                 color = MP.colorMapping[Int(di * pLen)] * fBrightness
             }
+            
+            // Modulo division mapping
             else if MP.colorMapping.paletteMode == .modulo {
                 color = MP.colorMapping[Int(di * pLen) % Int(MP.ncycle)] * fBrightness
+            }
+            
+            // Color cycling mapping
+            else if MP.colorMapping.paletteMode == .cycling {
+                color = MP.colorMapping[Int(round(cycleIter * pLen))] * fBrightness
             }
             /*
             else if MP.colorMapping.paletteMode == .hue {
                 color = hsb2rgb(P[0,0], P[0,1], bright)
             }
              */
+            
+            // Hue dynamic mapping
             else if MP.colorMapping.paletteMode == .huedyn {
                 let h = Double(Int(pow((iterations) * 360, 1.5)) % 360)
                 // For hsl model saturation must be set to 0.5
                 color = RGBAColor(HSB(Float(h/360), 1.0, fBrightness))
             }
+            
+            // Lch dynamic mapping
             else if MP.colorMapping.paletteMode == .lchdyn {
                 let cpidi = cos(Double.pi * di)
                 let v = 1.0 - cpidi * cpidi
@@ -209,9 +233,13 @@ class Mandelbrot: Fractal {
                 color = RGBAColor(lch) * fBrightness
             }
         }
+        
+        // Color based on distance
         else if MP.colorMapping.colorizeMode == .distance {
             color = MP.colorMapping[Int(tanh(distance) * pLen)] * fBrightness
         }
+        
+        // Color based on potential
         else if MP.colorMapping.colorizeMode == .potential {
             let lognZ12 = log(nZ) / 2.0
             let nu = log(lognZ12 / _NC.LOG2) / _NC.LOG2
@@ -228,6 +256,7 @@ class Mandelbrot: Fractal {
          Int(pow(pow(iterations / Double(MP.iterations), 2.0) * Double(MP.colorMapping.colorCount), 1.5)) % MP.colorMapping.colorCount
          */
 
+        // Return color with gamma correction
         return color.gammaCorrection(MP.lightning.gamma)
     }
     
@@ -243,7 +272,7 @@ class Mandelbrot: Fractal {
         
         // Distance estimation: log transform and sigmoid on [0,1] => [0,1]
         var dist = Double(-log(distance) / 12)
-        dist = 1 / (1 + exp(-10 * ((2 * dist - 1) / 2)))
+        dist = 1.0 / (1 + exp(-10 * ((2 * dist - 1) / 2)))
         
         // Shaders: steps and/or stripes
         var nshader: Double = 0
@@ -296,20 +325,19 @@ class Mandelbrot: Fractal {
         var potential: Double = 0.0
         var stripeAvg: Double = 0.0
         var stripet: Double = 0.0
-                
+        
         var Z = Cplx(0.0)
         var nZ: Double = 0.0        // Norm of Z: Z.imaginary * Z.imageinary + Z.real * Z.real
         var nZ1: Double = 10.0      // Old value of nZ for fast orbit detection
         var aZ: Double = 0.0        // abs(Z) = sqrt(nZ)
         var period: Int = 0         // Period counter for fast orbit detection
-        var D = Cplx(1.0, 0.0)      // 1st derivation of Z
+        var D = Cplx(0.0, 0.0)      // 1st derivation of Z
         var smoothIter: Double = 0  // Smooth iteration counter
+        var potf: Double = 0.5      // Potential factor 1/2^N
         
         var orbits = Array<Cplx>(repeating: Cplx(0.0), count: MP.iterations+1)
         
         for i in 0...MP.iterations {
-            // D = D * 2.0 * Z + 1.0
-            D = (Z + Z) * D + 1.0
             
             Z = Z * Z + C
             
@@ -318,24 +346,37 @@ class Mandelbrot: Fractal {
             }
             
             nZ = Z.lengthSquared
+            
             if nZ > MP.bailout {
-                // Calculate distance
-                aZ = sqrt(nZ)
+                aZ = sqrt(nZ)           // aZ = abs(Z)
                 let logaZ = log(aZ)
-                let logRatio = (logaZ + logaZ) / MP.logBailout
-                smoothIter = 1.0 - log(logRatio) / _NC.LOG2
+                
+                // logRatio = 2 * log(aZ) / log(bailout)
+                // Using precalculated values
+                // log2Bailout = 2 / log(bailout)
+                let logRatio = logaZ * MP.log2Bailout
+                
+                // Calculate smooth iteration value
+                // 1.0 - log(logRatio) / log(2)
+                smoothIter = 1.0 - log(logRatio) * _NC.RLOG2
+                
+                // Calculate exterior distance to Mandelbrot set
+                // aZ * log(aZ) / abs(D) / 2.0
                 distance = aZ * logaZ / D.length / 2.0
+                
+                // Calculate potential
+                // pot = log(abs(Z)) / 2^N
+                // potf already contains 1/2^N
+                //
+                // Alternative calculation:
+                // let lognZ = log(nZ) * 0.5
+                // potential = log(lognZ / _NC.LOG2) / _NC.LOG2
+                potential = logaZ * potf
                 
                 // Calculate stripes
                 if MP.stripes > 0 {
                     stripeAvg = (stripeAvg * (1.0 + smoothIter * (MP.stripeSig - 1.0)) + stripet * smoothIter * (1.0 - MP.stripeSig))
                     stripeAvg = stripeAvg / (1.0 - pow(MP.stripeSig, Double(i)) * (1.0 + smoothIter * (MP.stripeSig - 1.0)))
-                }
-                
-                // Calculate potential
-                if MP.colorMapping.colorizeMode == .potential {
-                    let lognZ = log(nZ) * 0.5
-                    potential = log(lognZ / _NC.LOG2) / _NC.LOG2
                 }
                 
                 // Count iterations for calculation of histogram
@@ -344,7 +385,9 @@ class Mandelbrot: Fractal {
                     pixelCountPerIteration[i] += 1
                 }
                 
-                return mapColorValue(Double(i)+smoothIter, nZ, Z/D, distance/MP.diag, potential, stripeAvg)
+                return MP.colorMapping.mapColorValue(Double(i)+smoothIter, MP.iterations, nZ, Z/D, distance * MP.diag, potential, stripeAvg)
+
+                // return mapColorValue(Double(i)+smoothIter, nZ, Z/D, distance * MP.diag, potential, stripeAvg)
             }
             
             // Calculate orbits
@@ -353,7 +396,7 @@ class Mandelbrot: Fractal {
                 var idx: Int = -1
                 let end: Int = max(-1, i - 100)
                 
-                for t in [1e-15, 1e-11] {
+                for t in [MP.orbitDelta1, MP.orbitDelta2] {
                     for n in stride(from: i-1, to: end, by: -1) {
                         let d = Z - orbits[n]
                         if d.lengthSquared < t {
@@ -372,13 +415,13 @@ class Mandelbrot: Fractal {
             }
             else {
                 // Simplified periodicity check, no orbit colorization
-                if abs(nZ - nZ1) < 1e-10 {
+                if abs(nZ - nZ1) < MP.orbitDelta3 {
                     orbitCount += 1
                     break
                 }
                 else {
                     period += 1
-                    if period > 20 {
+                    if period > MP.orbitLength {
                         period = 0
                         nZ1 = nZ
                     }
@@ -388,6 +431,12 @@ class Mandelbrot: Fractal {
             if MP.stripes > 0 {
                 stripeAvg = stripeAvg * MP.stripeSig + stripet * (1 - MP.stripeSig)
             }
+            
+            // Derivation D of Z
+            // D = D * 2.0 * Z + 1.0
+            D = (Z + Z) * D + 1.0
+            
+            potf *= 0.5
         }
         
         if MP.bHist { iterationCountPerPixel[y][x] = MP.iterations }
@@ -442,15 +491,6 @@ class Mandelbrot: Fractal {
         }
     }
     
-    /// Sequential calculation of Mandelbrot set pixel by pixel
-    func calculatePixelByPixel(_ graphics: Graphics) {
-        for y in 0..<graphics.height {
-            for x in 0..<graphics.width {
-                let color = calculatePointZ2(x, y)
-                graphics.setPixel(x, y, color: color)
-            }
-        }
-    }
 
     /// Sequential calculation of Mandelbrot set line by line
     func calculateLineByLine(_ graphics: Graphics) {
