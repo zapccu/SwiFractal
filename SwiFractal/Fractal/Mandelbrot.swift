@@ -10,6 +10,9 @@ import Numerics
 import Accelerate
 
 class Mandelbrot: Fractal {
+    
+    // Minimum iteration count
+    static var minIterationCount: Int = 200
        
     // Mandelbrot set calculation parameters
     var MP: MandelbrotParameters = MandelbrotParameters()
@@ -29,8 +32,8 @@ class Mandelbrot: Fractal {
         Cplx(Double(settings["sizeX", default: "3.0"]) ?? 3.0, Double(settings["sizeY", default: "3.0"]) ?? 3.0)
     }
     
-    /// Return max iteration count depending on current zoom level
-    var maxIterationCount: Int { Int(500 + log10(1.0 / zoomFactor()) * 200) }
+    /// Return max iteration count depending on current zoom level (>= 500)
+    var maxIterationCount: Int { Int(Double(Mandelbrot.minIterationCount) + log10(zoomFactor()) * 200) }
     
     // 2 dimensional array with complex coordinates
     var cplxGrid: [[Cplx]] = []
@@ -78,7 +81,6 @@ class Mandelbrot: Fractal {
     /// Mark start of calculation. Prepare calculation parameters
     override func beginCalculation(_ width: Int, _ height: Int) {
         MP = MandelbrotParameters(settings)
-        //dump(MP)
         mapScreenCoordinates(width, height)
         orbitCount = 0
         super.beginCalculation(width, height)
@@ -127,13 +129,11 @@ class Mandelbrot: Fractal {
     
     /// Return zoom factor
     func zoomFactor() -> Double {
-        let initialSize: Cplx = Cplx(
-            Double(settings.initial[path: "sizeX", default: "3.0"]) ?? 3.0,
-            Double(settings.initial[path: "sizeY", default: "3.0"]) ?? 3.0
-        )
+        let sizeX: Double = Double(settings.initial[path: "sizeX", default: "3.0"]) ?? 3.0
+        let sizeY: Double = Double(settings.initial[path: "sizeY", default: "3.0"]) ?? 3.0
         let currentSize: Cplx = cplxSize
         
-        return initialSize.max / currentSize.min
+        return max(sizeX, sizeY) / currentSize.min
     }
     
     /// Check if Double precision is sufficient for current pixel size

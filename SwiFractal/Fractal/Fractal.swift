@@ -26,7 +26,6 @@ class Fractal {
         // "corner": Cplx(-2.25, -1.5),
         // "size": Cplx(3.0, 3.0),
         "oversampling": Int(1),
-        "colorTable": "Grey",
         "lightning": [
             "angle": Int(45),
             "elevation": Int(45),

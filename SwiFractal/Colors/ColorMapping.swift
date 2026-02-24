@@ -97,16 +97,16 @@ struct ColorMapping {
     }
     
     /// Initialize color mapping
-    init(_ parameterset: ParameterSet = ParameterSet()) {
-        colorTable      = parameterset["colorTable", default: "Grey"]
-        colorizeMode    = parameterset["colorizeMode", default: ColorizeMode(.iterations)] 
-        colorizeOutside = parameterset["colorizeOutside", default: ColorizeOutside(.simple)]
-        colorizeInside  = parameterset["colorizeInside", default: ColorizeInside(.simple)]
-        paletteMode     = parameterset["paletteMode", default: PaletteMode(.linear)]
+    init(_ fractalType: String, _ parameterset: ParameterSet = ParameterSet()) {
+        colorTable      = parameterset["\(fractalType).colorTable", default: "Grey"]
+        colorizeMode    = parameterset["\(fractalType).colorizeMode", default: ColorizeMode(.iterations)]
+        colorizeOutside = parameterset["\(fractalType).colorizeOutside", default: ColorizeOutside(.simple)]
+        colorizeInside  = parameterset["\(fractalType).colorizeInside", default: ColorizeInside(.simple)]
+        paletteMode     = parameterset["\(fractalType).paletteMode", default: PaletteMode(.linear)]
         lightning       = Lightning(parameterset["lightning", default: ParameterSet()])
-        ncycle          = parameterset["ncycle", default: 1.0]
-        steps           = parameterset["steps", default: 0.0]
-        defaultColor    = parameterset["defaultColor", default: RGBAColor.black]
+        ncycle          = parameterset["\(fractalType).ncycle", default: 1.0]
+        steps           = parameterset["\(fractalType).steps", default: 0.0]
+        defaultColor    = parameterset["\(fractalType).defaultColor", default: RGBAColor.black]
     }
     
     /// Return color table entry or default color
@@ -215,6 +215,7 @@ struct ColorMapping {
         
         // 3D shading, calculate brightness
         if colorizeOutside.isAny(of: [.blinnPhong, .simple3d]) {
+            // Normal vector
             let absNormal = normal / normal.length
             let vecNormal = Vector(absNormal.real, absNormal.imaginary, 1.0)
             

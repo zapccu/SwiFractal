@@ -45,7 +45,7 @@ struct ControlView: View {
     @State var linkResolution: Bool = true
     @State var autoIterations: Bool = false
     @State var color: Color = Color.white
-    @State var colorTableName: String
+    @State var colorTable: String
     
     @State var cornerLeft: String
     @State var cornerBottom: String
@@ -98,7 +98,7 @@ struct ControlView: View {
         _stripes      = State(initialValue: appData.fractal.settings["\(ft).stripes"])
         _steps        = State(initialValue: appData.fractal.settings["\(ft).steps"])
         _ncycle       = State(initialValue: appData.fractal.settings["\(ft).ncycle"])
-        _colorTableName  = State(initialValue: appData.fractal.settings["colorTableName"])
+        _colorTable  = State(initialValue: appData.fractal.settings["\(ft).colorTable"])
         _colorizeMode    = State(initialValue: appData.fractal.settings["\(ft).colorizeMode"])
         _colorizeInside  = State(initialValue: appData.fractal.settings["\(ft).colorizeInside"])
         _colorizeOutside = State(initialValue: appData.fractal.settings["\(ft).colorizeOutside"])
@@ -247,19 +247,15 @@ struct ControlView: View {
                             Text("Color palette")
                         }
                         HStack(spacing: 10) {
-                            Picker(selection: $colorTableName, label: Text("")) {
+                            Picker(selection: $colorTable, label: Text("")) {
                                 ForEach(FractalAppData.colorTables.keys.sorted(), id: \.self) { key in
                                     ColorPalette(colorTable: FractalAppData.colorTables[key]!,
                                                  size: CGSize(width: 150, height: 20), label: key)
-                                        .tag(key)
+                                    .tag(key)
                                 }
                             }
-                            //.fixedSize()
-                            .onChange(of: colorTableName) {
-                                appData.fractal.settings["\(ft).colorTable"] = colorTableName
-                            }
-                            .onAppear {
-                                colorTableName = appData.fractal.settings["\(ft).colorTable"]
+                            .onChange(of: colorTable) {
+                                appData.fractal.settings["\(ft).colorTable"] = colorTable
                             }
                         }
                         OptionsPicker(options: $colorizeMode, "Mode")
@@ -269,7 +265,7 @@ struct ControlView: View {
                             .onValueChanged { v in appData.fractal.settings["\(ft).colorizeInside"] = v }
                             .padding([.top], 10)
                         if colorizeMode == ColorizeMode(.iterations) {
-                            OptionsPicker(options: $paletteMode, "Palettemode")
+                            OptionsPicker(options: $paletteMode, "Mapping")
                                 .onValueChanged { v in appData.fractal.settings["\(ft).paletteMode"] = v}
                                 .padding([.top], 10)
                         }

@@ -10,7 +10,7 @@ import SwiftUI
 //
 // Selection View
 //
-// Shown on top of the drawing view for interactively selecting a view area
+// Placed on top of the drawing view for interactively selecting a view area
 //
 struct SelectionView: View {
     @Binding var selection: Selection

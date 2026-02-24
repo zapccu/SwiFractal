@@ -92,7 +92,6 @@ struct RGBAColor: Castable {
     
     static var defaultValue: RGBAColor = .black
     
-    
     // Predefined colors
     static let black  = RGBAColor(0.0, 0.0, 0.0, 1.0)
     static let white  = RGBAColor(1.0, 1.0, 1.0, 1.0)
@@ -275,15 +274,16 @@ struct RGBAColor: Castable {
 
     // --------------------------------------------------------
     //  Multiply / divide colors with/by float or double value
+    //  Alpha channel is not modified!
     // --------------------------------------------------------
 
     static func * (lhs: RGBAColor, rhs: Float) -> RGBAColor {
-        return RGBAColor(lhs.red * rhs, lhs.green * rhs, lhs.blue * rhs, lhs.alpha * rhs)
+        return RGBAColor(lhs.red * rhs, lhs.green * rhs, lhs.blue * rhs, lhs.alpha)
     }
 
     static func / (lhs: RGBAColor, rhs: Float) -> RGBAColor {
         guard rhs != 0 else { return lhs }
-        return RGBAColor(lhs.red / rhs, lhs.green / rhs, lhs.blue / rhs, lhs.alpha / rhs)
+        return RGBAColor(lhs.red / rhs, lhs.green / rhs, lhs.blue / rhs, lhs.alpha)
     }
 }
 

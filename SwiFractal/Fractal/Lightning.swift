@@ -93,12 +93,25 @@ struct Lightning {
     /// Return brightness in range 0..1
     ///
     func blinnPhong(_ normal: Vector) -> Double {
-        // diffuse light = dotproduct(light, normal)
+        
+        // Calculate diffuse light
+        //
+        // theta:         light angle
+        // phi:           light azimuth
+        //
+        // light vector  = [cos(theta)cos(phi), sin(theta)cos(phi), sin(phi)]
+        // normal vector = [normal.real, normal.imag, 1]
+        //
+        // diffuseLight  = dot product(light, normal)
         var diffuseLight = mulDot(normal, vecLight)
         // Normalization
         diffuseLight /= (1 + vecLight[2])
         
-        // specular light = dotproduct(azimuth, normal)
+        // Calculate specular light
+        //
+        // phi2:  average between phi and pi/2 (viewer azimuth)
+        //
+        // specularLight = dot product(phi2, normal)
         var specularLight = mulDot(normal, vecAzimuth)
         // Normalization
         specularLight = specularLight / (1 + vecAzimuth[2])

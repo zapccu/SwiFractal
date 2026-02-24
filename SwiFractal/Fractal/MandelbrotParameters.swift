@@ -119,7 +119,7 @@ class MandelbrotParameters: FractalParameters {
         orbitDelta2  = 1e-11
         orbitDelta3  = 1e-10
         orbitLength  = 20
-        colorMapping = ColorMapping(parameterset["Mandelbrot"])
+        colorMapping = ColorMapping("Mandelbrot", parameterset)
 
         // Dynamic parameters
         logBailout  = log(bailout)
