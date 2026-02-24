@@ -64,7 +64,7 @@ class MandelbrotParameters: FractalParameters {
     
     var logBailout: Double              // Logarithm of bailout radius
                                         // logBailout = log(bailout)
-    var log2Bailout: Double             // log2Bailout = 2 / log(bailout)
+    var logBailout2: Double             // log2Bailout = 2 / log(bailout)
     var ncycle: Double                  // Number of iteration before cycling the colortable
                                         // Range 1-200, 1 = No cycling, default = 1
     var diaScale: Double                // Scaling for orbit coloring inside Mandelbrot set
@@ -123,7 +123,7 @@ class MandelbrotParameters: FractalParameters {
 
         // Dynamic parameters
         logBailout  = log(bailout)
-        log2Bailout = 2.0 / logBailout
+        logBailout2 = logBailout * 2.0
         ncycle      = sqrt(ncycle)
         diaScale    = Double(iterations) / 10.0
         //diag        = 1.0 / size.length

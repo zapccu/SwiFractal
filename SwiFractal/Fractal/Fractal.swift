@@ -6,19 +6,27 @@
 //
 
 import Foundation
+import SwiftUI
 import Numerics
 
+typealias CalcFunc = (Graphics) -> Void
 
 //
 // Common fractal class
 //
+
 class Fractal {
     
     // Store settings as ParameterSet
     var settings: ParameterSet = ParameterSet([
-        "corner": Cplx(-2.25, -1.5),
-        "size": Cplx(3.0, 3.0),
+        "cornerLeft": "-2.25",
+        "cornerBottom": "-1.5",
+        "sizeX": "3.0",
+        "sizeY": "3.0",
+        // "corner": Cplx(-2.25, -1.5),
+        // "size": Cplx(3.0, 3.0),
         "oversampling": Int(1),
+        "colorTable": "Grey",
         "lightning": [
             "angle": Int(45),
             "elevation": Int(45),
@@ -31,21 +39,28 @@ class Fractal {
         ]
     ])
     
+    var calcFunctions: [CalcFunc?] { [] }
+    
     /// Type of fractal (name of fractal class
     var fractalType: String { String(describing: Self.self) }
     
     // Flag for redrawing / recalculation
     // var redraw: Bool = false
-    
+        
     // Calculation parameters
     var CP: FractalParameters
     
     // Statistic value
-    var startTime: TimeInterval = 0
-    var endTime: TimeInterval = 0
-    var calculationTime: TimeInterval = 0
+    let clock: ContinuousClock = ContinuousClock()
+    var startTime: ContinuousClock.Instant
+    var endTime: ContinuousClock.Instant
+    var calculationTime: Duration
+    var formattedCalculationTime: String {
+        calculationTime.formatted(.time(pattern: .hourMinuteSecond(padHourToLength: 2,
+                                                            fractionalSecondsLength: 3)))
+    }
     
-    // Preformance is dropping when more than 4 CPU cores are used
+    /// Return CPU count
     let cpuCount: Int = min(ProcessInfo.processInfo.processorCount, 4)
     
     /// Initialize fractal object, add parameters of child class as sub-path-element.
@@ -61,6 +76,10 @@ class Fractal {
             _ = settings.addSetting(childClassName, childClassDict)
         }
         
+        startTime = clock.now
+        endTime = clock.now
+        calculationTime = endTime - startTime
+        
         // Create initial calculation parameters from settings ParameterSet
         CP = FractalParameters(settings)
     }
@@ -72,35 +91,33 @@ class Fractal {
     
     /// Start of calculation
     /// Initialize stop timer
-    func beginCalculation() {
-        startTime = Date().timeIntervalSince1970
+    func beginCalculation(_ width: Int, _ height: Int) {
+        startTime = clock.now
     }
     
     /// End of calculation
     /// Measure calculation time
     func endCalculation() {
-        endTime = Date().timeIntervalSince1970
+        endTime = clock.now
         calculationTime = endTime - startTime
     }
     
-    /// Return zoom factor
-    func zoomFactor() -> Double {
-        let initialSize: Cplx = settings.initial[path: "size"]
-        let currentSize: Cplx = settings.current[path: "size"]
-        return initialSize.max / currentSize.min
-    }
-    
-    /// Check if Double precision is sufficient for current pixel size
-    ///
-    /// Returns true, if precision is sufficient
-    /// 
-    func checkPrecision(_ center: Cplx, _ resolution: Int, _ securityFactor: Double = 100.0) -> Bool {
-        let currentSize: Cplx = settings.current[path: "size"]
-        let pixelSize = currentSize.min / Double(resolution)
+    func draw(_ graphics: Graphics, _ method: DrawMethod) {
+        guard let fnc = calcFunctions[method.rawValue] else {
+            print("Draw method \(method.name) not available for fractal type \(String(describing: Self.self))")
+            return
+        }
         
-        // Security factor = 100
-        return pixelSize >= (center.ulp * securityFactor)
+        graphics.clear(color: .blue)
+        beginCalculation(graphics.width, graphics.height)
+                
+        print("Rendering Mandelbrot with method \(method.name)")
+        fnc(graphics)
+        
+        endCalculation()
+        print("calculation time: \(calculationTime)")
     }
+
 
 }
 

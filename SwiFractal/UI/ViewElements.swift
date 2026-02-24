@@ -54,10 +54,10 @@ struct OptionsPicker<T>: View where T: RawRepresentable, T: CaseIterable, T.RawV
 }
 
 //
-// Input field with text label supporting input datatypes String, Int, Double, Complex<Double>
+// Input field with text label supporting numeric input datatypes
 //
 
-struct LabeledInputField<T: Numeric> : View {
+struct LabeledInputField : View {
     @State private var numberFormatter: NumberFormatter = {
         var numberFormatter = NumberFormatter()
         numberFormatter.numberStyle = .decimal
@@ -65,26 +65,27 @@ struct LabeledInputField<T: Numeric> : View {
     }()
     
     let label: String
-    @Binding var value: T
-    var changeHandler: ((T) -> Void)? = nil
+    @Binding var value: String
+    var changeHandler: ((String) -> Void)? = nil
     var width: CGFloat
 
     var body: some View {
         HStack(spacing: 10) {
             ControlLabel(label)
-            TextField(label, value: $value, formatter: numberFormatter)
+            //TextField(label, value: $value, formatter: numberFormatter)
+            TextField(label, text: $value)
                 .frame(width: width)
             Spacer()
         }
     }
     
-    init(_ label: String, _ value: Binding<T>, width: Int) {
+    init(_ label: String, _ value: Binding<String>, width: Int) {
         self.label = label
         self._value = value
         self.width = CGFloat(width)
     }
     
-    func onValueChanged(_ handler: @escaping (T) -> Void) -> Self {
+    func onValueChanged(_ handler: @escaping (String) -> Void) -> Self {
         var copy = self
         copy.changeHandler = handler
         return copy
@@ -139,19 +140,18 @@ struct LabeledSlider : View {
 // Stepper with a text label
 //
 
-struct LabeledStepper : View {
+struct LabeledStepper<T: Strideable> : View where T.Stride == T {
     let label: String
-    @Binding var value: Int
-    var changeHandler: ((Int) -> Void)? = nil
+    @Binding var value: T
+    var changeHandler: ((T) -> Void)? = nil
     var unit: String = ""
-    var minValue: Int
-    var maxValue: Int
-    var step: Int = 1
+    var range: ClosedRange<T>
+    var step: T
     
     var body: some View {
         HStack(spacing: 10) {
             if label != "" { ControlLabel(label) }
-            Stepper("\($value.wrappedValue.formatted())" + unit, value: $value, in: minValue...maxValue, step: step)
+            Stepper(formatValue() + unit, value: $value, in: range, step: step)
                 .onChange(of: value) { _, _ in
                     changeHandler?(value)
                 }
@@ -159,19 +159,26 @@ struct LabeledStepper : View {
         }
     }
           
-    init (_ label: String, _ value: Binding<Int>, range: ClosedRange<Int>, step: Int = 1, unit: String = "") {
+    init (_ label: String, _ value: Binding<T>, range: ClosedRange<T>, step: T = 1, unit: String = "") {
         self.label = label
         self._value = value
-        self.minValue = range.lowerBound
-        self.maxValue = range.upperBound
+        self.range = range
         self.step = step
         self.unit = unit
     }
     
-    func onValueChanged(_ handler: @escaping (Int) -> Void) -> Self {
+    func onValueChanged(_ handler: @escaping (T) -> Void) -> Self {
         var copy = self
         copy.changeHandler = handler
         return copy
+    }
+    
+    private func formatValue() -> String {
+        if let doubleValue = value as? Double {
+            // Formatiert Double auf max. 2 Nachkommastellen, entfernt .0
+            return doubleValue.formatted(.number.precision(.fractionLength(0...2)))
+        }
+        return "\(value)"
     }
 
 }

@@ -14,19 +14,17 @@ import Accelerate
 //
 // Specifies the iteration value used to calculate the color
 //
-// iterations - use iteration count
-// distance   - use distance to Mandelbrot set
-// potential  - use potential of fractal point
-//
 enum EnumColorizeMode: Int, CaseIterable {
-    case iterations = 0
-    case distance   = 1
-    case potential  = 2
-    case steps      = 3
-    case stripes    = 4
+    case iterations = 0     // iteration count
+    case distance   = 1     // distance to Mandelbrot set
+    case potential  = 2     // potential of fractal point
+    case steps      = 3     // color steps
+    case stripes    = 4     // stripes
 }
 typealias ColorizeMode = Options<EnumColorizeMode>
 
+//
+// Colorize outside
 //
 // Outside colorization of a fractal
 //
@@ -38,12 +36,14 @@ enum EnumColorizeOutside: Int, CaseIterable {
 typealias ColorizeOutside = Options<EnumColorizeOutside>
 
 //
+// Colorize inside
+//
 // Inside colorization of a fractal
 //
 enum EnumColorizeInside: Int, CaseIterable {
-    case simple
-    case orbits             // Colorize orbits inside mandelbrot set, implies full orbit detection
-    case distance     // Colorize distance inside mandelbrot set, implies distance calculation
+    case simple             // Inside of Mandelbrot set is set to default color
+    case orbits             // Colorize orbits inside Mandelbrot set, implies full orbit detection
+    case distance           // Colorize distance inside Mandelbrot set, implies distance calculation
 }
 typealias ColorizeInside = Options<EnumColorizeInside>
 
@@ -52,9 +52,11 @@ typealias ColorizeInside = Options<EnumColorizeInside>
 //
 // Specifies how iteration results are mapped to a color table
 //
+// Only used when ColorizeMode = .iterations
+//
 enum EnumPaletteMode: Int, CaseIterable {
-    case linear    = 0
-    case modulo    = 1
+    case linear    = 0      // linear color mapping
+    case modulo    = 1      // color mapping by modulo division
     case hue       = 2
     case huedyn    = 3
     case lchdyn    = 4
@@ -68,11 +70,11 @@ typealias PaletteMode = Options<EnumPaletteMode>
 //
 struct ColorMapping {
     var colorTable: String                  // Color table name
-    var colorizeMode: ColorizeMode          // Colorize mode: iterations, distance, potential
+    var colorizeMode: ColorizeMode          // Colorize mode: iterations, distance, potential, steps, stripes
     var colorizeOutside: ColorizeOutside    // Colorize outside: simple, simple3D, blinnPhong
-    var colorizeInside: ColorizeInside
+    var colorizeInside: ColorizeInside      // Colorize inside: simple, orbits, distance
     var paletteMode: PaletteMode            // Palette assignment mode: linear, modulo, hue, huedyn, lchdyn
-    var lightning: Lightning
+    var lightning: Lightning                // Lightning parameters
     var ncycle: Double
     var steps: Double
     
@@ -113,10 +115,12 @@ struct ColorMapping {
         return palette[index]
     }
     
+    /// Return palette entry by index
     func getColor(_ index: Int) -> RGBAColor {
         guard index >= 0, index < colorCount else { return defColor }
         return palette[index]
     }
+    
     /// Overlay blending: a = base layer, b = top layer
     static func blendOverlay(_ a: Double, _ b: Double) -> Double {
         return a < 0.5 ? 2 * a * b : 1 - 2 * (1 - a) * (1 - b)

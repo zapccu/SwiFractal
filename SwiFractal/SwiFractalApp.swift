@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+
 struct FractalAppData {
     // The window size
     var windowSize: CGSize = CGSize(width: 1000, height: 700)
@@ -20,8 +21,7 @@ struct FractalAppData {
         "Grey": ColorTable.grey,
         "Sinus": ColorTable.sinus
     ]
-    
-    // var colorTable: String = "Greyscale"
+
 }
 
 @main

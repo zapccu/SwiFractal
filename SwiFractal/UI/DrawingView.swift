@@ -14,6 +14,7 @@ import SwiftUI
 //
 struct DrawingView: View {
     @Binding var redraw: Bool
+    @Binding var isDrawing: Bool
     
     var graphics: Graphics
     var fractal: Mandelbrot

@@ -14,10 +14,16 @@ import SwiftUI
 //
 struct StatusView: View {
     @Binding var currentAction: String
+    @Binding var message: String
     
     var body: some View {
         HStack(spacing: 0) {
             Text(currentAction)
+                .padding([.leading, .trailing], 10)
+                .background(Color(red: 0.9, green: 0.9, blue: 0.9))
+            Text(message)
+                .padding([.leading, .trailing], 10)
+                .background(Color(red: 0.9, green: 0.9, blue: 0.9))
             Spacer()
         }
     }
