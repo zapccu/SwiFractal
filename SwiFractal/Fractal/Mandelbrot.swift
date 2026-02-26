@@ -80,6 +80,7 @@ class Mandelbrot: Fractal {
     
     /// Mark start of calculation. Prepare calculation parameters
     override func beginCalculation(_ width: Int, _ height: Int) {
+        dump(settings)
         MP = MandelbrotParameters(settings)
         mapScreenCoordinates(width, height)
         orbitCount = 0

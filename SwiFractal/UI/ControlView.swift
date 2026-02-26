@@ -39,6 +39,8 @@ struct ControlView: View {
     @State private var isShadingExpanded = false
     @State private var isStripesStepsExpanded = false
     @State private var isCyclesSamplingExpanded = false
+    @State private var isExporting = false
+    @State private var isImporting = false
     
     @State var drawMethod: DrawMethod = DrawMethod(.sequential)
     
@@ -162,18 +164,16 @@ struct ControlView: View {
                                     }
                                 }
                             }.disabled(isDrawing)
-                            Button("Export") {
-                                dump(appData.fractal.settings)
-                                /*
-                                 let renderer = ImageRenderer(content: drawingCanvas)
-                                 let image = renderer.nsImage
-                                 if !Graphics.saveNSImage(image: image!, path: "/Users/dirk/Pictures/swiFractalns.png") {
-                                 print("Error write NSImage to file")
-                                 }
-                                 */
+                        }
+                        HStack(spacing: 5) {
+                            // Den Export-Button einfach aufrufen
+                            ExportButton(document: FractalDocument(data: appData.fractal.settings))
+                            
+                            // Den Import-Button aufrufen und das Ergebnis empfangen
+                            ImportButton { decodedData in
+                                appData.fractal.settings = decodedData
                             }
-                            Spacer()
-                        }.frame(alignment: .leading)
+                        }
                     }
                 }.padding([.top], 10)
                 
@@ -199,10 +199,16 @@ struct ControlView: View {
                 
                 GroupBox(label: Text("Fractal dimensions").foregroundStyle(.blue).font(.headline)) {
                     VStack(alignment: .leading) {
+                        /*
                         LabeledInputField("Left", $cornerLeft, width: 170)
                             .onValueChanged { v in
                                 appData.fractal.settings["cornerLeft"] = v
                             }
+                         */
+                        LabeledInputField("Left", Binding(
+                            get: { appData.fractal.settings["cornerLeft", default: "-2.25"] },
+                            set: { appData.fractal.settings["cornerLeft"] = $0 }
+                        ), width: 170)
                         LabeledInputField("Bottom", $cornerBottom, width: 170)
                             .onValueChanged { v in
                                 appData.fractal.settings["cornerBottom"] = v

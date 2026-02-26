@@ -226,3 +226,62 @@ struct ColorPalette: View {
     }
 
 }
+
+struct ExportButton: View {
+    let document: FractalDocument
+    @State private var isExporting = false
+    
+    var body: some View {
+        Button(action: { isExporting = true }) {
+            Label("Export", systemImage: "square.and.arrow.up")
+        }
+        .fileExporter(
+            isPresented: $isExporting,
+            document: document,
+            contentType: .json,
+            defaultFilename: "myFractal.json"
+        ) { result in
+            if case .failure(let error) = result {
+                print("Export-Fehler: \(error.localizedDescription)")
+            }
+        }
+    }
+}
+
+struct ImportButton: View {
+    @State private var isImporting = false
+    var onImport: (ParameterSet) -> Void // Callback to main view
+    
+    var body: some View {
+        Button(action: { isImporting = true }) {
+            Label("Import", systemImage: "square.and.arrow.down")
+        }
+        .fileImporter(
+            isPresented: $isImporting,
+            allowedContentTypes: [.json],
+            allowsMultipleSelection: false
+        ) { result in
+            handleResult(result)
+        }
+    }
+    
+    private func handleResult(_ result: Result<[URL], Error>) {
+        Task {
+            do {
+                let urls = try result.get()
+                guard let url = urls.first else { return }
+                
+                if url.startAccessingSecurityScopedResource() {
+                    defer { url.stopAccessingSecurityScopedResource() }
+                    let data = try Data(contentsOf: url)
+                    let decodedData = try JSONDecoder().decode(ParameterSet.self, from: data)
+                    
+                    // Hier geben wir das Ergebnis zurück
+                    onImport(decodedData)
+                }
+            } catch {
+                print("Import-Fehler: \(error.localizedDescription)")
+            }
+        }
+    }
+}

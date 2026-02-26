@@ -77,6 +77,8 @@ extension SIMD4<UInt8> {
 //
 // Fractal color type
 //
+// 4 color channels: red, green, blue, alpha in range 0..1
+//
 struct RGBAColor: Castable {
     static func isCastable<T>(from: T) -> Bool {
         return from is RGBAColor
@@ -104,7 +106,7 @@ struct RGBAColor: Castable {
     var red:   Float = 0.0
     var green: Float = 0.0
     var blue:  Float = 0.0
-    var alpha: Float = 0.0
+    var alpha: Float = 1.0
     
     /// Return red channel as UInt8 value in range 0..255
     var redi:   UInt8 { return UInt8(red * 255.0) }

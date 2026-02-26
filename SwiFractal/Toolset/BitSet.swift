@@ -20,14 +20,20 @@ public macro OptionSet<RawType>() =
 ///
 /// Example:
 ///
-///     enum DrawingAttributes: Int, CaseIterable {
+///     enum EnumDrawingAttributes: Int, CaseIterable {
 ///         case solid
 ///         case rounded
 ///         case colored
 ///         case filled
 ///     }
 ///
-///     var bitMask: BitSet<DrawingAttributes> = [.solid, .colored]
+///     var bitMask: BitSet<EnumDrawingAttributes> = [.solid, .colored]
+///
+/// With type alias:
+///
+///     typealias DrawingAttributes = BitSet<EnumDrawingAttributes>
+///     
+///     var bitMask: DrawingAttributes = [.solid, .colored]
 ///
 /// BitSet is conform to Codable. A bitmask is converted to a JSON array containing the names of the bits.
 ///
@@ -55,9 +61,9 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
 		rawValue = 0
 	}
     
-    /// Init with bit number. If bitnumber is > highest bit number, initialize with 0
+    /// Init with bit number. If bitnumber is > highest bit number or < 0, initialize with 0
     init (_ bit: Int) {
-        self.rawValue = bit <= highBit ? 1 << bit : 0
+        self.rawValue = bit >= 0 && bit <= highBit ? 1 << bit : 0
     }
     
     /// Init with raw value without bit conversion. Bits > highBit are masked.
@@ -65,7 +71,7 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
 		self.rawValue = rawValue & allBits
 	}
     
-    // Init from String Array
+    /// Init from String Array
     init(values: [String]) {
         self.rawValue = 0
         for value in values {
@@ -78,7 +84,6 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
     /// Initialize bitset with multiple bits by using a bitwise OR operation
     /// Example: bitset = [.bit1, .bit2 ]
     /// This function is also called for decoding keyed JSON strings like "{ \"key\": [ \"case1\”, \"case2\" ] }"
-    ///
     init(arrayLiteral elements: Element...) {
         let or = elements.reduce(0) { $0 | 1 << $1.rawValue }
         self.rawValue = or
@@ -104,7 +109,6 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
     // ----------------------------------------------------------------------
 
     /// Put bitset bit-names as String array into JSON instead of rawValue
-    ///
     func encode(to encoder: any Encoder) throws {
         var container = encoder.unkeyedContainer()
         let names = Element.allCases.filter { self.rawValue & (1 << $0.rawValue) != 0 }.map { String(describing: $0) }
@@ -113,7 +117,6 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
     
     /// Decode from JSON array
     /// This function is called for keyless JSON arrays like "[ \"case1\", \"case2\" ]"
-    ///
     init(from decoder: Decoder) throws {
         // Open an unkeyedContainer for reading the array
         var container = try decoder.unkeyedContainer()
@@ -142,8 +145,8 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
         }
     }
     
-    // Convert BitSet to (optionally) formatted JSON string
-    // Returns JSON string or empty string on error
+    /// Convert BitSet to (optionally) formatted JSON string
+    /// Returns JSON string or empty string on error
     func toJSON(prettyPrinted: Bool = true) -> String {
         do {
             let encoder = JSONEncoder()
@@ -162,42 +165,43 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
 
     /// Logical AND with bit
     /// Example: bitset = bitset & .bitname
-    ///
     static func & (lhs: BitSet, rhs: Element) -> BitSet {
         let bitMask = 1 << rhs.rawValue
         let resultRawValue = lhs.rawValue & bitMask
         return BitSet(rawValue: resultRawValue)
     }
     
+    /// Logical AND with bit
+    /// Example: bitset = bitset & .bitname
     static func &= (lhs: inout BitSet, rhs: Element) {
         let bitMask = 1 << rhs.rawValue
         lhs.rawValue &= bitMask
     }
 
-    /// Logical Or with bit
+    /// Logical OR with bit
     /// Example: bitset = bitset | .bitname
-    ///
     static func | (lhs: BitSet, rhs: Element) -> BitSet {
         let bitMask = 1 << rhs.rawValue
         let resultRawValue = lhs.rawValue | bitMask
         return BitSet(rawValue: resultRawValue)
     }
     
+    /// Logical OR with bit
+    /// Example: bitset = bitset | .bitname
     static func |= (lhs: inout BitSet, rhs: Element) {
         let bitMask = 1 << rhs.rawValue
         lhs.rawValue |= bitMask
     }
     
-    /// Conditional statements with logical And
+    /// Conditional statements with logical AND
     /// Example: if bitset & .bitname ...
     static func & (lhs: BitSet, rhs: Element) -> Bool {
         let bitMask = 1 << rhs.rawValue
         return (lhs.rawValue & bitMask) != 0
     }
     
-    /// Conditional statements with logical Or
+    /// Conditional statements with logical OR
     /// Example: if bitset | .bitname ...
-    ///
     static func | (lhs: BitSet, rhs: Element) -> Bool {
         let bitMask = 1 << rhs.rawValue
         return (lhs.rawValue | bitMask) != 0

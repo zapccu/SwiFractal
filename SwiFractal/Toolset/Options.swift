@@ -13,14 +13,20 @@ import Foundation
 ///
 /// Example:
 ///
-///     enum DrawingAttributes: Int, CaseIterable {
+///     enum EnumDrawingAttributes: Int, CaseIterable {
 ///         case solid
 ///         case rounded
 ///         case colored
 ///         case filled
 ///     }
 ///
-///     var options: Options<DrawingAttributes> = Options(.solid)
+///     var options: Options<EnumDrawingAttributes> = Options(.solid)
+///
+/// With type alias:
+///
+///         typealias DrawingAttributes = Options<EnumDrawingAttributes>
+///
+///         var options: DrawingAttributes = Options(.solid)
 ///
 /// Options is conform to Codable. An option is converted to a JSON String containing the option name.
 ///
@@ -34,9 +40,10 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
 
 	var rawValue: Int
     
-    var name: String { String(describing: EnumDrawMethod(rawValue: rawValue)) }
+    /// Return name of option as String
+    var name: String { String(describing: Element(rawValue: rawValue)!) }
     
-    /// Return Array with all cases (options) as String
+    /// Return Array with all cases (options) as Strings
     var allNames: [String] = Element.allCases.map { String(describing: $0) }
     
     /// Return rawValue of last option
@@ -57,7 +64,7 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
         self.rawValue = rawValue >= 0 && rawValue <= maxValue ? rawValue : 0
     }
     
-    // Init from String
+    /// Init from String
     init(value: String) {
         if let v = allNames.firstIndex(of: value) {
             self.rawValue = v
@@ -75,19 +82,22 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
         self.rawValue = element.rawValue
     }
     
-    /// Returns name of bit as String
+    /// Returns name of option *Element* as String
     func optName(_ option: Element) -> String {
         return String(describing: option)
     }
     
+    /// Return true if option is in list *Element*
     func isAny(of: [Element]) -> Bool {
         return of.contains(where: { self.rawValue == $0.rawValue })
     }
     
+    /// Compare options
     static func == (lhs: Options<Element>, rhs: Options<Element>) -> Bool {
         return lhs.rawValue == rhs.rawValue
     }
     
+    /// Compare options
     static func != (lhs: Options<Element>, rhs: Options<Element>) -> Bool {
         return lhs.rawValue != rhs.rawValue
     }
@@ -104,17 +114,14 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
     //  JSON encoding / decoding
     // ----------------------------------------------------------------------
 
-    /// Put bitset bit-names as String array into JSON instead of rawValue
-    ///
+    /// Put option name as String into JSON instead of rawValue
     func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
-        let name = Element.allCases.filter { self.rawValue == $0.rawValue }.map { String(describing: $0) }
         try container.encode(name)
     }
     
     /// Decode from JSON string
     /// This function is called for keyless JSON strings like " \"case1\" "
-    ///
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         self.rawValue = 0
@@ -124,7 +131,7 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
         }
     }
     
-    /// Convert JSON string to BitSet
+    /// Convert JSON string to Option
     /// Returns true on success, false on error
     mutating func fromJSON(_ jsonString: String, allowNew: Bool = false) -> Bool {
         guard let data = jsonString.data(using: .utf8) else { return false }
@@ -138,8 +145,8 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
         }
     }
     
-    // Convert BitSet to (optionally) formatted JSON string
-    // Returns JSON string or empty string on error
+    /// Convert Option to (optionally) formatted JSON string
+    /// Returns JSON string or empty string on error
     func toJSON(prettyPrinted: Bool = true) -> String {
         do {
             let encoder = JSONEncoder()
