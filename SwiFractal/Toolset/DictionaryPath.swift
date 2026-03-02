@@ -30,10 +30,10 @@
 //   let d = myDict[path: "c.d", default: 0] as? Int ?? 0
 //   let e = myDict[path: "c.e", default: 0.0] as? Double ?? 0.0
 //
-//   myDict[path: "c.d"] = 10
+//   myDict[path: "c.d"] = 10          // Assign Int(10) to myDict["c"]["d"]
 //   myDict[path: "c.d"] = 10.0        // Type is changed to Double
 //
-//   myDict[path: "x.y"] = Int(300)    // Add new subdictionary x with element y
+//   myDict[path: "x.y"] = Int(300)    // Add new subdictionary "x" with element "y"
 //
 //   myDict[path: "c.d"] = nil         // Delete element d in subdictionary c
 //
@@ -69,11 +69,12 @@ extension Dictionary where Key == String {
         return false
     }
     
-    /// Get or set value of type Any identified by parameter keyPath
+    /// Get or set value of type Any identified by parameter *path*
     ///
     /// Getting a value returns ...
+    ///    ... the *default* value (if specified) if element doesn't exist or type of a sub-dictionary is not DictAny
     ///    ... nil if element doesn't exist and no default is specified
-    ///    ... the dictionary if path is an empty string
+    ///    ... the dictionary itself if path is an empty string
     ///
     /// Setting a value fails if type of a sub-dictionary element is not DictAny
     /// If newValue is nil, an existing element is deleted
@@ -99,6 +100,7 @@ extension Dictionary where Key == String {
                 return subDict[path: newPath, default: def]
             }
 
+            // Return the default value or nil
             return def
         }
         set {
@@ -115,9 +117,9 @@ extension Dictionary where Key == String {
                     // Delete element
                     self[key] = nil
                 }
-                else if newValue is Value {
+                else if let n = newValue as? Value {
                     // Assign value
-                    self[key] = (newValue! as! Value)
+                    self[key] = n
                 }
             }
             else {

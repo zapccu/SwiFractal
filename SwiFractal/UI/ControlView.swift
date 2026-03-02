@@ -10,24 +10,12 @@
 import SwiftUI
 
 //
-// Draw methods
-//
-enum EnumDrawMethod : Int, CaseIterable {
-    case sequential
-    case parallel
-    case metalcompute
-    case metalshader
-}
-typealias DrawMethod = Options<EnumDrawMethod>
-
-//
 // Control View
 //
 struct ControlView: View {
     
     // Bindings
     @Binding var resolution: CGSize
-    @Binding var oversampling: Int
     @Binding var redraw: Bool
     @Binding var currentAction: String
     @Binding var selection: Selection
@@ -42,50 +30,27 @@ struct ControlView: View {
     @State private var isExporting = false
     @State private var isImporting = false
     
-    @State var drawMethod: DrawMethod = DrawMethod(.sequential)
+    @State var drawMethod: DrawMethod = .sequential
     
     @State var linkResolution: Bool = true
     @State var autoIterations: Bool = false
     @State var color: Color = Color.white
     @State var colorTable: String
     
-    @State var cornerLeft: String
-    @State var cornerBottom: String
-    @State var sizeX: String
-    @State var sizeY: String
-    @State var stripes: Int
-    @State var steps: Int
-    @State var ncycle: Float
-    @State var colorizeMode: ColorizeMode
-    @State var colorizeInside: ColorizeInside
-    @State var colorizeOutside: ColorizeOutside
-    @State var paletteMode: PaletteMode
-    @State var angle: Int
-    @State var elevation: Int
-    @State var opacity: Float
-    @State var ambient: Float
-    @State var diffuse: Float
-    @State var specular: Float
-    @State var shininess: Float
-    @State var gamma: Float
-    @State var iterations: Int
-
     var ft: String                      // Fractal type
     var graphics: Graphics              // Graphics
-    var appData: FractalAppData         // Application data
+    var fractal: Fractal         // Application data
     
     // Custom initializer
-    init(resolution: Binding<CGSize>, oversampling: Binding<Int>, redraw: Binding<Bool>,
-         currentAction: Binding<String>, selection: Binding<Selection>, isDrawing: Binding<Bool>,
-         message: Binding<String>,
-         graphics: Graphics, appData: FractalAppData) {
-        self.ft       = appData.fractal.fractalType
+    init(resolution: Binding<CGSize>, redraw: Binding<Bool>, currentAction: Binding<String>,
+         selection: Binding<Selection>, isDrawing: Binding<Bool>, message: Binding<String>,
+         graphics: Graphics, fractal: Fractal) {
+        self.ft       = fractal.fractalType
         self.graphics = graphics
-        self.appData  = appData
+        self.fractal  = fractal
         
         // Initialize bindings
         _resolution    = resolution
-        _oversampling  = oversampling
         _redraw        = redraw
         _currentAction = currentAction
         _selection     = selection
@@ -93,31 +58,11 @@ struct ControlView: View {
         _message       = message
         
         // Initialize State variables from application settings
-        _cornerLeft   = State(initialValue: appData.fractal.settings["cornerLeft"])
-        _cornerBottom = State(initialValue: appData.fractal.settings["cornerBottom"])
-        _sizeX        = State(initialValue: appData.fractal.settings["sizeX"])
-        _sizeY        = State(initialValue: appData.fractal.settings["sizeY"])
-        _stripes      = State(initialValue: appData.fractal.settings["\(ft).stripes"])
-        _steps        = State(initialValue: appData.fractal.settings["\(ft).steps"])
-        _ncycle       = State(initialValue: appData.fractal.settings["\(ft).ncycle"])
-        _colorTable  = State(initialValue: appData.fractal.settings["\(ft).colorTable"])
-        _colorizeMode    = State(initialValue: appData.fractal.settings["\(ft).colorizeMode"])
-        _colorizeInside  = State(initialValue: appData.fractal.settings["\(ft).colorizeInside"])
-        _colorizeOutside = State(initialValue: appData.fractal.settings["\(ft).colorizeOutside"])
-        _paletteMode     = State(initialValue: appData.fractal.settings["\(ft).paletteMode"])
-        _angle        = State(initialValue: appData.fractal.settings["lightning.angle"])
-        _elevation    = State(initialValue: appData.fractal.settings["lightning.elevation"])
-        _opacity      = State(initialValue: appData.fractal.settings["lightning.opacity"])
-        _ambient      = State(initialValue: appData.fractal.settings["lightning.ambient"])
-        _diffuse      = State(initialValue: appData.fractal.settings["lightning.diffuse"])
-        _specular     = State(initialValue: appData.fractal.settings["lightning.specular"])
-        _shininess    = State(initialValue: appData.fractal.settings["lightning.shininess"])
-        _gamma        = State(initialValue: appData.fractal.settings["lightning.gamma"])
-        _iterations   = State(initialValue: appData.fractal.settings["\(ft).iterations"])
+        _colorTable  = State(initialValue: fractal.settings["\(ft).colorTable"])
     }
 
     var body: some View {
-        let ft = appData.fractal.fractalType
+        let ft = fractal.fractalType
         
         ScrollView([.vertical]) {
             VStack(alignment: .leading) {
@@ -132,18 +77,15 @@ struct ControlView: View {
                             Button("Apply") {
                                 if selection.state == .areaSelected {
                                     let area = selection.getArea(flipped: true, height: graphics.height)
-                                    let (newCorner, newSize) = appData.fractal.zoomArea(area, graphics.width, graphics.height)
-                                    cornerLeft   = String(newCorner.real)
-                                    cornerBottom = String(newCorner.imaginary)
-                                    sizeX        = String(newSize.real)
-                                    sizeY        = String(newSize.imaginary)
-                                    appData.fractal.settings["cornerLeft"]   = cornerLeft
-                                    appData.fractal.settings["cornerBottom"] = cornerBottom
-                                    appData.fractal.settings["sizeX"]        = sizeX
-                                    appData.fractal.settings["sizeY"]        = sizeY
-                                    if autoIterations {
-                                        iterations = appData.fractal.maxIterationCount
-                                        appData.fractal.settings["\(ft).iterations"] = iterations
+                                    let (newCorner, newSize) = fractal.zoomArea(area, graphics.width, graphics.height)
+                                    fractal.settings.updateSettings([
+                                        "cornerLeft": String(newCorner.real),
+                                        "cornerBottom": String(newCorner.imaginary),
+                                        "sizeX": String(newSize.real),
+                                        "sizeY": String(newSize.imaginary)
+                                    ])
+                                    if let M = fractal as? Mandelbrot, autoIterations {
+                                        fractal.settings["\(ft).iterations"] = M.maxIterationCount
                                     }
                                 }
                             }
@@ -153,25 +95,28 @@ struct ControlView: View {
                                         currentAction = "Drawing ..."
                                         message = ""
                                         isDrawing = true
-                                        appData.fractal.draw(graphics, drawMethod)
+                                        fractal.draw(graphics, drawMethod)
                                         isDrawing = false
                                     }) {
                                         graphics.endDraw()
                                         currentAction = "Done."
-                                        message = "Calculation time: \(appData.fractal.formattedCalculationTime)"
+                                        message = "Calculation time: \(fractal.formattedCalculationTime)"
                                         selection.reset()
                                         redraw.toggle()
                                     }
                                 }
                             }.disabled(isDrawing)
+                            Button("Reset") {
+                                fractal.resetSettings()
+                            }
                         }
                         HStack(spacing: 5) {
                             // Den Export-Button einfach aufrufen
-                            ExportButton(document: FractalDocument(data: appData.fractal.settings))
+                            ExportButton(document: FractalDocument(data: fractal.settings))
                             
                             // Den Import-Button aufrufen und das Ergebnis empfangen
                             ImportButton { decodedData in
-                                appData.fractal.settings = decodedData
+                                fractal.settings = decodedData
                             }
                         }
                     }
@@ -193,52 +138,30 @@ struct ControlView: View {
                             Spacer()
                         }.frame(alignment: .leading)
                         Toggle(isOn: $linkResolution) { Text("Aspect ratio") }
-                        OptionsPicker(options: $drawMethod, "Method")
+                        LabeledPicker(label: "Method", selection: $drawMethod)
                     }
                 }.padding([.top], 10)
                 
                 GroupBox(label: Text("Fractal dimensions").foregroundStyle(.blue).font(.headline)) {
                     VStack(alignment: .leading) {
-                        /*
-                        LabeledInputField("Left", $cornerLeft, width: 170)
-                            .onValueChanged { v in
-                                appData.fractal.settings["cornerLeft"] = v
-                            }
-                         */
-                        LabeledInputField("Left", Binding(
-                            get: { appData.fractal.settings["cornerLeft", default: "-2.25"] },
-                            set: { appData.fractal.settings["cornerLeft"] = $0 }
-                        ), width: 170)
-                        LabeledInputField("Bottom", $cornerBottom, width: 170)
-                            .onValueChanged { v in
-                                appData.fractal.settings["cornerBottom"] = v
-                            }
-                        LabeledInputField("Size X", $sizeX, width: 170)
-                            .onValueChanged { v in
-                                appData.fractal.settings["sizeX"] = v
-                            }
-                        LabeledInputField("Size Y", $sizeY, width: 170)
-                            .onValueChanged { v in
-                                appData.fractal.settings["sizeY"] = v
-                            }
+                        LabeledInputField("Left", binding(for: "cornerLeft", defval: "-2.25"), width: 170)
+                        LabeledInputField("Bottom", binding(for: "cornerBottom", defval: "-1.5"), width: 170)
+                        LabeledInputField("Size X", binding(for: "sizeX", defval: "3.0"), width: 170)
+                        LabeledInputField("Size Y", binding(for: "sizeY", defval: "3.0"), width: 170)
                     }
                 }.padding([.top], 10)
                 
                 GroupBox(label: Text("Drawing options").foregroundStyle(.blue).font(.headline)) {
                     DisclosureGroup("Stripes & Steps", isExpanded: $isStripesStepsExpanded) {
                         VStack(alignment: .leading) {
-                            LabeledStepper("Stripes", $stripes, range: 0...32)
-                                .onValueChanged { v in appData.fractal.settings["\(ft).stripes"] = v }
-                            LabeledStepper("Steps", $steps, range: 0...100)
-                                .onValueChanged { v in appData.fractal.settings["\(ft).steps"] = v }
+                            LabeledStepper("Stripes", binding(for: "stripes", defval: 0), range: 0...32)
+                            LabeledStepper("Steps", binding(for: "\(ft).steps", defval: 0), range: 0...100)
                         }
                     }
                     DisclosureGroup("Cycles & Sampling", isExpanded: $isCyclesSamplingExpanded) {
                         VStack(alignment: .leading) {
-                            LabeledStepper("Cycles:", $ncycle, range: 1...200)
-                                .onValueChanged { v in appData.fractal.settings["\(ft).ncycle"] = v }
-                            LabeledStepper("Sampling:", $oversampling, range: 1...3)
-                                .onValueChanged { v in appData.fractal.settings["oversampling"] = v }
+                            LabeledStepper("Cycles:", binding(for: "\(ft).ncycle", defval: 1.0), range: 1...200)
+                            LabeledStepper("Sampling:", binding(for: "oversampling", defval: 1), range: 1...3)
                         }
                     }
                 }.padding([.top], 10)
@@ -254,25 +177,22 @@ struct ControlView: View {
                         }
                         HStack(spacing: 10) {
                             Picker(selection: $colorTable, label: Text("")) {
-                                ForEach(FractalAppData.colorTables.keys.sorted(), id: \.self) { key in
-                                    ColorPalette(colorTable: FractalAppData.colorTables[key]!,
+                                ForEach(ColorMapping.colorTables.keys.sorted(), id: \.self) { key in
+                                    ColorPalette(colorTable: ColorMapping.colorTables[key]!,
                                                  size: CGSize(width: 150, height: 20), label: key)
                                     .tag(key)
                                 }
                             }
                             .onChange(of: colorTable) {
-                                appData.fractal.settings["\(ft).colorTable"] = colorTable
+                                fractal.settings["\(ft).colorTable"] = colorTable
                             }
                         }
-                        OptionsPicker(options: $colorizeMode, "Mode")
-                            .onValueChanged { v in appData.fractal.settings["\(ft).colorizeMode"] = v }
+                        OptionsPicker(options: binding(for: "\(ft).colorizeMode", defval: ColorizeMode(.iterations)), "Mode")
                             .padding([.top], 10)
-                        OptionsPicker(options: $colorizeInside, "Inside")
-                            .onValueChanged { v in appData.fractal.settings["\(ft).colorizeInside"] = v }
+                        OptionsPicker(options: binding(for: "\(ft).colorizeInside", defval: ColorizeInside(.simple)), "Inside")
                             .padding([.top], 10)
                         if colorizeMode == ColorizeMode(.iterations) {
-                            OptionsPicker(options: $paletteMode, "Mapping")
-                                .onValueChanged { v in appData.fractal.settings["\(ft).paletteMode"] = v}
+                            OptionsPicker(options: binding(for: "\(ft).paletteMode", defval: PaletteMode(.linear)), "Mapping")
                                 .padding([.top], 10)
                         }
                     }
@@ -287,31 +207,22 @@ struct ControlView: View {
                         GroupBox {
                             DisclosureGroup("Shading", isExpanded: $isShadingExpanded) {
                                 VStack(alignment: .leading, spacing: 8) {
-                                    OptionsPicker(options: $colorizeOutside, "Outside")
-                                        .onValueChanged { v in appData.fractal.settings["\(ft).colorizeOutside"] = v }
+                                    OptionsPicker(options: binding(for: "\(ft).colorizeOutside", defval: ColorizeOutside(.simple)), "Outside")
                                         .padding([.top], 10)
-                                    LabeledStepper("Angle:", $angle, range: 0...360, step: 5, unit: "°")
-                                        .onValueChanged { v in appData.fractal.settings["lightning.angle"] = v }
-                                    LabeledStepper("Elevation:", $elevation, range: 0...90,  step: 5, unit: "°")
-                                        .onValueChanged { v in appData.fractal.settings["lightning.elevation"] = v }
+                                    LabeledStepper("Angle:", binding(for: "lightning.angle", defval: 45), range: 0...360, step: 5, unit: "°")
+                                    LabeledStepper("Elevation:", binding(for: "lightning.elevation", defval: 45), range: 0...90,  step: 5, unit: "°")
                                 }
                             }
                         }
                         GroupBox {
                             DisclosureGroup("Light", isExpanded: $isLightExpanded) {
                                 VStack(alignment: .leading, spacing: 8) {
-                                    LabeledSlider("Opacity:", $opacity, range: 0.0...1.0, step: 0.1, width: 100, format: "%.1f")
-                                        .onValueChanged { v in appData.fractal.settings["lightning.opacity"] = v }
-                                    LabeledSlider("Ambient:", $ambient, range: 0.0...1.0, step: 0.05, width: 100, format: "%.2f")
-                                        .onValueChanged { v in appData.fractal.settings["lightning.ambient"] = v }
-                                    LabeledSlider("Diffuse:", $diffuse, range: 0.0...1.0, step: 0.05, width: 100, format: "%.2f")
-                                        .onValueChanged { v in appData.fractal.settings["lightning.diffuse"] = v }
-                                    LabeledSlider("Specular:",$specular, range: 0.0...1.0, step: 0.05, width: 100, format: "%.2f")
-                                        .onValueChanged { v in appData.fractal.settings["lightning.specular"] = v }
-                                    LabeledSlider("Shininess:", $shininess, range: 1.0...30.0, step: 1.0, width: 100, format: "%2.0f")
-                                        .onValueChanged { v in appData.fractal.settings["lightning.shininess"] = v }
-                                    LabeledSlider("Gamma:", $gamma, range: 0.1...9.9, step: 0.1, width: 100, format: "%.1f")
-                                        .onValueChanged { v in appData.fractal.settings["lightning.gamma"] = v }
+                                    LabeledSlider("Opacity:", binding(for: "lightning.opacity", defval: 0.75), range: 0.0...1.0, step: 0.1, width: 100, format: "%.1f")
+                                    LabeledSlider("Ambient:", binding(for: "lightning.ambient", defval: 0.2), range: 0.0...1.0, step: 0.05, width: 100, format: "%.2f")
+                                    LabeledSlider("Diffuse:", binding(for: "lightning.diffuse", defval: 0.5), range: 0.0...1.0, step: 0.05, width: 100, format: "%.2f")
+                                    LabeledSlider("Specular:",binding(for: "lightning.specular", defval: 0.5), range: 0.0...1.0, step: 0.05, width: 100, format: "%.2f")
+                                    LabeledSlider("Shininess:", binding(for: "lightning.shininess", defval: 20.0), range: 1.0...30.0, step: 1.0, width: 100, format: "%2.0f")
+                                    LabeledSlider("Gamma:", binding(for: "lightning.gamma", defval: 1.0), range: 0.1...9.9, step: 0.1, width: 100, format: "%.1f")
                                 }
                             }
                         }
@@ -322,16 +233,16 @@ struct ControlView: View {
                 // Parameters depending on fractal type
                 //
                 
-                if ft == "Mandelbrot" {
+                if let M = fractal as? Mandelbrot {
                     GroupBox(label: Text("Mandelbrot Set").foregroundStyle(.blue).font(.headline)) {
-                        VStack(alignment: .leading) {
+                        VStack(alignment: .leading, spacing: 8) {
                             Toggle(isOn: $autoIterations) { Text("Auto iterations") }
                                 .onChange(of: autoIterations) { oldValue, newValue in
-                                    iterations = newValue ? appData.fractal.maxIterationCount : appData.fractal.settings["\(ft).iterations"]
-                                    print("iterations: \(iterations) \(autoIterations) \(appData.fractal.maxIterationCount)")
+                                    if newValue {
+                                        fractal.settings["\(ft).iterations"] = M.maxIterationCount
+                                    }
                                 }
-                            LabeledStepper<Int>("Iterations:", $iterations, range: 0...4096, step: 50)
-                                .onValueChanged { v in appData.fractal.settings["\(ft).iterations"] = v }
+                            LabeledStepper("Iterations:", binding(for: "\(ft).iterations", defval: 200), range: 0...4096, step: 50)
                                 .disabled(autoIterations)
                         }
                     }.padding([.top], 10)
@@ -339,6 +250,29 @@ struct ControlView: View {
                 Spacer()
             }.padding(10)
         }
+    }
+    
+}
+
+//
+// Simplify access to bindings
+//
+
+extension ControlView {
+    
+    func binding<T>(for key: String, defval: T) -> Binding<T> where T: Castable {
+        Binding(
+            get: { fractal.settings[key, default: defval ] },
+            set: {
+                guard fractal.settings.valExists(key) else {
+                    #if DEBUG
+                    print("binding: key \(key) not found")
+                    #endif
+                    return
+                }
+                fractal.settings[key] = $0
+            }
+        )
     }
     
 }

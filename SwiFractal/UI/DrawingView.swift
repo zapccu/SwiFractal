@@ -17,7 +17,7 @@ struct DrawingView: View {
     @Binding var isDrawing: Bool
     
     var graphics: Graphics
-    var fractal: Mandelbrot
+    //var fractal: Fractal
     
     var body: some View {
         Canvas { context, size in

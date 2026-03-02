@@ -21,6 +21,28 @@ struct ControlLabel : View {
     }
 }
 
+struct LabeledPicker<T: Hashable>: View where T: RawRepresentable, T: CaseIterable, T: Identifiable {
+    let label: String
+    @Binding var selection: T
+    var changeHandler: ((T) -> Void)? = nil
+    
+    var body: some View {
+        HStack(spacing: 10) {
+            ControlLabel(label)
+            Picker("", selection: $selection) {
+                ForEach(Array(T.allCases)) { item in
+                    Text(String(describing: item).capitalized).tag(item)
+                }
+            }
+            .onChange(of: selection) { _, _ in
+                changeHandler?(selection)
+            }
+            Spacer()
+        }.frame(alignment: .leading)
+    }
+    
+}
+
 struct OptionsPicker<T>: View where T: RawRepresentable, T: CaseIterable, T.RawValue == Int {
     let label: String
     @Binding var options: Options<T>
@@ -140,7 +162,7 @@ struct LabeledSlider : View {
 // Stepper with a text label
 //
 
-struct LabeledStepper<T: Strideable> : View where T.Stride == T {
+struct LabeledStepper<T: Strideable> : View where T.Stride == T, T: Castable {
     let label: String
     @Binding var value: T
     var changeHandler: ((T) -> Void)? = nil
@@ -182,7 +204,6 @@ struct LabeledStepper<T: Strideable> : View where T.Stride == T {
     }
 
 }
-
 
 //
 // Image showing a color table with an optional text label

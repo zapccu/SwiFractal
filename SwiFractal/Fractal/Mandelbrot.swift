@@ -17,12 +17,12 @@ class Mandelbrot: Fractal {
     // Mandelbrot set calculation parameters
     var MP: MandelbrotParameters = MandelbrotParameters()
     
-    override var calcFunctions: [CalcFunc?] { Array([
-        calculateLineByLine,
-        calculateParallel,
-        calculateMetal,
-        nil
-    ]) }
+    override var calcFunctions: [DrawMethod: CalcFunc?] { [
+        .sequential: calculateLineByLine,
+        .parallel: calculateParallel,
+        .metalcompute: calculateMetal,
+        .metalshader: nil
+    ] }
     
     var cplxCorner: Cplx {
         Cplx(Double(settings["cornerLeft", default: "-2.25"]) ?? -2.25, Double(settings["cornerBottom", default: "-1.5"]) ?? -1.5)
@@ -151,7 +151,7 @@ class Mandelbrot: Fractal {
     }
     
     /// Zoom into screen area
-    func zoomArea(_ area: CGRect, _ imageWidth: Int, _ imageHeight: Int) -> (Cplx, Cplx) {
+    override func zoomArea(_ area: CGRect, _ imageWidth: Int, _ imageHeight: Int) -> (Cplx, Cplx) {
         print("Zoom area: \(area.origin), \(area.width), \(area.height)")
 
         if Int(area.width) == imageWidth && Int(area.height) == imageHeight {

@@ -10,6 +10,7 @@
 		43828CCA2CE8A0DF00B8099C /* ComplexModule in Frameworks */ = {isa = PBXBuildFile; productRef = 43828CC92CE8A0DF00B8099C /* ComplexModule */; };
 		43828CCC2CE8A0DF00B8099C /* Numerics in Frameworks */ = {isa = PBXBuildFile; productRef = 43828CCB2CE8A0DF00B8099C /* Numerics */; };
 		43828CCE2CE8A0DF00B8099C /* RealModule in Frameworks */ = {isa = PBXBuildFile; productRef = 43828CCD2CE8A0DF00B8099C /* RealModule */; };
+		43F113EB2F55E71500D17CB5 /* ParSet in Frameworks */ = {isa = PBXBuildFile; productRef = 43F113EA2F55E71500D17CB5 /* ParSet */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +31,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				43828CCC2CE8A0DF00B8099C /* Numerics in Frameworks */,
+				43F113EB2F55E71500D17CB5 /* ParSet in Frameworks */,
 				43828CCA2CE8A0DF00B8099C /* ComplexModule in Frameworks */,
 				43828CCE2CE8A0DF00B8099C /* RealModule in Frameworks */,
 			);
@@ -77,6 +79,7 @@
 				43828CC92CE8A0DF00B8099C /* ComplexModule */,
 				43828CCB2CE8A0DF00B8099C /* Numerics */,
 				43828CCD2CE8A0DF00B8099C /* RealModule */,
+				43F113EA2F55E71500D17CB5 /* ParSet */,
 			);
 			productName = SwiFractal;
 			productReference = 43828CA42CE7CD3A00B8099C /* SwiFractal.app */;
@@ -108,6 +111,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				43828CC82CE8A0DF00B8099C /* XCRemoteSwiftPackageReference "swift-numerics" */,
+				43F113E92F55E71500D17CB5 /* XCLocalSwiftPackageReference "../ParSet" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 43828CA52CE7CD3A00B8099C /* Products */;
@@ -342,6 +346,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		43F113E92F55E71500D17CB5 /* XCLocalSwiftPackageReference "../ParSet" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../ParSet;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		43828CC82CE8A0DF00B8099C /* XCRemoteSwiftPackageReference "swift-numerics" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -368,6 +379,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 43828CC82CE8A0DF00B8099C /* XCRemoteSwiftPackageReference "swift-numerics" */;
 			productName = RealModule;
+		};
+		43F113EA2F55E71500D17CB5 /* ParSet */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ParSet;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -156,6 +156,16 @@ struct ParameterSet : Castable, Codable {
     var previous: DictAny = [:]       // previous values
     var initial: DictAny = [:]        // initial values
     
+    /// Return true if parameter  *path* exists
+    func parExists(_ path: String) -> Bool {
+        return initial.pathExists(path)
+    }
+    
+    /// Return true if current value *path* exists
+    func valExists(_ path: String) -> Bool {
+        return current.pathExists(path)
+    }
+    
     /// Convert parameters to JSON. Return empty string on error
     var jsonString: String { return toJSON(prettyPrinted: false) }
     
@@ -163,7 +173,7 @@ struct ParameterSet : Castable, Codable {
     /// Elements not existing in current ParameterSet are ignored
     mutating func cast(fromDict: DictAny, allowNew: Bool = false) {
         for (key, value) in fromDict {
-            if initial.pathExists(key) {
+            if parExists(key) {
                 // If element exists, cast dictionary element to type of existing element
                 if let d = value as? DictAny {
                     // Source value is of type DictAny
@@ -181,14 +191,20 @@ struct ParameterSet : Castable, Codable {
                     }
                     else if var e = initial[key] as? [Any] {
                         // Maybe this case never happens?
-                        print("initial type is array [Any] \(key)")
+                        #if DEBUG
+                        print("cast(fromDict:): Unsupported usecase: initial type is array [Any] \(key)")
+                        #endif
                     }
                     else if var e = initial[key] as? [AnyObject] {
                         // Maybe this case never happens?
-                        print("initial type is array [AnyObject] \(key)")
+                        #if DEBUG
+                        print("cast(fromDict:): Unsupported usecase: initial type is array [AnyObject] \(key)")
+                        #endif
                     }
                     else {
-                        print("Decode: Ignoring element \(key) with value \(value) type \(type(of: value))")
+                        #if DEBUG
+                        print("cast(fromDict:): Ignoring element \(key) with value \(value) type \(type(of: value))")
+                        #endif
                     }
                 }
                 else if let a = value as? [Any], var e = initial[key] as? [Any] {
@@ -202,7 +218,7 @@ struct ParameterSet : Castable, Codable {
                 }
                 else {
                     #if DEBUG
-                    print("Decode: Element \(key) with value \(value) type \(type(of: value)) expected type \(String(describing: type(of: initial[key]!))) not handled by function \(#function)")
+                    print("cast(fromDict:): Element \(key) with value \(value) type \(type(of: value)) expected type \(String(describing: type(of: initial[key]!))) not handled by function \(#function)")
                     if let e = initial[key] as? any Castable {
                         print("initial key is castable from value? ", type(of: e).isCastable(from: value))
                         print("is value castable? ", value is any Castable, "\n")
@@ -211,13 +227,18 @@ struct ParameterSet : Castable, Codable {
                 }
             }
             else if allowNew {
+                #if DEBUG
                 print("Decode: Adding new element \(key) with value \(value)")
+                #endif
+                
                 initial[key] = value
                 current[key] = value
                 previous[key] = value
             }
             else {
+                #if DEBUG
                 print("Decode: Path \(key) does not exist in initial dictionary. Adding new elements is not allowed (allowNew: false)")
+                #endif
             }
         }
     }
@@ -281,30 +302,36 @@ struct ParameterSet : Castable, Codable {
         initial.merge(initialSettings)  { (_, new) in new }
     }
     
-    
     /// Update parameterset with dictionary entries
     /// An existing value is updated if the new value is castable to the original type
-    mutating func updateSettings(_ newSettings: DictAny) {
+    /// Non existing parameters are added if flag *createNew* is true
+    mutating func updateSettings(_ newSettings: DictAny, createNew: Bool = false) {
         for k in newSettings.keys {
-            // Only castable values are allowed
-            if let n = newSettings[k] as? (any Castable), let c = initial[k] as? (any Castable) {
-                if current[k] != nil {
-                    if type(of: c).isCastable(from: newSettings[k]) {
+            if initial[k] != nil {
+                // Parameter exists
+                if var c = current[k] as? DictAny, let n = newSettings[k] as? DictAny {
+                    // Update sub-dictionary
+                    previous[k] = c
+                    c.cast(fromDict: n)
+                    current[k] = c
+                }
+                else if let n = newSettings[k] as? (any Castable), let i = initial[k] as? (any Castable) {
+                    // Update single parameter. Only castable values are allowed
+                    if type(of: i).isCastable(from: n) {
                         // Update existing parameters
-                        previous[k] = current[k]
-                        current[k] = type(of: c).cast(from: n)
+                        previous[k] = current[k] ?? i
+                        current[k] = type(of: i).cast(from: n)
                     }
                 }
-                else {
-                    // Add new parameters
-                    initial[k] = n
-                    current[k] = n
-                    previous[k] = n
-                }
+            }
+            else if createNew {
+                initial[k]  = newSettings[k]
+                previous[k] = newSettings[k]
+                current[k]  = newSettings[k]
             }
         }
     }
-    
+
     /// Add parameter of a castable type to parameter set
     mutating func addSetting<T: Castable>(_ path: String, _ setting: T) -> Bool {
         if !initial.pathExists(path) {

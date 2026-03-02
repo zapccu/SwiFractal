@@ -69,6 +69,13 @@ typealias PaletteMode = Options<EnumPaletteMode>
 // Color Mapping and color related parameters
 //
 struct ColorMapping {
+    
+    // Dictionary with color tables
+    static var colorTables: [String: ColorTable] = [
+        "Grey": ColorTable.grey,
+        "Sinus": ColorTable.sinus
+    ]
+    
     var colorTable: String                  // Color table name
     var colorizeMode: ColorizeMode          // Colorize mode: iterations, distance, potential, steps, stripes
     var colorizeOutside: ColorizeOutside    // Colorize outside: simple, simple3D, blinnPhong
@@ -83,7 +90,7 @@ struct ColorMapping {
     
     /// Return color table
     var palette: ColorTable {
-        return FractalAppData.colorTables[colorTable, default: ColorTable.grey]
+        return ColorMapping.colorTables[colorTable, default: ColorTable.grey]
     }
     
     /// Default color defined in color table

@@ -12,13 +12,26 @@ import Numerics
 typealias CalcFunc = (Graphics) -> Void
 
 //
+// Draw methods
+//
+enum DrawMethod : String, CaseIterable, Identifiable {
+    case sequential
+    case parallel
+    case metalcompute
+    case metalshader
+    
+    var id: String { "\(Self.self).\(self.rawValue)" }
+}
+
+//
 // Common fractal class
 //
 
+@Observable
 class Fractal {
     
     // Store settings as ParameterSet
-    var settings: ParameterSet = ParameterSet([
+    static var defaultSettings: ParameterSet = ParameterSet([
         "cornerLeft": "-2.25",
         "cornerBottom": "-1.5",
         "sizeX": "3.0",
@@ -38,7 +51,9 @@ class Fractal {
         ]
     ])
     
-    var calcFunctions: [CalcFunc?] { [] }
+    var settings: ParameterSet
+    
+    var calcFunctions: [DrawMethod: CalcFunc?] { [:] }
     
     /// Type of fractal (name of fractal class
     var fractalType: String { String(describing: Self.self) }
@@ -55,8 +70,11 @@ class Fractal {
     var endTime: ContinuousClock.Instant
     var calculationTime: Duration
     var formattedCalculationTime: String {
-        calculationTime.formatted(.time(pattern: .hourMinuteSecond(padHourToLength: 2,
-                                                            fractionalSecondsLength: 3)))
+        calculationTime.formatted(
+            .time(pattern: .hourMinuteSecond(
+                padHourToLength: 2, fractionalSecondsLength: 3)
+            )
+        )
     }
     
     /// Return CPU count
@@ -70,22 +88,34 @@ class Fractal {
     /// childClassDct: Dictionary with fractal settings of child class
     ///
     init(_ childClassName: String = "", _ childClassDict: DictAny = [:]) {
+        
         // Add settings of child classes to Fractal.settings ParameterSet
         if !childClassName.isEmpty {
-            _ = settings.addSetting(childClassName, childClassDict)
+            _ = Fractal.defaultSettings.addSetting(childClassName, childClassDict)
         }
+        
+        settings = Fractal.defaultSettings
         
         startTime = clock.now
         endTime = clock.now
-        calculationTime = endTime - startTime
+        calculationTime = Duration(attoseconds: 0)
         
         // Create initial calculation parameters from settings ParameterSet
-        CP = FractalParameters(settings)
+        CP = FractalParameters(Fractal.defaultSettings)
     }
     
     /// Update fractal parameters
     func updateSettings(_ path: String, _ dict: DictAny) {
         settings.updateSettings(dict)
+    }
+    
+    /// Set settings to default settings
+    func resetSettings() {
+        settings = Fractal.defaultSettings
+    }
+    
+    func zoomArea(_ area: CGRect, _ imageWidth: Int, _ imageHeight: Int) -> (Cplx, Cplx) {
+        return (Cplx(0.0), Cplx(0.0))
     }
     
     /// Start of calculation
@@ -102,19 +132,20 @@ class Fractal {
     }
     
     func draw(_ graphics: Graphics, _ method: DrawMethod) {
-        guard let fnc = calcFunctions[method.rawValue] else {
-            print("Draw method \(method.name) not available for fractal type \(String(describing: Self.self))")
+        if let fnc = calcFunctions[method] {
+            graphics.clear(color: .blue)
+            beginCalculation(graphics.width, graphics.height)
+            
+            print("Rendering Mandelbrot with method \(method)")
+            fnc!(graphics)
+            
+            endCalculation()
+            print("calculation time: \(calculationTime)")
+        }
+        else {
+            print("Draw method \(method) not available for fractal type \(String(describing: Self.self))")
             return
         }
-        
-        graphics.clear(color: .blue)
-        beginCalculation(graphics.width, graphics.height)
-                
-        print("Rendering Mandelbrot with method \(method.name)")
-        fnc(graphics)
-        
-        endCalculation()
-        print("calculation time: \(calculationTime)")
     }
 
 
