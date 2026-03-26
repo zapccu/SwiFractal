@@ -12,19 +12,15 @@ import Numerics
 
 
 //
-// Lightning parameters and methods
+// Lightning
 //
 struct Lightning {
-    var angle: Int
-    var elevation: Int
-    var opacity: Double
-    var ambient: Double
-    var diffuse: Double
-    var specular: Double
-    var shininess: Double
-    var gamma: Double
+    
+    let parameters: LightningParameters
     
     // Vectors for Blinn-Phong-Shading
+    var angleRad: Double
+    var elevationRad: Double
     var vecLight: Vector
     var vecAzimuth: Vector
     
@@ -39,19 +35,13 @@ struct Lightning {
     ///
     /// parameters: ParameterSet with lightning settings
     ///
-    init(_ parameters: ParameterSet) {
-        angle     = parameters["angle",     default: Int(45)]
-        elevation = parameters["elevation", default: Int(45)]
-        opacity   = parameters["opacity",   default: 0.75]
-        ambient   = parameters["ambient",   default: 0.2]
-        diffuse   = parameters["diffuse",   default: 0.5]
-        specular  = parameters["specular",  default: 0.5]
-        shininess = parameters["shininess", default: 20.0]
-        gamma     = parameters["gamma",     default: 1.0]
+    init(_ parameters: LightningParameters) {
+        
+        self.parameters = parameters
         
         // Convert angles from degree to rad
-        let angleRad     = deg2rad(Double(angle))
-        let elevationRad = deg2rad(Double(elevation))
+        self.angleRad     = deg2rad(Double(parameters.angle))
+        self.elevationRad = deg2rad(Double(parameters.elevation))
         
         // angle = theta, elevation = phi
         // light vector = [ cos(theta) * cos(phi), sin(theta) * cos(phi), sin(phi) ]
@@ -65,7 +55,7 @@ struct Lightning {
         self.vecSimple = Vector(cos(angleRad), sin(angleRad), 0)
         
         // Height factor of the incoming light for simple shading (45 degrees: 1 + 45 / 90 = 1.5)
-        height = 1.0 + Double(elevation) / 90.0
+        height = 1.0 + Double(parameters.elevation) / 90.0
     }
     
     ///
@@ -117,13 +107,13 @@ struct Lightning {
         specularLight = specularLight / (1 + vecAzimuth[2])
         
         // Shininess
-        specularLight = pow(specularLight, shininess)
+        specularLight = pow(specularLight, parameters.shininess)
         
         // Brightness = ambient light + diffuse light + specular light
-        var brightness = ambient + diffuse * diffuseLight + specular * specularLight
+        var brightness = parameters.ambient + parameters.diffuse * diffuseLight + parameters.specular * specularLight
         
         // Add intensity
-        brightness = brightness * opacity + (1 - opacity) / 2
+        brightness = brightness * parameters.opacity + (1 - parameters.opacity) / 2
         
         return brightness
     }

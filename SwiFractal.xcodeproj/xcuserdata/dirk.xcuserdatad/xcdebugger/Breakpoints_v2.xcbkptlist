@@ -7,16 +7,16 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "5806BD3E-176B-48C8-8B68-70A04041E327"
-            shouldBeEnabled = "Yes"
+            uuid = "FDBE5D1D-9B7A-479C-B64A-022DF366C8C8"
+            shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "SwiFractal/Toolset/ParameterSet.swift"
+            filePath = "SwiFractal/Fractal/Parameters/MandelbrotDynamicParameters.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "335"
-            endingLineNumber = "335"
-            landmarkName = "ParameterSet"
+            startingLineNumber = "20"
+            endingLineNumber = "20"
+            landmarkName = "MandelbrotDynamicParameters"
             landmarkType = "14">
          </BreakpointContent>
       </BreakpointProxy>

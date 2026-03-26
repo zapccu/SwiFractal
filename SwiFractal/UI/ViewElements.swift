@@ -6,7 +6,11 @@
 //
 
 import SwiftUI
+import ParSetKit
 
+//
+// A text label in fron of a control element
+//
 struct ControlLabel : View {
     var label: String
     var width: Int
@@ -21,6 +25,9 @@ struct ControlLabel : View {
     }
 }
 
+//
+// Picker with label
+//
 struct LabeledPicker<T: Hashable>: View where T: RawRepresentable, T: CaseIterable, T: Identifiable {
     let label: String
     @Binding var selection: T
@@ -43,6 +50,9 @@ struct LabeledPicker<T: Hashable>: View where T: RawRepresentable, T: CaseIterab
     
 }
 
+//
+// Options picker with label
+//
 struct OptionsPicker<T>: View where T: RawRepresentable, T: CaseIterable, T.RawValue == Int {
     let label: String
     @Binding var options: Options<T>
@@ -78,7 +88,6 @@ struct OptionsPicker<T>: View where T: RawRepresentable, T: CaseIterable, T.RawV
 //
 // Input field with text label supporting numeric input datatypes
 //
-
 struct LabeledInputField : View {
     @State private var numberFormatter: NumberFormatter = {
         var numberFormatter = NumberFormatter()
@@ -117,14 +126,13 @@ struct LabeledInputField : View {
 //
 // Slider with a text label
 //
-
-struct LabeledSlider : View {
+struct LabeledSlider<T> : View where T.Stride == T, T: BinaryFloatingPoint {
     let label: String
-    @Binding var value: Float
-    var changeHandler: ((Float) -> Void)? = nil
-    var minValue: Float
-    var maxValue: Float
-    var step: Float
+    @Binding var value: T
+    var changeHandler: ((T) -> Void)? = nil
+    var minValue: T
+    var maxValue: T
+    var step: T
     var format: String
     var width: CGFloat
     
@@ -141,7 +149,7 @@ struct LabeledSlider : View {
         }
     }
     
-    init(_ label: String, _ value: Binding<Float>, range: ClosedRange<Float>, step: Float, width: Int, format: String = "%.2f") {
+    init(_ label: String, _ value: Binding<T>, range: ClosedRange<T>, step: T, width: Int, format: String = "%.2f") {
         self.label = label
         self._value = value
         self.minValue = range.lowerBound
@@ -151,7 +159,7 @@ struct LabeledSlider : View {
         self.format = format
     }
     
-    func onValueChanged(_ handler: @escaping (Float) -> Void) -> Self {
+    func onValueChanged(_ handler: @escaping (T) -> Void) -> Self {
         var copy = self
         copy.changeHandler = handler
         return copy
@@ -161,7 +169,6 @@ struct LabeledSlider : View {
 //
 // Stepper with a text label
 //
-
 struct LabeledStepper<T: Strideable> : View where T.Stride == T, T: Castable {
     let label: String
     @Binding var value: T
@@ -208,7 +215,6 @@ struct LabeledStepper<T: Strideable> : View where T.Stride == T, T: Castable {
 //
 // Image showing a color table with an optional text label
 //
-
 struct ColorPalette: View {
     var colorTable: ColorTable
     var size: CGSize
@@ -248,8 +254,11 @@ struct ColorPalette: View {
 
 }
 
-struct ExportButton: View {
-    let document: FractalDocument
+//
+// File export button
+//
+struct ExportButton<T: FractalData>: View {
+    let document: FractalDocument<T>
     @State private var isExporting = false
     
     var body: some View {
@@ -263,15 +272,19 @@ struct ExportButton: View {
             defaultFilename: "myFractal.json"
         ) { result in
             if case .failure(let error) = result {
-                print("Export-Fehler: \(error.localizedDescription)")
+                // Substitute by popup message
+                debugPrint("Export-Error: \(error.localizedDescription)")
             }
         }
     }
 }
 
-struct ImportButton: View {
+//
+// File import button
+//
+struct ImportButton<T: FractalData>: View {
     @State private var isImporting = false
-    var onImport: (ParameterSet) -> Void // Callback to main view
+    var onImport: (ParSet<T>) -> Void // Callback to main view
     
     var body: some View {
         Button(action: { isImporting = true }) {
@@ -295,13 +308,16 @@ struct ImportButton: View {
                 if url.startAccessingSecurityScopedResource() {
                     defer { url.stopAccessingSecurityScopedResource() }
                     let data = try Data(contentsOf: url)
-                    let decodedData = try JSONDecoder().decode(ParameterSet.self, from: data)
+                    let decodedData = try JSONDecoder().decode(ParSet<T>.self, from: data)
                     
-                    // Hier geben wir das Ergebnis zurück
-                    onImport(decodedData)
+                    // Switch back to Main Actor and return result
+                    await MainActor.run {
+                        onImport(decodedData)
+                    }
                 }
             } catch {
-                print("Import-Fehler: \(error.localizedDescription)")
+                // Substitute by popup message
+                debugPrint("Import-Error: \(error.localizedDescription)")
             }
         }
     }

@@ -37,15 +37,17 @@ extension Mandelbrot {
     
     /// Metal / GPU calculation of Mandelbrot set
     func calculateMetal(_ graphics: Graphics) {
+        guard let DP else { return }
+
         // Convert complex grid to 1 dimensional array
-        let C = cplxGrid.joined().map { Complex2($0) }
+        let C = DP.cplxGrid.joined().map { Complex2($0) }
         
         do {
             let metalCompute = try MetalCompute("mandelbrot")
             
             try metalCompute.addBuffer(C, .computeInputBuffer)
-            try metalCompute.addBuffer(MP.colorMapping.palette.rgbaColors, .inputBuffer)
-            metalCompute.addObject(MP.computeParameters)
+            try metalCompute.addBuffer(DP.MP.colorMapping.palette.rgbaColors, .inputBuffer)
+            metalCompute.addObject(DP.computeParameters)
             
             // Compute Mandelbrot set
             let result = try metalCompute.compute(RGBAColor.black.rgba)
@@ -56,24 +58,25 @@ extension Mandelbrot {
         }
     }
     
-    
     /// Sequential calculation of Mandelbrot set line by line
     func calculateLineByLine(_ graphics: Graphics) {
+        guard let DP else { return }
+
         for y in 0..<graphics.height {
             calculateLine(graphics, y)
         }
         
-        if MP.bHist {
-            let total = Double(pixelCountPerIteration.reduce(0, +))
+        if DP.bHist {
+            let total = Double(DP.pixelCountPerIteration.reduce(0, +))
             for y in 0..<graphics.height {
                 for x in 0..<graphics.width {
-                    let iter = iterationCountPerPixel[y][x]
-                    if iter == MP.iterations { continue }
+                    let iter = DP.iterationCountPerPixel[y][x]
+                    if iter == DP.MP.iterations { continue }
                     var hue = 0.0
                     for i in 0...iter {
-                        hue += Double(pixelCountPerIteration[i]) / total
-                        let ci = Int(Double(MP.colorMapping.colorCount) * hue)
-                        graphics.setPixel(x, y, color: MP.colorMapping[ci])
+                        hue += Double(DP.pixelCountPerIteration[i]) / total
+                        let ci = Int(Double(DP.MP.colorMapping.colorCount) * hue)
+                        graphics.setPixel(x, y, color: DP.MP.colorMapping[ci])
                     }
                 }
             }

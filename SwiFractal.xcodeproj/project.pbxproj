@@ -10,7 +10,7 @@
 		43828CCA2CE8A0DF00B8099C /* ComplexModule in Frameworks */ = {isa = PBXBuildFile; productRef = 43828CC92CE8A0DF00B8099C /* ComplexModule */; };
 		43828CCC2CE8A0DF00B8099C /* Numerics in Frameworks */ = {isa = PBXBuildFile; productRef = 43828CCB2CE8A0DF00B8099C /* Numerics */; };
 		43828CCE2CE8A0DF00B8099C /* RealModule in Frameworks */ = {isa = PBXBuildFile; productRef = 43828CCD2CE8A0DF00B8099C /* RealModule */; };
-		43F113EB2F55E71500D17CB5 /* ParSet in Frameworks */ = {isa = PBXBuildFile; productRef = 43F113EA2F55E71500D17CB5 /* ParSet */; };
+		43AC43912F6C6D7800531AB1 /* ParSetKit in Frameworks */ = {isa = PBXBuildFile; productRef = 43AC43902F6C6D7800531AB1 /* ParSetKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,9 +31,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				43828CCC2CE8A0DF00B8099C /* Numerics in Frameworks */,
-				43F113EB2F55E71500D17CB5 /* ParSet in Frameworks */,
 				43828CCA2CE8A0DF00B8099C /* ComplexModule in Frameworks */,
 				43828CCE2CE8A0DF00B8099C /* RealModule in Frameworks */,
+				43AC43912F6C6D7800531AB1 /* ParSetKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -79,7 +79,7 @@
 				43828CC92CE8A0DF00B8099C /* ComplexModule */,
 				43828CCB2CE8A0DF00B8099C /* Numerics */,
 				43828CCD2CE8A0DF00B8099C /* RealModule */,
-				43F113EA2F55E71500D17CB5 /* ParSet */,
+				43AC43902F6C6D7800531AB1 /* ParSetKit */,
 			);
 			productName = SwiFractal;
 			productReference = 43828CA42CE7CD3A00B8099C /* SwiFractal.app */;
@@ -93,7 +93,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1610;
-				LastUpgradeCheck = 1610;
+				LastUpgradeCheck = 2630;
 				TargetAttributes = {
 					43828CA32CE7CD3A00B8099C = {
 						CreatedOnToolsVersion = 16.1;
@@ -111,7 +111,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				43828CC82CE8A0DF00B8099C /* XCRemoteSwiftPackageReference "swift-numerics" */,
-				43F113E92F55E71500D17CB5 /* XCLocalSwiftPackageReference "../ParSet" */,
+				43AC438F2F6C6D7800531AB1 /* XCLocalSwiftPackageReference "../ParSetKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 43828CA52CE7CD3A00B8099C /* Products */;
@@ -178,9 +178,10 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_TESTABILITY = NO;
+				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				"EXCLUDED_SOURCE_FILE_NAMES[arch=*]" = "HighPrec*";
@@ -205,6 +206,7 @@
 				"MTL_MATH_MODE[sdk=*]" = SAFE;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -244,6 +246,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -265,6 +268,7 @@
 				MTL_FAST_MATH = YES;
 				"MTL_MATH_MODE[sdk=*]" = SAFE;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
@@ -279,7 +283,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"SwiFractal/Preview Content\"";
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_FILE_ACCESS_PICTURE_FOLDER = readwrite;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -305,7 +312,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"SwiFractal/Preview Content\"";
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_FILE_ACCESS_PICTURE_FOLDER = readwrite;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -347,9 +357,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		43F113E92F55E71500D17CB5 /* XCLocalSwiftPackageReference "../ParSet" */ = {
+		43AC438F2F6C6D7800531AB1 /* XCLocalSwiftPackageReference "../ParSetKit" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../ParSet;
+			relativePath = ../ParSetKit;
 		};
 /* End XCLocalSwiftPackageReference section */
 
@@ -380,9 +390,9 @@
 			package = 43828CC82CE8A0DF00B8099C /* XCRemoteSwiftPackageReference "swift-numerics" */;
 			productName = RealModule;
 		};
-		43F113EA2F55E71500D17CB5 /* ParSet */ = {
+		43AC43902F6C6D7800531AB1 /* ParSetKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = ParSet;
+			productName = ParSetKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

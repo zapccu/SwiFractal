@@ -68,7 +68,7 @@ typealias PaletteMode = Options<EnumPaletteMode>
 //
 // Color Mapping and color related parameters
 //
-struct ColorMapping {
+struct ColorMapping : FractalParameters {
     
     // Dictionary with color tables
     static var colorTables: [String: ColorTable] = [
@@ -76,17 +76,34 @@ struct ColorMapping {
         "Sinus": ColorTable.sinus
     ]
     
-    var colorTable: String                  // Color table name
-    var colorizeMode: ColorizeMode          // Colorize mode: iterations, distance, potential, steps, stripes
-    var colorizeOutside: ColorizeOutside    // Colorize outside: simple, simple3D, blinnPhong
-    var colorizeInside: ColorizeInside      // Colorize inside: simple, orbits, distance
-    var paletteMode: PaletteMode            // Palette assignment mode: linear, modulo, hue, huedyn, lchdyn
-    var lightning: Lightning                // Lightning parameters
-    var ncycle: Double
-    var steps: Double
+    static let defaultValues: [String: Any] = [
+        "colorTable":       "Grey",
+        "colorizeMode":     "iterations",
+        "colorizeOutside":  "simple",
+        "colorizeInside":   "simple",
+        "paletteMode":      "linear",
+        "stripes":          0 as Int,
+        "stripeSig":        0.9 as Double,
+        "steps":            0 as Int,
+        "ncycle":           1.0 as Double,
+        "defaultColor":     RGBAColor.defaultValues as [String : Any]
+    ]
+    
+    var colorTable: String = "Grey"                  // Color table name
+    var colorizeMode = ColorizeMode(.iterations)          // Colorize mode: iterations, distance, potential, steps, stripes
+    var colorizeOutside = ColorizeOutside(.simple)    // Colorize outside: simple, simple3D, blinnPhong
+    var colorizeInside = ColorizeInside(.simple)      // Colorize inside: simple, orbits, distance
+    var paletteMode = PaletteMode(.linear)       // Palette assignment mode: linear, modulo, hue, huedyn, lchdyn
+    var stripes: Int = 0                       // Stripe density, frequency for stripe average coloring
+                                            // Range 0-32, 0 = No stripes, default = 0
+    var stripeSig: Double = 0.9                  // Memory parameter for stripe average coloring
+                                            // Range 0-1, 0 = No stripes, default = 0.9
+    var steps: Int = 0                          // Step density, frequency for step coloring
+                                            // Range 0-100, 0 = No steps, default = 0
+    var ncycle: Double = 1.0                      // Color cycling
     
     // Default color if paletteMode is not .linear or .modulo
-    var defaultColor: RGBAColor = .black
+    var defaultColor = RGBAColor.black
     
     /// Return color table
     var palette: ColorTable {
@@ -101,19 +118,6 @@ struct ColorMapping {
     /// Number of available colors
     var colorCount: Int {
         return palette.count
-    }
-    
-    /// Initialize color mapping
-    init(_ fractalType: String, _ parameterset: ParameterSet = ParameterSet()) {
-        colorTable      = parameterset["\(fractalType).colorTable", default: "Grey"]
-        colorizeMode    = parameterset["\(fractalType).colorizeMode", default: ColorizeMode(.iterations)]
-        colorizeOutside = parameterset["\(fractalType).colorizeOutside", default: ColorizeOutside(.simple)]
-        colorizeInside  = parameterset["\(fractalType).colorizeInside", default: ColorizeInside(.simple)]
-        paletteMode     = parameterset["\(fractalType).paletteMode", default: PaletteMode(.linear)]
-        lightning       = Lightning(parameterset["lightning", default: ParameterSet()])
-        ncycle          = parameterset["\(fractalType).ncycle", default: 1.0]
-        steps           = parameterset["\(fractalType).steps", default: 0.0]
-        defaultColor    = parameterset["\(fractalType).defaultColor", default: RGBAColor.black]
     }
     
     /// Return color table entry or default color
@@ -175,7 +179,7 @@ struct ColorMapping {
         // Step shading
         if colorizeMode == .steps {
             // Color update: constant color on each major step
-            var steps2 = 1.0/steps
+            var steps2 = 1.0/Double(steps)
             palIndex = Int(round((cycleIter - cycleIter % steps2) * pLen))
 
             // Major step: step_s frequency
@@ -204,7 +208,7 @@ struct ColorMapping {
         return color
     }
     
-    func mapColorValue(_ iterations: Double, _ maxIterations: Int, _ nZ: Double, _ normal: Cplx, _ distance: Double, _ potential: Double, _ stripeAvg: Double) -> RGBAColor {
+    func mapColorValue(_ iterations: Double, _ maxIterations: Int, _ nZ: Double, _ normal: Cplx, _ distance: Double, _ potential: Double, _ stripeAvg: Double, _ lightning: Lightning) -> RGBAColor {
         // Reduce palette lenght by 1 for indexing
         let pLen = Double(colorCount) - 1
         
@@ -307,6 +311,6 @@ struct ColorMapping {
          */
 
         // Return color with gamma correction
-        return color.gammaCorrection(lightning.gamma)
+        return color.gammaCorrection(lightning.parameters.gamma)
     }
 }

@@ -7,8 +7,13 @@
 
 import Foundation
 import SwiftUI
-import Numerics
 
+// External packages
+import Numerics
+import ParSetKit
+
+
+// Type for calculation function
 typealias CalcFunc = (Graphics) -> Void
 
 //
@@ -23,52 +28,42 @@ enum DrawMethod : String, CaseIterable, Identifiable {
     var id: String { "\(Self.self).\(self.rawValue)" }
 }
 
+protocol FractalProtocol : AnyObject {
+    var calcFunctions: [DrawMethod: CalcFunc?] { get }
+}
+
 //
 // Common fractal class
 //
-
 @Observable
-class Fractal {
+class Fractal<T: FractalData> : FractalProtocol {
     
-    // Store settings as ParameterSet
-    static var defaultSettings: ParameterSet = ParameterSet([
-        "cornerLeft": "-2.25",
-        "cornerBottom": "-1.5",
-        "sizeX": "3.0",
-        "sizeY": "3.0",
-        // "corner": Cplx(-2.25, -1.5),
-        // "size": Cplx(3.0, 3.0),
-        "oversampling": Int(1),
-        "lightning": [
-            "angle": Int(45),
-            "elevation": Int(45),
-            "opacity": 0.75,
-            "ambient": 0.2,
-            "diffuse": 0.5,
-            "specular": 0.5,
-            "shininess": 20.0,
-            "gamma": 1.0
-        ]
-    ])
+    // Fractal parameters
+    var FP: ParSet<T>
     
-    var settings: ParameterSet
-    
+    // Array of calculation methods.
+    // Must be initialized in child class with supported calculation functions
     var calcFunctions: [DrawMethod: CalcFunc?] { [:] }
     
-    /// Type of fractal (name of fractal class
+    /// Return type of fractal (name of fractal class)
     var fractalType: String { String(describing: Self.self) }
     
     // Flag for redrawing / recalculation
     // var redraw: Bool = false
-        
-    // Calculation parameters
-    var CP: FractalParameters
-    
-    // Statistic value
+
+    // Clock for time measurement
+    @ObservationIgnored
     let clock: ContinuousClock = ContinuousClock()
+
+    // Timings
+    @ObservationIgnored
     var startTime: ContinuousClock.Instant
+    @ObservationIgnored
     var endTime: ContinuousClock.Instant
+    @ObservationIgnored
     var calculationTime: Duration
+    
+    /// Return calculation time as formatted String
     var formattedCalculationTime: String {
         calculationTime.formatted(
             .time(pattern: .hourMinuteSecond(
@@ -77,77 +72,73 @@ class Fractal {
         )
     }
     
-    /// Return CPU count
+    /// Return CPU count (currently limitted to 4)
+    @ObservationIgnored
     let cpuCount: Int = min(ProcessInfo.processInfo.processorCount, 4)
     
-    /// Initialize fractal object, add parameters of child class as sub-path-element.
-    ///
-    /// Parameters:
-    ///
-    /// childClassName: Name of child class, used as sub-path-element
-    /// childClassDct: Dictionary with fractal settings of child class
-    ///
-    init(_ childClassName: String = "", _ childClassDict: DictAny = [:]) {
-        
-        // Add settings of child classes to Fractal.settings ParameterSet
-        if !childClassName.isEmpty {
-            _ = Fractal.defaultSettings.addSetting(childClassName, childClassDict)
-        }
-        
-        settings = Fractal.defaultSettings
-        
-        startTime = clock.now
-        endTime = clock.now
-        calculationTime = Duration(attoseconds: 0)
-        
-        // Create initial calculation parameters from settings ParameterSet
-        CP = FractalParameters(Fractal.defaultSettings)
+    /// Initialize fractal object from data structure
+    init() {
+        self.FP = ParSet(initial: T.defaultData)
+        self.startTime = clock.now
+        self.endTime = clock.now
+        self.calculationTime = Duration(attoseconds: 0)
     }
     
-    /// Update fractal parameters
-    func updateSettings(_ path: String, _ dict: DictAny) {
-        settings.updateSettings(dict)
+    /// Initialize fractal object from dictionary.
+    /// Return nil if initialization failed
+    init?(dictionary: [String: Any]) {
+        do {
+            self.FP = try ParSet(dictionary: dictionary)
+        } catch {
+            debugPrint("Failed to initialize fractal data \(error)")
+            return nil
+        }
+        
+        self.startTime = clock.now
+        self.endTime = clock.now
+        self.calculationTime = Duration(attoseconds: 0)
     }
     
     /// Set settings to default settings
     func resetSettings() {
-        settings = Fractal.defaultSettings
+        FP.reset()
     }
     
     func zoomArea(_ area: CGRect, _ imageWidth: Int, _ imageHeight: Int) -> (Cplx, Cplx) {
         return (Cplx(0.0), Cplx(0.0))
     }
     
-    /// Start of calculation
-    /// Initialize stop timer
+    /// Start of calculation. Initialize timer
     func beginCalculation(_ width: Int, _ height: Int) {
         startTime = clock.now
     }
     
-    /// End of calculation
-    /// Measure calculation time
+    /// End of calculation. Measure calculation time
     func endCalculation() {
         endTime = clock.now
         calculationTime = endTime - startTime
     }
     
-    func draw(_ graphics: Graphics, _ method: DrawMethod) {
-        if let fnc = calcFunctions[method] {
+    /// Render fractal. Return false on error
+    nonisolated func draw(_ graphics: Graphics, _ method: DrawMethod) async -> Bool {
+        if let fnc = calcFunctions[method] as? CalcFunc {
             graphics.clear(color: .blue)
+            
             beginCalculation(graphics.width, graphics.height)
             
-            print("Rendering Mandelbrot with method \(method)")
-            fnc!(graphics)
+            debugPrint("Rendering Mandelbrot with method \(method)")
+            fnc(graphics)
             
             endCalculation()
-            print("calculation time: \(calculationTime)")
+            debugPrint("calculation time: \(calculationTime)")
+            
+            return true
         }
         else {
-            print("Draw method \(method) not available for fractal type \(String(describing: Self.self))")
-            return
+            debugPrint("Draw method \(method) not available for fractal type \(fractalType)")
+            return false
         }
     }
-
 
 }
 

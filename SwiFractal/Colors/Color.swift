@@ -79,20 +79,16 @@ extension SIMD4<UInt8> {
 //
 // 4 color channels: red, green, blue, alpha in range 0..1
 //
-struct RGBAColor: Castable {
-    static func isCastable<T>(from: T) -> Bool {
-        return from is RGBAColor
-    }
+struct RGBAColor: FractalParameters {
     
-    static func cast<T>(from: T) -> any Castable where T : Castable {
-        if let v = from as? RGBAColor {
-            return v
-        } else {
-            return defaultValue
-        }
+    static var defaultValues: [String : Any] {
+        [
+            "red"   : 0.0,
+            "green" : 0.0,
+            "blue"  : 0.0,
+            "alpha" : 1.0
+        ]
     }
-    
-    static var defaultValue: RGBAColor = .black
     
     // Predefined colors
     static let black  = RGBAColor(0.0, 0.0, 0.0, 1.0)
@@ -126,8 +122,8 @@ struct RGBAColor: Castable {
     }
     
     /// Return color channels as 32 bit integer
-    var rgbi32: Int32 {
-        return Int32((UInt32(redi) << 24) | (UInt32(greeni) << 16) | (UInt32(bluei) << 8) | UInt32(alphai))
+    var rgbi32: UInt32 {
+        return UInt32((UInt32(redi) << 24) | (UInt32(greeni) << 16) | (UInt32(bluei) << 8) | UInt32(alphai))
     }
     
     /// Return color channels as tuple of UInt8 values in range 0..255

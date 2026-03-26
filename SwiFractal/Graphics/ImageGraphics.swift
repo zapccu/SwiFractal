@@ -15,14 +15,13 @@ import Accelerate
 // ------------------------------------------------------------------
 
 class ImageGraphics : Graphics {
-    var rowBytes: Int = 0
-    var imagePtr: ImagePtr? = nil
-    var image: VImage? = nil
+    
+    var rowBytes: Int = 0               // Bytes per row
+    var image: VImage? = nil            // The vImage
     
     /// Initialize ImageGraphics object
     override init(_ size: CGSize, oversampling: Int = 1) {
         super.init(size, oversampling: oversampling)
-        print("oversampling: \(oversampling), width: \(width), height: \(height), frameSize: \(frameSize)")
         
         // Create buffer
         image = vImage.PixelBuffer<vImage.Interleaved8x4>(width: width, height: height)
@@ -70,37 +69,6 @@ class ImageGraphics : Graphics {
             }
         }
     }
-    
-    // Alternative for creating and freeing an image buffer
-    // See https://stackoverflow.com/questions/73199980/how-do-i-use-vimage-buffer-to-manage-pixels-and-create-an-image
-    /*
-    func beginDraw(_ width: Int, _ height: Int) -> Bool {
-        var b = try! vImage_Buffer(width: 100, height: 100, bitsPerPixel: 24)
-        var bptr = b.data.assumingMemoryBound(to: Pixel_8.self)
-        
-        return true
-    }
-     
-    func endDraw() {
-     if b != nil {b.free }
-    }
-    */
-    
-    /// Initialize image pointer. This function must be called before
-    /// the first drawing function!
-    override func beginDraw(drawAction: () -> Void) async -> Bool {
-        if super.beginDraw() {
-            image!.withUnsafeMutableBufferPointer { imagePtr in
-                self.imagePtr = imagePtr
-                drawAction()
-                self.imagePtr = nil
-            }
-
-            return true
-        }
-        
-        return false
-    }
 
     /// Clear graphics
     override func clear(color: RGBAColor? = nil) {
@@ -119,10 +87,12 @@ class ImageGraphics : Graphics {
         let c = color ?? self.color
         let index = getBufferIndex(x, y)
 
-        imagePtr![index]     = c.redi
-        imagePtr![index + 1] = c.greeni
-        imagePtr![index + 2] = c.bluei
-        imagePtr![index + 3] = c.alphai
+        image!.withUnsafeMutableBufferPointer { imagePtr in
+            imagePtr[index]     = c.redi
+            imagePtr[index + 1] = c.greeni
+            imagePtr[index + 2] = c.bluei
+            imagePtr[index + 3] = c.alphai
+        }
     }
     
     /// Draw a horizontal line without updating drawing position
@@ -133,11 +103,13 @@ class ImageGraphics : Graphics {
         let index1 = getBufferIndex(from)
         let index2 = getBufferIndex(to, Int(from.y))
        
-        for i in stride(from: index1, to: index2, by: image!.channelCount) {
-            imagePtr![i]     = c.redi
-            imagePtr![i + 1] = c.greeni
-            imagePtr![i + 2] = c.bluei
-            imagePtr![i + 3] = c.alphai
+        image!.withUnsafeMutableBufferPointer { imagePtr in
+            for i in stride(from: index1, to: index2, by: image!.channelCount) {
+                imagePtr[i]     = c.redi
+                imagePtr[i + 1] = c.greeni
+                imagePtr[i + 2] = c.bluei
+                imagePtr[i + 3] = c.alphai
+            }
         }
         
         return CGPoint(x: to, y: Int(from.y))
@@ -151,11 +123,13 @@ class ImageGraphics : Graphics {
         let index1 = getBufferIndex(from)
         let index2 = getBufferIndex(Int(from.x), to)
 
-        for i in stride(from: index1, to: index2, by: rowBytes) {
-            imagePtr![i]     = c.redi
-            imagePtr![i + 1] = c.greeni
-            imagePtr![i + 2] = c.bluei
-            imagePtr![i + 3] = c.alphai
+        image!.withUnsafeMutableBufferPointer { imagePtr in
+            for i in stride(from: index1, to: index2, by: rowBytes) {
+                imagePtr[i]     = c.redi
+                imagePtr[i + 1] = c.greeni
+                imagePtr[i + 2] = c.bluei
+                imagePtr[i + 3] = c.alphai
+            }
         }
         
         return CGPoint(x: Int(from.x), y: to)
@@ -169,14 +143,16 @@ class ImageGraphics : Graphics {
         var index1 = getBufferIndex(x1, y)
         let index2 = getBufferIndex(x2, y)
 
-        for _ in y1..<y2 {
-            for i in stride(from: index1, to: index2, by: image!.channelCount) {
-                imagePtr![i]     = c.redi
-                imagePtr![i + 1] = c.greeni
-                imagePtr![i + 2] = c.bluei
-                imagePtr![i + 3] = c.alphai
+        image!.withUnsafeMutableBufferPointer { imagePtr in
+            for _ in y1..<y2 {
+                for i in stride(from: index1, to: index2, by: image!.channelCount) {
+                    imagePtr[i]     = c.redi
+                    imagePtr[i + 1] = c.greeni
+                    imagePtr[i + 2] = c.bluei
+                    imagePtr[i + 3] = c.alphai
+                }
+                index1 += rowBytes
             }
-            index1 += rowBytes
         }
     }
 
@@ -186,20 +162,22 @@ class ImageGraphics : Graphics {
         
         var imageIndex: Int = 0
         var arrayIndex: Int = 0
-        
-        for _ in 0..<height {
-            var lineIndex = imageIndex
-            
-            for _ in 0..<width {
-                imagePtr![lineIndex]     = colors[arrayIndex].redi
-                imagePtr![lineIndex + 1] = colors[arrayIndex].greeni
-                imagePtr![lineIndex + 2] = colors[arrayIndex].bluei
-                imagePtr![lineIndex + 3] = colors[arrayIndex].alphai
-                lineIndex += image!.channelCount
-                arrayIndex += 1
+      
+        image!.withUnsafeMutableBufferPointer { imagePtr in
+            for _ in 0..<height {
+                var lineIndex = imageIndex
+                
+                for _ in 0..<width {
+                    imagePtr[lineIndex]     = colors[arrayIndex].redi
+                    imagePtr[lineIndex + 1] = colors[arrayIndex].greeni
+                    imagePtr[lineIndex + 2] = colors[arrayIndex].bluei
+                    imagePtr[lineIndex + 3] = colors[arrayIndex].alphai
+                    lineIndex += image!.channelCount
+                    arrayIndex += 1
+                }
+                
+                imageIndex += rowBytes
             }
-
-            imageIndex += rowBytes
         }
     }
     

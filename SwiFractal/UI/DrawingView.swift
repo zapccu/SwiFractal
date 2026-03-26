@@ -26,8 +26,8 @@ struct DrawingView: View {
                 graphics.drawImage(context)
             }
         }
-        .frame(width: graphics.size.width, height: graphics.size.height, alignment: .topLeading)
-        .background(.red)
+        .frame(width: graphics.frameSize.width, height: graphics.frameSize.height, alignment: .topLeading)
+        .background(Color(CGColor(red: 0.8, green: 0.8, blue: 0.8, alpha: 1.0)))
         // Flip verically: .scaleEffect(CGSize(width: 1, height: -1))
     }
 

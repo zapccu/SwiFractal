@@ -13,15 +13,18 @@ import Numerics
 
 extension Mandelbrot {
     
+    /// Calculate point of Mandelbrot set
     func calculatePointZ2(_ x: Int, _ y: Int) -> RGBAColor {
-        var color = MP.colorMapping.defColor
+        guard var DP else { return RGBAColor.black }
+
+        var color = DP.MP.colorMapping.defColor
         
-        let C = cplxGrid[y][x]
+        let C = DP.cplxGrid[y][x]
         
-        var distance: Double = 0.0
-        var potential: Double = 0.0
-        var stripeAvg: Double = 0.0
-        var stripet: Double = 0.0
+        var distance: Double = 0.0  // Distance of current point to Mandelbrot set
+        var potential: Double = 0.0 // Potential of current point
+        var stripeAvg: Double = 0.0 // Stripe average value
+        var stripet: Double = 0.0   // Current stripe value
         
         var Z = Cplx(0.0)           // Start of iteration: Z = 0
         var nZ: Double = 0.0        // Norm of Z: Z.imaginary * Z.imaginary + Z.real * Z.real
@@ -33,19 +36,19 @@ extension Mandelbrot {
         var smoothIter: Double = 0  // Smooth iteration counter
         var potf: Double = 0.5      // Potential factor 1/2^N
         
-        var orbits = Array<Cplx>(repeating: Cplx(0.0), count: MP.iterations+1)
+        var orbits = Array<Cplx>(repeating: Cplx(0.0), count: DP.MP.iterations+1)
         
-        for i in 0...MP.iterations {
+        for i in 0...DP.MP.iterations {
             
             Z = Z * Z + C
             
-            if MP.stripes > 0 {
-                stripet = (sin(Double(MP.stripes) * atan2(Z.imaginary, Z.real)) + 1.0) * 0.5
+            if DP.bStripes { 
+                stripet = (sin(Double(DP.MP.colorMapping.stripes) * Z.arg) + 1.0) * 0.5
             }
             
             nZ = Z.lengthSquared
             
-            if nZ > MP.bailout {
+            if nZ > DP.MP.bailout {
                 aZ = sqrt(nZ)           // aZ = abs(Z)
                 let logaZ = log(aZ)
                 
@@ -57,9 +60,9 @@ extension Mandelbrot {
                 // Calculate smooth iteration value for smooth coloring
                 // This value must be added to the iteration count.
                 //
-                // 1.0 - log2(0.5 * math.log(Z) / math.log(b))
+                // 1.0 - log2(0.5 * log(Z) / log(b))
                 //
-                smoothIter = 1.0 - log2(log(nZ) / MP.logBailout2)
+                smoothIter = 1.0 - log2(log(nZ) / DP.logBailout2)
                 
                 // Calculate exterior distance to Mandelbrot set
                 // aZ * log(aZ) / abs(D) / 2.0
@@ -75,29 +78,27 @@ extension Mandelbrot {
                 potential = logaZ * potf
                 
                 // Calculate stripes
-                if MP.stripes > 0 {
-                    stripeAvg = (stripeAvg * (1.0 + smoothIter * (MP.stripeSig - 1.0)) + stripet * smoothIter * (1.0 - MP.stripeSig))
-                    stripeAvg = stripeAvg / (1.0 - pow(MP.stripeSig, Double(i)) * (1.0 + smoothIter * (MP.stripeSig - 1.0)))
+                if DP.bStripes {
+                    stripeAvg = expMovAvg(previousAvg: stripeAvg, smooth: DP.MP.colorMapping.stripeSig, newValue: stripet, smoothIter: smoothIter)
+                    stripeAvg = biasCorrect(previousAvg: stripeAvg, smooth: DP.MP.colorMapping.stripeSig, iter: i, smoothIter: smoothIter)
                 }
                 
                 // Count iterations for calculation of histogram
-                if MP.bHist && i < MP.iterations {
-                    iterationCountPerPixel[y][x] = i
-                    pixelCountPerIteration[i] += 1
+                if DP.bHist && i < DP.MP.iterations {
+                    DP.iterationCountPerPixel[y][x] = i
+                    DP.pixelCountPerIteration[i] += 1
                 }
                 
-                return MP.colorMapping.mapColorValue(Double(i)+smoothIter, MP.iterations, nZ, Z/D, distance * MP.diag, potential, stripeAvg)
-                
-                // return mapColorValue(Double(i)+smoothIter, nZ, Z/D, distance * MP.diag, potential, stripeAvg)
+                return DP.MP.colorMapping.mapColorValue(Double(i)+smoothIter, DP.MP.iterations, nZ, Z/D, distance * DP.diag, potential, stripeAvg, DP.lightning)
             }
             
             // Calculate orbits
-            if MP.bOrbits {
+            if DP.bOrbits {
                 // Search for orbits (full periodicity check)
                 var idx: Int = -1
                 let end: Int = max(-1, i - 100)
                 
-                for t in [MP.orbitDelta1, MP.orbitDelta2] {
+                for t in [DP.MP.orbitDelta1, DP.MP.orbitDelta2] {
                     for n in stride(from: i-1, to: end, by: -1) {
                         let d = Z - orbits[n]
                         if d.lengthSquared < t {
@@ -109,28 +110,29 @@ extension Mandelbrot {
                 
                 if idx > -1 {
                     // Found orbit, colorize point inside mandelbrot set
-                    color = RGBAColor(HSB(min(1.0, Float(Double(i-idx) / Double(MP.iterations) * MP.diaScale)), 1.0, 1.0 - Float(i)/Float(MP.iterations)))
+                    color = RGBAColor(HSB(min(1.0, Float(Double(i-idx) / Double(DP.MP.iterations) * DP.diaScale)), 1.0, 1.0 - Float(i)/Float(DP.MP.iterations)))
                     break
                 }
                 orbits[i] = Z
             }
             else {
                 // Simplified periodicity check, no orbit colorization
-                if abs(nZ - nZ1) < MP.orbitDelta3 {
+                if abs(nZ - nZ1) < DP.MP.orbitDelta3 {
                     orbitCount += 1
                     break
                 }
                 else {
                     period += 1
-                    if period > MP.orbitLength {
+                    if period > DP.MP.orbitLength {
                         period = 0
                         nZ1 = nZ
                     }
                 }
             }
             
-            if MP.stripes > 0 {
-                stripeAvg = stripeAvg * MP.stripeSig + stripet * (1 - MP.stripeSig)
+            if DP.bStripes {
+                // Calculate exponential moving average of stripe value
+                stripeAvg = expMovAvg(previousAvg: stripeAvg, smooth: DP.MP.colorMapping.stripeSig, newValue: stripet)
             }
             
             // Derivation D of Z
@@ -140,7 +142,7 @@ extension Mandelbrot {
             potf *= 0.5
         }
         
-        if MP.bHist { iterationCountPerPixel[y][x] = MP.iterations }
+        if DP.bHist { DP.iterationCountPerPixel[y][x] = DP.MP.iterations }
         
         return color
     }

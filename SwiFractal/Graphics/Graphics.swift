@@ -10,16 +10,18 @@
 
 import SwiftUI
 
-// ------------------------------------------------------------------
-//  Protocol Graphics
+//
+//  Class Graphics
 //
 //  Implementation of drawing functions.
 //  Override functions in derived classes if necessary.
-// ------------------------------------------------------------------
-
+//
 class Graphics {
     // Resulting image, created/updated by function endDraw()
     var cgImage: CGImage? = nil
+    
+    // SwiftUI image (cached)
+    var suiImage: Image? = nil
     
     // Dimensions of drawing area
     var size: CGSize                        // Oversampling size
@@ -28,7 +30,7 @@ class Graphics {
     var height: Int { Int(size.height) }    // Return oversampling height as integer
     
     // Oversampling
-    let oversampling: Int                   // Oversampling factor 1 = no oversampling
+    let oversampling: Int                   // Oversampling factor. 1 = no oversampling
     
     // Current drawing position
     var p = CGPoint()
@@ -46,6 +48,8 @@ class Graphics {
         self.oversampling = max(min(oversampling, 3), 1)
         self.frameSize    = size
         self.size         = CGSize(width: size.width * Double(self.oversampling), height: size.height * Double(self.oversampling))
+        
+        debugPrint("oversampling: \(oversampling), width: \(size.width), height: \(size.height), frameSize: \(frameSize)")
     }
 
     /// Clear graphics, fill with color
@@ -62,22 +66,18 @@ class Graphics {
     func beginDraw() -> Bool {
         isDrawing = true
         cgImage = nil
+        suiImage = nil
         return true
-    }
-    
-    /// Start drawing and call the draw action
-    func beginDraw(drawAction: () -> Void) async -> Bool {
-        if beginDraw() {
-            drawAction()
-            return true
-        }
-        
-        return false
     }
     
     /// End drawing
     func endDraw() {
         updateCGImage()
+        if let cgImage {
+            suiImage = Image(decorative: cgImage, scale: 1.0).interpolation(.high)
+        }
+        debugPrint("endDraw: updated cgImage")
+        debugPrint("size = \(cgImage?.width ?? 0) x \(cgImage?.height ?? 0)")
         isDrawing = false
     }
     
@@ -174,24 +174,16 @@ class Graphics {
         cgImage = nil
     }
     
-    /// Return cgImage
-    func getCGImage() -> CGImage? {
-        // Override this function in child classes if needed
-        return cgImage
-    }
-    
     /// Scale image to destination frame size and draw image into a graphics context
     func drawImage(_ context: GraphicsContext) {
-        if cgImage != nil {
-            // let nsImage = NSImage(cgImage: cgImage!, size: size)
-            // let img = Image(nsImage: nsImage).resizable().interpolation(.high) //.frame(width: frameSize.width, height: frameSize.height, alignment: .topLeading)
-            context.draw(Image(decorative: cgImage!, scale: 1.0, orientation: .downMirrored), at: CGPoint(x: 0, y: 0), anchor: .zero)
-            // context.draw(img, at: .zero, anchor: .topLeading)
-            //context.draw(img, in: CGRect(origin: .zero, size: frameSize))
-        }
-        else {
-            print("No image to draw")
-        }
+         guard let suiImage = self.suiImage else { return }
+
+         var imageContext = context
+         
+         imageContext.translateBy(x: 0, y: frameSize.height)
+         imageContext.scaleBy(x: 1.0, y: -1.0)
+         
+         imageContext.draw(suiImage, in: CGRect(origin: .zero, size: frameSize))
     }
 
 }

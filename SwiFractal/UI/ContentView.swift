@@ -23,16 +23,12 @@ struct ContentView: View {
     @State var isDrawing = false
     @State var statusMessage: String = "Ready."
     
-    var fractal: Fractal
-
-    init(fractal: Fractal) {
-        self.fractal = fractal
-    }
+    @State private var fractal = Mandelbrot()
     
     var body: some View {
 
         HStack(spacing: 0) {
-            let graphics = ImageGraphics(resolution, oversampling: fractal.settings["oversampling"])
+            let graphics = ImageGraphics(resolution, oversampling: fractal.FP.common.oversampling)
             
             VStack(spacing: 0) {
                 // Create the drawing view
@@ -46,17 +42,18 @@ struct ContentView: View {
                     }
                 }
                 .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
-                .background(.blue)
+                .background(Color(CGColor(red: 0.4, green: 0.4, blue: 0.4, alpha: 1.0)))
                 
                 StatusView(currentAction: $currentAction, message: $statusMessage)
                     .frame(height: 25)
                     .frame(maxWidth: .infinity)
                     .background(.gray)
             }
+            
             //Spacer()
-            ControlView(resolution: $resolution, redraw: $redraw,
-                        currentAction: $currentAction, selection: $selection, isDrawing: $isDrawing, message: $statusMessage,
-                        graphics: graphics, fractal: fractal)
+            ControlView(fractal: fractal, graphics: graphics,
+                        resolution: $resolution, redraw: $redraw, currentAction: $currentAction,
+                        selection: $selection, isDrawing: $isDrawing, message: $statusMessage)
                 .frame(width: FractalAppData.controlViewWidth)
                 .frame(maxHeight: .infinity)
         }

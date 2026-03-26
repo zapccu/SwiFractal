@@ -16,7 +16,7 @@ struct FractalAppData {
     static let controlViewWidth: CGFloat = 300
     
     // Current fractal object
-    var fractal: Mandelbrot = Mandelbrot()
+    //var fractal: Mandelbrot = Mandelbrot()!
 }
 
 @main
@@ -25,7 +25,7 @@ struct SwiFractalApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ContentView(fractal: appData.fractal).frame(minWidth: appData.windowSize.width, minHeight: appData.windowSize.height)
+            ContentView().frame(minWidth: appData.windowSize.width, minHeight: appData.windowSize.height)
         }.windowResizability(.contentSize)
     }
 }

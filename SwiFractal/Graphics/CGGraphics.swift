@@ -41,16 +41,6 @@ class CGGraphics : Graphics {
         return currentBlendMode
     }
     
-    /// Being drawing, execute drawing closure
-    override func beginDraw(drawAction: () -> Void) async -> Bool {
-        if super.beginDraw() && context != nil {
-            drawAction()
-            return true
-        }
-        
-        return false
-    }
-    
     /// Set drawing color
     override func setColor(_ color: RGBAColor) {
         super.setColor(color)

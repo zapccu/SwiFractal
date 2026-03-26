@@ -7,22 +7,24 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
+import ParSetKit
 
-struct FractalDocument: FileDocument {
-    static var readableContentTypes: [UTType] = [.json]
+
+struct FractalDocument<T: FractalData>: FileDocument {
+    static var readableContentTypes: [UTType] { [.json] }
     
-    var data: ParameterSet
+    var data: ParSet<T>
     
-    init(data: ParameterSet) {
+    init(data: ParSet<T>) {
         self.data = data
     }
     
-    // Initialisator für das Laden bestehender Dateien
+    // Initialization from existing file
     init(configuration: ReadConfiguration) throws {
         guard let data = configuration.file.regularFileContents else {
             throw CocoaError(.fileReadCorruptFile)
         }
-        self.data = try JSONDecoder().decode(ParameterSet.self, from: data)
+        self.data = try JSONDecoder().decode(ParSet<T>.self, from: data)
     }
 
     // Funktion zum Schreiben der Datei
