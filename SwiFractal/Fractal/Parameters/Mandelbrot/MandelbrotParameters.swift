@@ -16,7 +16,7 @@ import SwiftMPx
 //
 // Mandelbrot calculation limits
 //
-struct MandelbrotLimits: FractalParameters {
+struct FractalLimits: FractalParameters {
     var minIterationCount: Int = 200                // Minimum iteration count
     var iterations: Int = 200                       // Maximum number of iterations. default = 200
     var bailout: Double = 1e10                      // Bailout radius. default = 1e10
@@ -29,9 +29,7 @@ struct MandelbrotLimits: FractalParameters {
 //
 // Static Mandelbrot calculation parameters
 //
-nonisolated struct MandelbrotParameters<RT: PreciseFloatingPoint> : FractalData {
-    
-    typealias CT = RT.ComplexType
+nonisolated struct MandelbrotParameters<RT: PreciseFloatingPoint> : IterationData {
     
     /// Return default parameters
     static var defaultData: MandelbrotParameters<RT> {
@@ -44,27 +42,30 @@ nonisolated struct MandelbrotParameters<RT: PreciseFloatingPoint> : FractalData 
 
     // Dimensions
     var dimensions: FractalDimensions<RT>
-    
-    var oversampling: Int = 1
 
-    // Color table
-    var colorTable: EnumColorTable = .smooth(smoothColorTable: ColorTableSmooth(
-        "Grey-1024", colorPoints: [RGBAColor(80.0/255.0, 80.0/255.0, 80.0/255.0), .white], colorCount: 1024)
-    )
-    
     // Lightning parameters
-    var lightning: LightningParameters = LightningParameters()
+    var lightParameters: LightningParameters = LightningParameters()
     
     // Mandelbrot limits
-    var limits: MandelbrotLimits = MandelbrotLimits()
+    var limits: FractalLimits = FractalLimits()
 
     // Coloring parameters
-    var coloring: MandelbrotColoring = MandelbrotColoring()
+    var coloring: FractalColoring = FractalColoring()
+    
+    /// Return supported calculation methods
+    var supportedCalculationMethods: [CalculationMethod] {
+        [.sequential, .parallel, .metalcompute ]
+    }
     
     /// Initialize Mandelbrot parameters
     /// - Parameter dimensions: Fractal dimensions
     init(dimensions: FractalDimensions<RT>) {
         self.dimensions = dimensions
+    }
+    
+    /// Return initial values for Z and C
+    @inlinable func initialValues(v: CT) -> (z0: CT, c: CT) {
+        return (z0: CT.zero, c: v)
     }
     
     /// Convert dimensions of current MandelbrotParameters struct to Double
@@ -73,11 +74,9 @@ nonisolated struct MandelbrotParameters<RT: PreciseFloatingPoint> : FractalData 
         let newDimensions = dimensions.toDouble()
         var newMandelbrotParameters = MandelbrotParameters<Double>(dimensions: newDimensions)
         
-        newMandelbrotParameters.oversampling = oversampling
-        newMandelbrotParameters.colorTable   = colorTable
-        newMandelbrotParameters.lightning    = lightning
-        newMandelbrotParameters.limits       = limits
-        newMandelbrotParameters.coloring     = coloring
+        newMandelbrotParameters.lightParameters = lightParameters
+        newMandelbrotParameters.limits          = limits
+        newMandelbrotParameters.coloring        = coloring
         
         return newMandelbrotParameters
     }
@@ -89,11 +88,9 @@ nonisolated struct MandelbrotParameters<RT: PreciseFloatingPoint> : FractalData 
         let newDimensions = dimensions.toMPFloat(precision: precision)
         var newMandelbrotParameters = MandelbrotParameters<MPFloat>(dimensions: newDimensions)
         
-        newMandelbrotParameters.oversampling = oversampling
-        newMandelbrotParameters.colorTable   = colorTable
-        newMandelbrotParameters.lightning    = lightning
-        newMandelbrotParameters.limits       = limits
-        newMandelbrotParameters.coloring     = coloring
+        newMandelbrotParameters.lightParameters = lightParameters
+        newMandelbrotParameters.limits          = limits
+        newMandelbrotParameters.coloring        = coloring
         
         return newMandelbrotParameters
     }

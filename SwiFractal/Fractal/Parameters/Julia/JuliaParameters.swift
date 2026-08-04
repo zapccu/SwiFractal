@@ -10,50 +10,66 @@ import SwiftMPx
 
 
 //
-// Static Mandelbrot calculation parameters
+// Static Julia calculation parameters
 //
-nonisolated struct JuliaParameters<RT: PreciseFloatingPoint> : FractalData {
-    
-    typealias CT = RT.ComplexType
+nonisolated struct JuliaParameters<RT: PreciseFloatingPoint> : IterationData {
     
     /// Return default parameters
     static var defaultData: JuliaParameters<RT> {
         let defaultDimensions = FractalDimensions<RT>(cornerX: -1.5, cornerY: -1.5, sizeX: 3.0, sizeY: 3.0)
         return JuliaParameters<RT>(dimensions: defaultDimensions)
     }
-
-    // Name of fractal
-    var name: String = "MandelbrotSet"
-
-    // Dimensions
+    
+    /// Name of fractal
+    var name: String = "JuliaSet"
+    
+    /// Fractal dimensions
     var dimensions: FractalDimensions<RT>
     
-    // Complex point of Julia set
-    var cplxPointX: RT
-    var cplxPointY: RT
-    
-    var oversampling: Int = 1
-
-    // Color table
-    var colorTable: EnumColorTable = .smooth(smoothColorTable: ColorTableSmooth(
-        "Grey-1024", colorPoints: [RGBAColor(80.0/255.0, 80.0/255.0, 80.0/255.0), .white], colorCount: 1024)
-    )
-    
     // Lightning parameters
-    var lightning: LightningParameters = LightningParameters()
+    var lightParameters: LightningParameters = LightningParameters()
     
     // Mandelbrot limits
-    var limits: MandelbrotLimits = MandelbrotLimits()
+    var limits: FractalLimits = FractalLimits()
 
     // Coloring parameters
-    var coloring: MandelbrotColoring = MandelbrotColoring()
+    var coloring: FractalColoring = FractalColoring()
     
-    /// Initialize Mandelbrot parameters
+    /// Real value of complex point of Julia set
+    var cPointX: RT
+    
+    /// Imaginary value of complex point of Julia set
+    var cPointY: RT
+    
+    /// Get or set cPointX as String
+    var strCPointX: String {
+        get { cPointX.toString()}
+        set { cPointX = RT(newValue, precision: dimensions.precision.bits ) }
+    }
+    
+    /// Get or set cPointY as String
+    var strCPointY: String {
+        get { cPointY.toString()}
+        set { cPointY = RT(newValue, precision: dimensions.precision.bits ) }
+    }
+    
+    /// Return supported calculation methods
+    var supportedCalculationMethods: [CalculationMethod] {
+        [.sequential, .parallel, .metalcompute ]
+    }
+    
+    /// Initialize Julia set parameters
     /// - Parameter dimensions: Fractal dimensions
     init(dimensions: FractalDimensions<RT>) {
         self.dimensions = dimensions
-        self.cplxPointX = .zero
-        self.cplxPointY = .zero
+        self.cPointX    = .zero
+        self.cPointY    = .zero
+        self.name       = "JuliaSet"
+    }
+    
+    /// Return initial values for Z and C
+    @inlinable func initialValues(v: CT) -> (z0: CT, c: CT) {
+        return (z0: v, c: CT(cPointX, cPointY))
     }
     
     /// Convert dimensions of current JuliaParameters struct to Double
@@ -62,13 +78,11 @@ nonisolated struct JuliaParameters<RT: PreciseFloatingPoint> : FractalData {
         let newDimensions = dimensions.toDouble()
         var newJuliaParameters = JuliaParameters<Double>(dimensions: newDimensions)
         
-        newJuliaParameters.cplxPointX   = cplxPointX.toDouble()
-        newJuliaParameters.cplxPointY   = cplxPointY.toDouble()
-        newJuliaParameters.oversampling = oversampling
-        newJuliaParameters.colorTable   = colorTable
-        newJuliaParameters.lightning    = lightning
-        newJuliaParameters.limits       = limits
-        newJuliaParameters.coloring     = coloring
+        newJuliaParameters.lightParameters = lightParameters
+        newJuliaParameters.limits          = limits
+        newJuliaParameters.coloring        = coloring
+        newJuliaParameters.cPointX         = cPointX.asDouble
+        newJuliaParameters.cPointY         = cPointY.asDouble
         
         return newJuliaParameters
     }
@@ -80,14 +94,12 @@ nonisolated struct JuliaParameters<RT: PreciseFloatingPoint> : FractalData {
         let newDimensions = dimensions.toMPFloat(precision: precision)
         var newJuliaParameters = JuliaParameters<MPFloat>(dimensions: newDimensions)
         
-        newJuliaParameters.cplxPointX    = cplxPointX.toMPFloat(precision: precision)
-        newJuliaParameters.cplxPointY    = cplxPointY.toMPFloat(precision: precision)
-        newJuliaParameters.oversampling = oversampling
-        newJuliaParameters.colorTable   = colorTable
-        newJuliaParameters.lightning    = lightning
-        newJuliaParameters.limits       = limits
-        newJuliaParameters.coloring     = coloring
-        
+        newJuliaParameters.lightParameters = lightParameters
+        newJuliaParameters.limits          = limits
+        newJuliaParameters.coloring        = coloring
+        newJuliaParameters.cPointX         = cPointX.toMPFloat(precision: precision)
+        newJuliaParameters.cPointY         = cPointY.toMPFloat(precision: precision)
+
         return newJuliaParameters
     }
     

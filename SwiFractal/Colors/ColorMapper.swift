@@ -12,24 +12,23 @@ import Accelerate
 /// Colormapper
 struct ColorMapper : Sendable {
     
-    let coloring: MandelbrotColoring
-    let colorTable: EnumColorTable
-    let limits: MandelbrotLimits
+    var coloring: FractalColoring
+    let limits: FractalLimits
     let pLen: Double                    // Number of colors in palette - 1
     let histogram: Histogram
     let lightning: Lightning
-
+    
+    var colorTable: any ColorTable { coloring.colorTable.ct }
+    
     /// Initialize colormapper
-    init(coloring: MandelbrotColoring, colorTable: EnumColorTable, limits: MandelbrotLimits,
-         histogram: Histogram, lightning: LightningParameters) {
+    init(coloring: FractalColoring, limits: FractalLimits, histogram: Histogram, lightning: Lightning) {
         self.coloring = coloring
-        self.colorTable = colorTable
         self.limits = limits
         self.histogram = histogram
-        self.lightning = Lightning(lightning)
+        self.lightning = lightning
         
         // Reduce palette lenght by 1 for index between 0 and count-1
-        self.pLen = Double(colorTable.ct.count - 1)
+        self.pLen = Double(coloring.colorTable.ct.count - 1)
     }
     
     /// Shading
@@ -81,7 +80,7 @@ struct ColorMapper : Sendable {
             //bright = hardLight(bright, shader/nshader) * (1 - dist) + dist * bright
         }
         
-        var color = colorTable.ct[palIndex]
+        var color = colorTable[palIndex]
         color.hardLight(top: Float(bright))
         
         return color
@@ -97,7 +96,7 @@ struct ColorMapper : Sendable {
         var brightness: Double = 1.0
         
         // The resulting color, initialized with default color
-        var color = colorTable.ct.defColor
+        var color = colorTable.defColor
         
         // Check condition for default color
         if (result.flags.isSubset(of: [.defaultColor, .maxIterations, .error])) {
@@ -140,19 +139,19 @@ struct ColorMapper : Sendable {
         else if coloring.colorizeMode == .iterations {
             // Linear mapping
             if coloring.paletteMode == .linear {
-                color = colorTable.ct[di, fBrightness]
+                color = colorTable[di, fBrightness]
             }
             
             // Modulo division mapping (integer modulo division)
             else if coloring.paletteMode == .modulo {
-                color = colorTable.ct[Int(di * pLen) % Int(coloring.ncycle), fBrightness]
+                color = colorTable[Int(di * pLen) % Int(coloring.ncycle), fBrightness]
             }
             
             // Color cycling mapping
             else if coloring.paletteMode == .cycling {
                 // Color cycling. cycle_iter in range 0-1 (floating point modulo division!)
                 let cycleIter = (sqrt(result.smoothIter) % coloring.ncycle) / coloring.ncycle
-                color = colorTable.ct[round(cycleIter * pLen), fBrightness]
+                color = colorTable[round(cycleIter * pLen), fBrightness]
             }
             /*
              Todo:
@@ -179,19 +178,19 @@ struct ColorMapper : Sendable {
             // Histogram mapping
             else if coloring.paletteMode == .histogram {
                 let h = histogram.normalize(result)
-                color = colorTable.ct[Int(h * pLen), fBrightness]
+                color = colorTable[Int(h * pLen), fBrightness]
             }
             
             // Inverse histogram mapping
             else if coloring.paletteMode == .inverseHistogram {
                 let h = 1.0 - histogram.normalize(result)
-                color = colorTable.ct[Int(h * pLen), fBrightness]
+                color = colorTable[Int(h * pLen), fBrightness]
             }
         }
         
         // Color based on distance
         else if coloring.colorizeMode == .distance {
-            color = colorTable.ct[tanh(result.distance), fBrightness]
+            color = colorTable[tanh(result.distance), fBrightness]
         }
         
         // Color based on potential
@@ -199,8 +198,8 @@ struct ColorMapper : Sendable {
             let lognZ12 = log(result.nZ) / 2.0
             let nu = log(lognZ12 / _NC.LOG2) / _NC.LOG2
             let i = result.smoothIter + 1.0 - nu
-            let color1 = colorTable.ct[i]
-            let color2 = colorTable.ct[i + 1]
+            let color1 = colorTable[i]
+            let color2 = colorTable[i + 1]
             let ic: Double = i % 1.0
             let cv = vDSP.linearInterpolate(color1.vector3, color2.vector3, using: ic)
             color = RGBAColor(cv) * fBrightness
@@ -213,6 +212,14 @@ struct ColorMapper : Sendable {
         }
         
         // Return color with gamma correction
-        return color.gammaCorrection(lightParameters.gamma)
+        return color.gammaCorrection(lightning.gamma)
+    }
+    
+    func mapResult(result: any CalculationResult) -> RGBAColor {
+        if let result = result as? MandelbrotResult {
+            return mapColor(result: result)
+        }
+        
+        return .black
     }
 }

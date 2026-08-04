@@ -13,15 +13,17 @@ import SwiftUI
 // Used for showing status information on bottom of window
 //
 struct StatusView: View {
-    @Binding var currentAction: String
-    @Binding var message: String
+    @Binding var info: Info
     
     var body: some View {
         HStack(spacing: 0) {
-            Text(currentAction)
+            Text(info.currentAction)
                 .padding([.leading, .trailing], 10)
                 .background(Color(red: 0.9, green: 0.9, blue: 0.9))
-            Text(message)
+            Text(info.statusMessage)
+                .padding([.leading, .trailing], 10)
+                .background(Color(red: 0.9, green: 0.9, blue: 0.9))
+            Text(info.mousePosition)
                 .padding([.leading, .trailing], 10)
                 .background(Color(red: 0.9, green: 0.9, blue: 0.9))
             Spacer()

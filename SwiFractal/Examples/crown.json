@@ -1,7 +1,7 @@
 {
 	"bailout": 10000000000,
 	"colorMapping": {
-		"colorizeOutside": "distance",
+		"colorizeOutside": "blinnPhong",
 		"colorTable": "Sinus",
 		"defaultColor": {
 			"alpha": 1,
@@ -9,7 +9,7 @@
 			"blue": 0,
 			"green": 0
 		},
-		"colorizeMode": "iterations",
+		"colorizeMode": "distance",
 		"ncycle": 32,
 		"colorizeInside": "simple",
 		"stripeSig": 0.9,

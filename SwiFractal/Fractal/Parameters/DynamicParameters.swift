@@ -7,7 +7,6 @@
 
 import Foundation
 import Accelerate
-import ParSetKit
 import SwiftMPx
 
 
@@ -26,30 +25,30 @@ struct DynamicParameters<PT: FractalData> : PrDynamicParameters {
     let fractalParameters: PT
     
     // Image dimensions without oversampling
-    var resolution: CGSize
+    let resolution: CGSize
     
     // Pre-calculated bailout values
-    var logBailout: Double              // log(bailout)
-    var div_logBailout_2: Double        // 0.5 * log(bailout)
-    var div_2_logBailout: Double        // 2.0 / log(bailout)
-    var div_05_logBailout: Double       // 0.5 / log(bailout)
+    let logBailout: Double           // log(bailout)
+    let div_logBailout_2: Double     // 0.5 * log(bailout)
+    let div_2_logBailout: Double     // 2.0 / log(bailout)
+    let div_05_logBailout: Double    // 0.5 / log(bailout)
     
     // Scaling for orbit coloring inside Mandelbrot set
-    var diaScale: Double                // diaScale = iterations / 10
+    let diaScale: Double             // diaScale = iterations / 10
     
     // Distance normalization factor
-    var diag: RT                        // diag = 1 / abs(size)
+    let diag: RT                     // diag = 1 / abs(size)
     
     // Flags
-    var bStripes: Bool,                 // Draw stripes
-        bSteps: Bool,                   // Draw steps
-        bDist: Bool,                    // Calculate distance to Mandelbrot set
-        bOrbits: Bool,                  // Draw orbits
-        bShading: Bool,                 // Either simple3D or blinnPhong
-        bFilaments: Bool                // Draw filaments
+    var bStripes: Bool,              // Calculate stripes
+        bSteps: Bool,                // Calculate steps
+        bDist: Bool,                 // Calculate distance to Mandelbrot set
+        bOrbits: Bool,               // Draw orbits
+        bShading: Bool,              // Either simple3D or blinnPhong
+        bFilaments: Bool             // Draw filaments
     
     // Lighning
-    var lightning: Lightning
+    let lightning: Lightning         // Lightning depends on LightningParameters
     
     // Pixelsize
     let dx: RT
@@ -58,10 +57,7 @@ struct DynamicParameters<PT: FractalData> : PrDynamicParameters {
     // Array with potential values: potential[n] = 1/2^n, n=0..<iterations
     var potential: [Double] = []
     
-    // Count orbits found during calculation
-    var orbitCount: Int = 0
-    
-    /// Direct access to mandelbrotParameters
+    /// Provide direct access to static fractal parameters
     subscript<V>(dynamicMember keyPath: WritableKeyPath<PT, V>) -> V {
         get { fractalParameters[keyPath: keyPath] }
     }
@@ -86,19 +82,22 @@ struct DynamicParameters<PT: FractalData> : PrDynamicParameters {
         )
     }
     
+    /// Initialize dynamic calculation parameters
+    /// - Parameters:
+    ///   - anypar: Static fractal parameters
+    ///   - resolution: Image resolution without oversampling
     init(anypar: PT, resolution: CGSize) {
         let p = anypar.dimensions.precision.bits
 
         self.fractalParameters = anypar
         self.resolution = resolution
+
         let sx = anypar.dimensions.sizeX
         let sy = anypar.dimensions.sizeY
         
-        dx = sx / RT(resolution.width - 1, precision: p)
-        dy = sy / RT(resolution.height - 1, precision: p)
-        
-        logBailout = log(anypar.limits.bailout)
-        
+        (dx, dy) = anypar.dimensions.pixelDistance(resolution: resolution)
+
+        logBailout        = log(anypar.limits.bailout)
         div_logBailout_2  = 0.5 * logBailout
         div_2_logBailout  = 2.0 / logBailout
         div_05_logBailout = 0.5 / logBailout
@@ -107,12 +106,12 @@ struct DynamicParameters<PT: FractalData> : PrDynamicParameters {
         diag     = RT(1.0, precision: p) / RT.sqrt(sx * sx + sy * sy)
 
         // Flags
-        bStripes = anypar.coloring.stripes > 0
-        bSteps   = anypar.coloring.steps > 0
-        bOrbits  = anypar.coloring.colorizeInside == .orbits
-        bDist    = bStripes || bSteps || anypar.coloring.colorizeMode == .distance
-        bShading = bStripes || bSteps || anypar.coloring.colorizeOutside.isAny(of: [.simple3d, .blinnPhong])
-        bFilaments = false
+        bStripes   = anypar.coloring.stripes > 0
+        bSteps     = anypar.coloring.steps > 0
+        bOrbits    = anypar.coloring.colorizeInside == .orbits
+        bDist      = bStripes || bSteps || anypar.coloring.colorizeMode == .distance
+        bShading   = bStripes || bSteps || anypar.coloring.colorizeOutside.isAny(of: [.simple3d, .blinnPhong])
+        bFilaments = anypar.coloring.colorizeOutside == .filaments
         
         // Lightning
         lightning = Lightning(anypar.lightParameters)
@@ -125,64 +124,5 @@ struct DynamicParameters<PT: FractalData> : PrDynamicParameters {
             pot *= 0.5
         }
     }
-    
-    /// Initialize dynamic Mandelbrot parameters
-    /// - Parameters:
-    ///   - parameters: Mandelbrot parameters
-    /*
-    init?(parameters: MandelbrotParameters<RT>, resolution: CGSize) {
-        let p = parameters.dimensions.precision.bits
-        
-        self.parameters = parameters
-        
-        self.resolution = resolution
-        
-        let sx = parameters.dimensions.sizeX
-        let sy = parameters.dimensions.sizeY
-        
-        dx = sx / RT(resolution.width - 1, precision: p)
-        dy = sy / RT(resolution.height - 1, precision: p)
-        
-        logBailout        = log(parameters.limits.bailout)
-        div_logBailout_2  = 0.5 * logBailout
-        div_2_logBailout  = 2.0 / logBailout
-        div_05_logBailout = 0.5 / logBailout
-        
-        diaScale = Double(parameters.limits.iterations) / 10.0
-        diag     = RT(1.0, precision: p) / RT.sqrt(sx * sx + sy * sy)
-
-        // Flags
-        bStripes = parameters.coloring.stripes > 0
-        bSteps   = parameters.coloring.steps > 0
-        bOrbits  = parameters.coloring.colorizeInside == .orbits
-        bDist    = bStripes || bSteps || parameters.coloring.colorizeMode == .distance
-        bShading = bStripes || bSteps || parameters.coloring.colorizeOutside.isAny(of: [.simple3d, .blinnPhong])
-        bFilaments = false
-        
-        // Lightning
-        lightning = Lightning(parameters.lightParameters)
-        
-        // Potential lookup table
-        var pot: Double = 1.0
-        potential = Array(repeating: 0.0, count: limits.iterations+1)
-        for i in 0..<limits.iterations+1 {
-            potential[i] = pot
-            pot *= 0.5
-        }
-    }
-     */
-    /*
-    func mapScreenCoordinates(aspectRatio: Bool = true) -> Matrix<CT> {
-        let newDimensions = aspectRatio ? fractalParameters.dimensions.adjustAspectRatio(resolution: resolution) : fractalParameters.dimensions
-        return Matrix<CT>((osImageHeight, osImageWidth), start: newDimensions.corner, end: newDimensions.corner + newDimensions.size)
-    }
-    
-    func mapScreenCoordinates(refPoint: CT, aspectRatio: Bool = true) -> Matrix<CT> {
-        let newDimensions = aspectRatio ? dimensions.adjustAspectRatio(resolution: resolution) : dimensions
-        let startDelta = newDimensions.corner - refPoint
-        let endDelta   = refPoint + startDelta
-        return Matrix<CT>((osImageHeight, osImageWidth), start: startDelta, end: endDelta)
-    }
-     */
     
 }

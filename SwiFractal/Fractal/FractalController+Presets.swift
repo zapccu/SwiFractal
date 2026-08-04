@@ -9,7 +9,7 @@ import Foundation
 
 
 ///
-/// A fractal parameter preset
+/// Fractal parameter preset
 ///
 struct FractalPreset {
     let name: String    // Name of preset
@@ -31,10 +31,36 @@ struct FractalPreset {
 //
 // Parameter presets
 //
-extension FractalAppData {
+extension FractalController {
+    
+    /// Apply new preset by importing JSON definition
+    /// - Parameters:
+    ///   - preset: Fractal parameter preset
+    ///   - fit: Aspect ratio mode. Default = .ignoreAspectRatio
+    func applyPreset(preset: FractalPreset, fit: AspectRatioMode = .ignoreAspectRatio) {
+        do {
+            let kind = try FractalRegistry.importJSON(fromString: preset.json)
+            setFractal(kind: kind, fit: fit)
+        }
+        catch {
+            debugPrint("Error applying preset \(preset.name): \(error)")
+        }
+    }
+    
+    /// Apply preset specified by name by importing JSON definition
+    /// - Parameters:
+    ///   - preset: Name of fractal parameter preset
+    ///   - fit: Aspect ratio mode. Default = .ignoreAspectRatio
+    func applyPreset(name: String, fit: AspectRatioMode = .ignoreAspectRatio) {
+        guard let preset = Self.presets.first(where: { $0.name == name }) else {
+            debugPrint("Preset \(name) not found")
+            return
+        }
+        applyPreset(preset: preset, fit: fit)
+    }
     
     /// Array with parameter presets
-    @MainActor static let presets: [FractalPreset] = [
+    static let presets: [FractalPreset] = [
         FractalPreset(name: "MandelbrotSet", json: """
         {
             "fractalType": "Mandelbrot",
@@ -44,13 +70,13 @@ extension FractalAppData {
                 "name": "MandelbrotSet",
                 "coloring": {
                     "colorizeMode": "iterations",
-                    "steps": 0,
-                    "stripes": 0,
                     "colorizeInside": "simple",
                     "colorizeOutside": "simple",
-                    "ncycle": 1,
-                    "stripeSig": 0.9,
                     "paletteMode": "linear",
+                    "steps": 0,
+                    "stripes": 0,
+                    "stripeSig": 0.9,
+                    "ncycle": 1,
                     "colorTable": {
                         "smooth": {
                             "smoothColorTable": {
@@ -62,6 +88,7 @@ extension FractalAppData {
                                     "red": 0,
                                     "green": 0
                                 },
+                                "fixedSize": false,
                                 "colorPoints": [
                                     {
                                         "alpha": 1,
@@ -112,6 +139,7 @@ extension FractalAppData {
                     "minIterationCount": 200
                 }
             }
+        }
         """),
         FractalPreset(name: "Crown", json: """
         {
@@ -140,6 +168,7 @@ extension FractalAppData {
                                     "blue": 0,
                                     "alpha": 1
                                 },
+                                "fixedSize": false,
                                 "thetas": [
                                     0.11,
                                     0.02,
@@ -150,10 +179,10 @@ extension FractalAppData {
                     }
                 },
                 "dimensions": {
-                    "cornerX": "-0.5503295086752807",
-                    "cornerY": "-0.6259346555912755",
-                    "sizeX": "2.0374013587343143e-07",
-                    "sizeY": "1.1458947946074716e-07",
+                    "cornerX": -0.5503295086752807,
+                    "cornerY": -0.6259346555912755,
+                    "sizeX": 2.0374013587343143e-07,
+                    "sizeY": 1.1458947946074716e-07,
                     "oversampling": 1,
                     "renderPrecision": "double",
                     "precision": {
@@ -183,14 +212,14 @@ extension FractalAppData {
             }
         }
         """),
-        FractalPreset(name: "JuliaSet", json: """
+        FractalPreset(name: "San Marco", json: """
         {
              "fractalType": "Julia",
              "dataType": "JuliaParameters<Double>",
              "precision": "double",
              "parameters": {
-                 "name": "JuliaSet",
-                 "cPointX": 0.0,
+                 "name": "San Marco",
+                 "cPointX": -0.75,
                  "cPointY": 0.0,
                  "coloring": {
                      "colorizeMode": "iterations",
@@ -212,6 +241,7 @@ extension FractalAppData {
                                      "red": 0,
                                      "green": 0
                                  },
+                                 "fixedSize": false,
                                  "colorPoints": [
                                      {
                                          "alpha": 1,
@@ -231,7 +261,7 @@ extension FractalAppData {
                      }
                  },
                  "dimensions": {
-                     "cornerX": -2.25,
+                     "cornerX": -1.5,
                      "cornerY": -1.5,
                      "sizeY": 3,
                      "sizeX": 3,
@@ -263,7 +293,80 @@ extension FractalAppData {
                  }
              }
         }
-    """)
+        """),
+        FractalPreset(name: "Blue Julia", json: """
+        {
+             "fractalType": "Julia",
+             "dataType": "JuliaParameters<Double>",
+             "precision": "double",
+             "parameters": {
+                 "name": "Blue Julia",
+                 "cPointX": -0.7269,
+                 "cPointY": 0.1889,
+                 "coloring": {
+                     "colorizeMode": "iterations",
+                     "steps": 0,
+                     "stripes": 0,
+                     "colorizeInside": "simple",
+                     "colorizeOutside": "blinnPhong",
+                     "ncycle": 1,
+                     "stripeSig": 0,
+                     "paletteMode": "linear",
+                     "colorTable": {
+                         "sine": {
+                             "sineColorTable": {
+                                 "name": "BlueJulia-85_0_15-4096",
+                                 "count": 4096,
+                                 "defColor": {
+                                     "red": 0,
+                                     "green": 0,
+                                     "blue": 0,
+                                     "alpha": 1
+                                 },
+                                 "fixedSize": false,
+                                 "thetas": [
+                                     0.85,
+                                     0.0,
+                                     0.15
+                                 ]
+                             }
+                         }
+                     }
+                 },
+                 "dimensions": {
+                     "cornerX": -1.5,
+                     "cornerY": -1.5,
+                     "sizeY": 3,
+                     "sizeX": 3,
+                     "oversampling": 1,
+                     "renderPrecision": "double",
+                     "precision": {
+                         "isDbl": true,
+                         "bits": 53
+                     }
+                 },
+                 "lightParameters": {
+                     "shininess": 20,
+                     "ambient": 0.2,
+                     "angle": 45,
+                     "gamma": 1,
+                     "diffuse": 0.5,
+                     "elevation": 45,
+                     "specular": 0.5,
+                     "opacity": 0.75
+                 },
+                 "limits": {
+                     "bailout": 10000000000,
+                     "iterations": 2000,
+                     "orbitDelta1": 1e-15,
+                     "orbitDelta3": 1e-10,
+                     "orbitLength": 20,
+                     "orbitDelta2": 1e-11,
+                     "minIterationCount": 200
+                 }
+             }
+        }
+        """)
     ]
     
 }

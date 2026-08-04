@@ -10,7 +10,11 @@ import UniformTypeIdentifiers
 import ParSetKit
 
 
+//
+// File document
+//
 struct FractalJSONDocument: FileDocument {
+    
     static var readableContentTypes: [UTType] { [.json] }
     static var writableContentTypes: [UTType] { [.json] }
 
@@ -31,5 +35,6 @@ struct FractalJSONDocument: FileDocument {
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
         FileWrapper(regularFileWithContents: Data(jsonString.utf8))
     }
+    
 }
 

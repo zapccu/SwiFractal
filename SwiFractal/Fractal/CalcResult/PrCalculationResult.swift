@@ -8,10 +8,17 @@
 //
 // Protocol for calculation results
 //
-protocol CalculationResult : Equatable & BitwiseCopyable & Sendable {
+protocol CalculationResult : Equatable & Sendable {
+    
+    /// Return histogram value of result
+    var histValue: Double { get }
+    
+    /// Return true, if calculation result contains a valid histogram value
+    var hasValidHistValue: Bool { get }
     
     static var zero: Self { get }
     static var defaultValue: Self { get }
     
 }
+
 

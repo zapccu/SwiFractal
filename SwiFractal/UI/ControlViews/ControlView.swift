@@ -6,36 +6,56 @@
 //
 
 import SwiftUI
+import SwiftMPx
 
-struct ControlView<T: FractalData>: View {
-    var fractal: Fractal<T>
-    var graphics: Graphics
+
+struct ControlView: View {
+
+    var controller: FractalController
 
     // Bindings from parent view
-    @Binding var resolution: CGSize
-    @Binding var redraw: Bool
-    @Binding var currentAction: String
-    @Binding var selection: Selection
-    @Binding var isDrawing: Bool
-    @Binding var message: String
-
+    //@Binding var selection: Selection
+    @Binding var info: Info
+    
+    @State var linkResolution: Bool = true
+    @State var method: CalculationMethod = .sequential
 
     var body: some View {
         ScrollView([.vertical]) {
             VStack(alignment: .leading) {
-                
+                //
                 // Buttons
-                ControlButtonView(fractal: fractal, graphics: graphics, selection: selection,
-                                  currentAction: $currentAction, message: $message,
-                                  isDrawing: $isDrawing, redraw: $redraw)
+                //
+                ControlButtonView(controller: controller, method: method, info: $info)
                 
-                // Common controls
-                ControlCommonView(fractal: fractal, resolution: $resolution)
+                //
+                // Resolution
+                //
+                GroupBox(label: Text("Resolution").foregroundStyle(.blue).font(.headline)) {
+                    VStack(alignment: .leading) {
+                        HStack(spacing: 20) {
+                            Stepper("\(controller.resolution.width.formatted()) px", value: Bindable(controller).resolution.width, in: 100...4096, step: 50) { actionInProgress in
+                                if linkResolution { controller.resolution.height = controller.resolution.width }
+                            }
+                            Stepper("\(controller.resolution.height.formatted()) px", value: Bindable(controller).resolution.height, in: 100...4096, step: 50) { actionInProgress in
+                                if linkResolution { controller.resolution.width = controller.resolution.height }
+                            }
+                            Spacer()
+                        }
+                        Toggle(isOn: $linkResolution) { Text("Aspect ratio") }
+                        LabeledPicker(label: "Method", selection: $method)
+                    }
+                }.padding([.top, .leading], 10)
                 
-                // Specific view
-                if let mandelbrot = fractal as? Mandelbrot {
-                    ControlMandelbrotView(fractal: mandelbrot, graphics: graphics)
-                }
+                switch controller.kind {
+                case .mandelbrotDP(let f):
+                    ControlMandelbrotView(controller: controller, fractal: f, dimensions: Bindable(controller).dimensions)
+                case .mandelbrotAP(let f):
+                    ControlMandelbrotView(controller: controller, fractal: f, dimensions: Bindable(controller).dimensions)
+                case .juliaDP(let f):
+                    ControlJuliaView(controller: controller, fractal: f, dimensions: Bindable(controller).dimensions)
+                case .juliaAP(let f):
+                    ControlJuliaView(controller: controller, fractal: f, dimensions: Bindable(controller).dimensions)                }
             }
         }
     }

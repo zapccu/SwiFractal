@@ -24,24 +24,14 @@ class Mandelbrot<RT: PreciseFloatingPoint> : FractalProtocol {
     typealias ResultType = MandelbrotResult
     typealias CT = RT.ComplexType
     
-    nonisolated static var calculationFunctions: [CalculationMethod: CalculationFunction] {
-        [
-            .sequential:    FractalCalculation<DataType>.calculateLineByLine,
-            .parallel:      FractalCalculation<DataType>.calculateParallel,
-            .metalcompute:  FractalCalculation<DataType>.calculateMetal,
-        ]
-    }
-    
     static var defaultDimensions: FractalDimensions<Double> {
         FractalDimensions<Double>(cornerX: -2.25, cornerY: -1.5, sizeX: 3.0, sizeY: 3.0)
     }
+    
+    var fractalType: String { "Mandelbrot" }
 
     // Parameter set with MandelbrotParameters
     var FP: ParSet<MandelbrotParameters<RT>>
-    
-    // Current and zoomed image
-    //var image: CGImage?
-    //var zoomedImage: CGImage?
     
     /// Initialize Mandelbrot set
     /// - Parameter mandelbrotParameters: Mandelbrot parameters
@@ -52,15 +42,10 @@ class Mandelbrot<RT: PreciseFloatingPoint> : FractalProtocol {
         
     /// Mark start of calculation. Prepare calculation parameters
     /// - Parameters:
-    ///   - size: Output graphics size
+    ///   - size: Output graphics size without oversampling
     /// - Returns: true if calculation parameters prepared successfully
     func beginCalculation(resolution: CGSize) -> DynamicParameters<DataType>? {
         return DynamicParameters<DataType>(anypar: FP.current, resolution: resolution)
-    }
-    
-    /// Mark end of calculation
-    /// - Parameter state: Calculation state
-    func endCalculation(_ state: CalculationState) {
     }
     
     /// Zoom into fractal

@@ -10,6 +10,9 @@
 
 import Metal
 
+protocol MetalData {
+    
+}
 
 ///
 /// Class for Initializing and running Metal compute shaders from Swift
@@ -17,7 +20,7 @@ import Metal
 /// Usage:
 ///
 /// 1. Create a MetalCompute object
-/// 2. Add input parameters (arrays or scalar values) by using addBuffer() or addObject() APIs
+/// 2. Add input parameters (arrays or scalar values)
 /// 3. Call compute() method => returns array with results
 ///
 class MetalCompute {
@@ -33,21 +36,21 @@ class MetalCompute {
         case pipelineStateError(String)
         case addBufferError(String)
         case computeElementsError(String)
-        case computeError(String)
     }
     
     // Buffer types (arrays)
     enum BufferType: Int {
-        case computeInputBuffer = 1 // Buffer contains elements for parallel computing
-        case inputBuffer = 2        // Buffer with input data (must not be used for parallel computing)
-        case resultBuffer = 3       // Buffer with compute results. Must have the same size as the compute input buffers
+        case computeInputBuffer = 0
+        case inputBuffer = 1
+        case resultBuffer = 2
     }
     
-    let fncName: String             // Compute kernel function name
-    var bufferIndex: Int = 0        // I/O buffer index
-    var count: Int = -1             // Number of elements in compute argument buffer(s) and result buffer, -1 = no buffer
+    let fncName: String         // Kernel function name
+    var bufferIndex: Int = 0    // I/O buffer index
+    var count: Int = 0          // Number of elements in main compute argument and result buffer
     
-    var resultBuffer: MTLBuffer?    // Result buffer created by compute() method
+    // var inputBuffers: [MTLBuffer] = []
+    var resultBuffer: MTLBuffer?
     
     let device: MTLDevice
     let library: MTLLibrary
@@ -63,9 +66,10 @@ class MetalCompute {
     /// Parameters:
     ///
     /// fncName - Name of kernel compute function
-    /// count - Number of elements in compute input buffer
     ///
     init(_ fncName: String) throws {
+        guard count > 0 else { throw MetalError.computeElementsError("Number of elements must be greater than zero") }
+        
         guard let device = MTLCreateSystemDefaultDevice() else { throw MetalError.deviceError("Cannot create device") }
         self.device = device
         
@@ -101,28 +105,31 @@ class MetalCompute {
     /// Parameters:
     ///
     /// values - Array with initial buffer values
-    /// bufferType - Type of buffer: .computeInputBuffer, .inputBuffer or .resultBuffer
+    /// bufferType - Type of buffer: .inputBuffer or .resultBuffer
     ///
-    /// Throw's exception on error
+    /// Return values:
     ///
-    func addBuffer<T>(_ value: [T], _ bufferType: BufferType = .computeInputBuffer) throws where T: BitwiseCopyable {
-        var bufferSize: Int = 0
-        
+    /// Either true or false
+    ///
+    func addBuffer<T>(_ value: [T], _ bufferType: BufferType = .inputBuffer) throws {
+        // Ensure that input and result buffers have same size
         if bufferType == .computeInputBuffer || bufferType == .resultBuffer {
-            // Buffer used as input for parallel computation or to store computation results
-            if count > 0 && value.count != count { throw MetalError.addBufferError("Element count mismatch") }
-            if count == -1 { count = value.count }
-            bufferSize = MemoryLayout<T>.size * count
+            if count == 0 {
+                count = value.count
+            }
+            else if count != value.count {
+                throw MetalError.addBufferError("Element count mismatch")
+            }
         }
-        else if bufferType == .inputBuffer {
-            // Input data buffer
-            bufferSize = MemoryLayout<T>.size * value.count
-        }
-        else {
-            throw MetalError.addBufferError("Invalid buffer type")
-        }
+        
+        let bufferSize = MemoryLayout<T>.stride * value.count
 
-        if let buffer = device.makeBuffer(bytes: value, length: bufferSize, options: .storageModeShared) {
+        let buffer = value.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) -> MTLBuffer? in
+            guard let baseAddress = ptr.baseAddress else { return nil }
+            return device.makeBuffer(bytes: baseAddress, length: bufferSize, options: .storageModeShared)
+        }
+        
+        if let buffer = buffer {
             computeEncoder.setBuffer(buffer, offset: 0, index: bufferIndex)
             bufferIndex += 1
             if bufferType == .resultBuffer {
@@ -135,7 +142,24 @@ class MetalCompute {
     }
     
     ///
-    /// Add a value or an object to compute encoder
+    /// Create a buffer with specified number of elements and add buffer to compute encoder
+    ///
+    /// Parameters:
+    ///
+    /// count - Number of elements in Buffer
+    /// initValue - Initial value of type T for buffer
+    /// bufferType - Type of buffer: .inputBuffer or .resultBuffer
+    ///
+    /// Return values:
+    ///
+    /// Either true or false
+    ///
+    func addBuffer<T>(_ count: Int, _ initValue: T, _ bufferType: BufferType = .inputBuffer) throws {
+        try addBuffer(Array(repeating: initValue, count: count), bufferType)
+    }
+    
+    ///
+    /// Add a value to compute encoder
     ///
     /// Parameters:
     ///
@@ -143,12 +167,58 @@ class MetalCompute {
     ///
     /// Either true or false
     ///
-    func addObject<T>(_ value: T) where T: BitwiseCopyable {
+    func addValue(_ value: Int64) {
         var v = value
-        computeEncoder.setBytes(&v, length: MemoryLayout<T>.stride, index: bufferIndex)
+        computeEncoder.setBytes(&v, length: MemoryLayout<Int64>.size, index: bufferIndex)
         bufferIndex += 1
     }
-       
+
+    func addValue(_ value: Int32) {
+        var v = value
+        computeEncoder.setBytes(&v, length: MemoryLayout<Int32>.size, index: bufferIndex)
+        bufferIndex += 1
+    }
+    
+    func addValue(_ value: Float) {
+        var v = value
+        computeEncoder.setBytes(&v, length: MemoryLayout<Float>.size, index: bufferIndex)
+        bufferIndex += 1
+    }
+
+    func addValue(_ value: Float2) {
+        var v = value
+        computeEncoder.setBytes(&v, length: MemoryLayout<Float2>.size, index: bufferIndex)
+        bufferIndex += 1
+    }
+    
+    func addValue(_ value: Double) {
+        var v = Float2(value)
+        computeEncoder.setBytes(&v, length: MemoryLayout<Float2>.size, index: bufferIndex)
+        bufferIndex += 1
+    }
+    
+    func addValue(_ value: Complex2) {
+        var v = value
+        computeEncoder.setBytes(&v, length: MemoryLayout<Complex2>.size, index: bufferIndex)
+        bufferIndex += 1
+    }
+    
+    func addValue(_ value: ComplexDouble) {
+        var v = Complex2(value)
+        computeEncoder.setBytes(&v, length: MemoryLayout<Complex2>.size, index: bufferIndex)
+        bufferIndex += 1
+    }
+    
+    func addValue<T: MetalData>(_ value: T) {
+        var v = value
+        
+        withUnsafePointer(to: &v) { ptr in
+            computeEncoder.setBytes(ptr, length: MemoryLayout<T>.size, index: bufferIndex)
+        }
+        
+        bufferIndex += 1
+    }
+    
     ///
     /// Call kernel function
     ///
@@ -158,27 +228,11 @@ class MetalCompute {
     ///
     /// Return values:
     ///
-    /// Unsafe buffer pointer of type T pointing to results
-    /// Throws exception on error
+    /// Unsafe buffer pointer of type T pointing to results or nil on error
     ///
-    func compute<T>(_ initValue: T, _ resCount: Int = -1) throws -> UnsafeBufferPointer<T> where T: BitwiseCopyable {
+    func compute<T>(_ initValue: T) -> UnsafeBufferPointer<T>? {
         do {
-            guard resCount > 0 || count > 0 else {
-                throw MetalError.computeElementsError("Element count = 0")
-            }
-            
-            if count == -1 {
-                if resCount == -1 {
-                    throw MetalError.computeElementsError("Element count for results must be greater than 0")
-                }
-                count = resCount
-            }
-            else if (count > 0 && resCount != -1 && resCount != count) {
-                throw MetalError.computeElementsError("Element count mismatch")
-            }
-            
-            // Add the result buffer
-            try addBuffer(Array(repeating: initValue, count: count), .resultBuffer)
+            try addBuffer(count, initValue, .resultBuffer)
             
             // Calculate number of worker threads
             let gridSize = MTLSizeMake(count, 1, 1)
@@ -196,8 +250,7 @@ class MetalCompute {
             let converted = resultBuffer!.contents().bindMemory(to: T.self, capacity: count)
             return UnsafeBufferPointer(start: converted, count: count)
         } catch {
-            computeEncoder.endEncoding()
-            throw error
+            return nil
         }
     }
 }

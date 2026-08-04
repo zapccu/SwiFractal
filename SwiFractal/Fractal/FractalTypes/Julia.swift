@@ -24,19 +24,12 @@ class Julia<RT: PreciseFloatingPoint> : FractalProtocol {
     typealias ResultType = MandelbrotResult
     typealias CT = RT.ComplexType
     
-    /// Dictionary with calculation methods and functions supported by Julia
-    nonisolated static var calculationFunctions: [CalculationMethod: CalculationFunction] {
-        [
-            .sequential:    FractalCalculation<DataType>.calculateLineByLine,
-            .parallel:      FractalCalculation<DataType>.calculateParallel,
-            .metalcompute:  FractalCalculation<DataType>.calculateMetal,
-        ]
-    }
-    
     /// Default dimensions of Julia set
     static var defaultDimensions: FractalDimensions<Double> {
         FractalDimensions<Double>(cornerX: -1.5, cornerY: -1.5, sizeX: 3.0, sizeY: 3.0)
     }
+    
+    var fractalType: String { "Julia" }
 
     /// Parameter set with Julia set parameters
     var FP: ParSet<JuliaParameters<RT>>
@@ -61,11 +54,6 @@ class Julia<RT: PreciseFloatingPoint> : FractalProtocol {
     func beginCalculation(resolution: CGSize) -> DynamicParameters<DataType>? {
         return DynamicParameters(anypar: FP.current, resolution: resolution)
         //return DynamicParameters<RT>(parameters: FP.current.mandelbrotParameters, resolution: resolution)
-    }
-    
-    /// Mark end of calculation
-    /// - Parameter state: Calculation state
-    func endCalculation(_ state: CalculationState) {
     }
     
     /// Zoom into fractal

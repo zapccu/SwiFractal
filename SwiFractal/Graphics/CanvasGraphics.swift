@@ -13,41 +13,32 @@ import SwiftUI
 //  Class for drawing into Swift UI graphics context
 // ------------------------------------------------------------------
 
-class CanvasGraphics : Graphics {
+class CanvasGraphics {
     var context: GraphicsContext
+    var size: CGSize
     
-    init(_ context: GraphicsContext, _ size: CGSize) {
+    var width: Int { Int(size.width) }
+    var height: Int { Int(size.height) }
+    
+    init(context: GraphicsContext, size: CGSize) {
         self.context = context
-        super.init(size)
+        self.size = size
     }
     
     /// Set blending mode and return previous blending mode
     func setBlendMode(_ blendMode: GraphicsContext.BlendMode) -> GraphicsContext.BlendMode {
         let currentBlendMode = context.blendMode
-        context.blendMode = blendMode
+        self.context.blendMode = blendMode
         return currentBlendMode
     }
     
     /// Draw a line withoud modifying drawing position
-    override func drawLine(_ from: CGPoint, _ to: CGPoint, color: RGBAColor? = nil) -> CGPoint {
-        let c = color == nil ? self.color.shadingColor : GraphicsContext.Shading.color(color!.color)
+    func drawLine(from: IPoint, to: IPoint, color: RGBAColor) {
+        let c = GraphicsContext.Shading.color(color.color)
         self.context.stroke(
             Path() { path in
-                path.move(to: from)
-                path.addLine(to: to)
-            },
-            with: c,
-            lineWidth: 1
-        )
-        return to
-    }
-    
-    /// Draw a rectangle
-    override func drawRect(_ rect: CGRect, color: RGBAColor? = nil) {
-        let c = color == nil ? self.color.shadingColor : GraphicsContext.Shading.color(color!.color)
-        self.context.stroke(
-            Path() { path in
-                path.addRect(rect)
+                path.move(to: from.cgPoint)
+                path.addLine(to: to.cgPoint)
             },
             with: c,
             lineWidth: 1
@@ -55,11 +46,23 @@ class CanvasGraphics : Graphics {
     }
     
     /// Draw a rectangle
-    override func drawRect(_ x1: Int, _ y1: Int, _ x2: Int, _ y2: Int, color: RGBAColor? = nil) {
-        let c = color == nil ? self.color.shadingColor : GraphicsContext.Shading.color(color!.color)
+    func drawRect(rect: IRect, color: RGBAColor) {
+        let c = GraphicsContext.Shading.color(color.color)
         self.context.stroke(
             Path() { path in
-                path.addRect(CGRect(x: x1, y: y1, width: x2 - x1, height: y2 - y1))
+                path.addRect(rect.cgRect)
+            },
+            with: c,
+            lineWidth: 1
+        )
+    }
+    
+    /// Draw a rectangle
+    func drawRect(from: IPoint, to: IPoint, color: RGBAColor) {
+        let c = GraphicsContext.Shading.color(color.color)
+        self.context.stroke(
+            Path() { path in
+                path.addRect(CGRect(x: from.x, y: from.y, width: to.x-from.x, height: to.y-from.y))
             },
             with: c,
             lineWidth: 1
@@ -67,20 +70,28 @@ class CanvasGraphics : Graphics {
     }
     
     /// Draw a filled rectangle
-    override func drawRectFill(_ x1: Int, _ y1: Int, _ x2: Int, _ y2: Int, color: RGBAColor? = nil) {
-        let c = color == nil ? self.color.shadingColor : GraphicsContext.Shading.color(color!.color)
+    func drawRectFill(from: IPoint, to: IPoint, color: RGBAColor) {
+        let c = GraphicsContext.Shading.color(color.color)
         self.context.fill(
             Path() { path in
-                path.addRect(CGRect(x: x1, y: y1, width: x2 - x1, height: y2 - y1))
+                path.addRect(CGRect(x: from.x, y: from.y, width: to.x-from.x, height: to.y-from.y))
             },
             with: c
         )
     }
     
-    /// Create CGImage from context
-    override func updateCGImage() {
-        context.withCGContext { context in
-            cgImage = context.makeImage()
+    /// Scale image to destination frame size and draw image into a graphics context
+    func drawImage(cgImage: CGImage?) {
+        if let suiImage = cgImage?.suiImage {
+            var imageContext = self.context
+            
+            imageContext.translateBy(x: 0, y: size.height)
+            imageContext.scaleBy(x: 1.0, y: -1.0)
+            imageContext.draw(suiImage, in: CGRect(origin: .zero, size: size))
+        }
+        else {
+            debugPrint("No cgImage / cannot convert cgImage to suiImage")
         }
     }
+
 }

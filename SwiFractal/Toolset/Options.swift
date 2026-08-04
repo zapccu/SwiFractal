@@ -31,7 +31,7 @@ import Foundation
 /// Options is conform to Codable. An option is converted to a JSON String containing the option name.
 ///
 
-struct Options<Element>: RawRepresentable, Codable
+struct Options<Element>: RawRepresentable, Codable, Equatable
 where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int {
     
     // ----------------------------------------------------------------------

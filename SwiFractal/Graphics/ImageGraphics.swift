@@ -8,184 +8,209 @@
 import SwiftUI
 import Accelerate
 
-// ------------------------------------------------------------------
-//  Class ImageGraphics
 //
-//  Class for drawing into vImage buffer
-// ------------------------------------------------------------------
-
+//  Draw into vImage buffer
+//
 class ImageGraphics : Graphics {
-    
-    var rowBytes: Int = 0               // Bytes per row
-    var image: VImage? = nil            // The vImage
-    
-    /// Initialize ImageGraphics object
-    override init(_ size: CGSize, oversampling: Int = 1) {
-        super.init(size, oversampling: oversampling)
         
-        // Create buffer
-        image = vImage.PixelBuffer<vImage.Interleaved8x4>(width: width, height: height)
-        rowBytes = image!.rowStride * image!.channelCount
+    /// Size considering oversampling factor
+    var size: ISize
+    
+    /// Frame size without oversampling
+    var frameSize: ISize
         
-        // Initialize buffer with black color
-        image!.withUnsafeMutableBufferPointer { imagePtr in
-            initBuffer(imagePtr)
+    /// Current drawing position
+    var p: IPoint = .zero
+
+    /// Drawing color
+    var color: RGBAColor = .white
+    
+    var bytesPerLine: Int = 0               // Bytes per row
+    var indexSize: Int                      // Index distance per point
+    
+    // The vImage
+    var image: vImage.PixelBuffer<vImage.Interleaved8x4>
+    
+    // Pointer for direct read/write. Initialized by beginDraw()
+    var ptr: UnsafeMutableRawPointer?
+    
+    /// Oversampling factor
+    var oversampling: Bool { frameSize != size }
+
+    /// Create CGImage from image buffer. nil on error
+    var cgImage: CGImage? {
+
+        // Format of CGImage
+        let cgImageFormat = vImage_CGImageFormat(
+            bitsPerComponent: 8,
+            bitsPerPixel: 32,
+            colorSpace: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.first.rawValue),
+            renderingIntent: .defaultIntent
+        )!
+        
+        // Image with oversampling must be scaled down to frame size
+        if oversampling {
+            // Create destination buffer
+            let destination = vImage.PixelBuffer<vImage.Interleaved8x4>(
+                width: frameSize.width,
+                height: frameSize.height
+            )
+
+            do {
+                try image.withUnsafePointerToVImageBuffer { src in
+                    try destination.withUnsafePointerToVImageBuffer { dst in
+                        // High quality resampling
+                        let error = vImageScale_ARGB8888(src, dst, nil,
+                            vImage_Flags(kvImageHighQualityResampling))
+                        guard error == kvImageNoError else {
+                            throw NSError(domain: "vImage", code: Int(error))
+                        }
+                    }
+                }
+            }
+            catch {
+                return nil
+            }
+
+            return destination.makeCGImage(cgImageFormat: cgImageFormat)
+        }
+        else {
+            return image.makeCGImage(cgImageFormat: cgImageFormat)
         }
     }
     
+    /// Initialize ImageGraphics object
+    /// - Parameters:
+    ///   - frameSize: Final image size without oversampling
+    ///   - size: Image size considering oversampling factor
+    init(frameSize: CGSize, size: ISize) {
+        self.frameSize = ISize(size: frameSize)
+        self.size      = size
+        
+        // Create image buffer
+        self.image = vImage.PixelBuffer<vImage.Interleaved8x4>(width: self.size.width, height: self.size.height)
+        
+        // Calculate number of bytes per line
+        self.bytesPerLine = image.rowStride * image.channelCount
+        self.indexSize = image.channelCount
+        
+        // Initialize buffer with black color
+        clear(color: .black)
+    }
+    
     /// Initialize ImageGraphics object with pixel channel buffer
-    init(_ pixels: [Pixel_8], _ size: CGSize) {
+    /*
+    init(pixels: [Pixel_8], frameSize: CGSize, oversampling: Int) {
         guard pixels.count == Int(size.width) * Int(size.height) else {
             fatalError("Invalid pixel count in ImageGraphics.init(). Expected \(Int(size.width) * Int(size.height)), got \(pixels.count).")
         }
 
-        super.init(size)
+        self.oversampling = max(min(oversampling, 3), 1)
+        self.frameSize    = ISize(size: frameSize)
+        self.size         = ISize(width: Int(size.width * Double(self.oversampling)), height: Int(size.height * Double(self.oversampling)))
 
         // Create buffer
         image = vImage.PixelBuffer<vImage.Interleaved8x4>(pixelValues: pixels, size: vImage.Size(width: Int(size.width), height: Int(size.height)))
-        rowBytes = image!.rowStride * image!.channelCount
+        bytesPerLine = image!.rowStride * image!.channelCount
     }
-   
-    /// Calculate buffer index from coordinates
-    func getBufferIndex(_ x: Int, _ y: Int) -> Int {
-        return y * rowBytes + x * image!.channelCount
-    }
+     */
     
-    /// Calculate buffer index from point
-    func getBufferIndex(_ point: CGPoint) -> Int {
-        return Int(point.y) * rowBytes + Int(point.x) * image!.channelCount
-    }
-    
-    /// Initialize graphics buffer with color
-    func initBuffer(_ imagePtr: ImagePtr, _ color: RGBAColor = .black) {
-        for y in 0..<height {
-            var i = y * rowBytes
-            for _ in 0..<width {
-                imagePtr[i]     = color.redi
-                imagePtr[i + 1] = color.greeni
-                imagePtr[i + 2] = color.bluei
-                imagePtr[i + 3] = color.alphai
-                i += image!.byteCountPerPixel
-            }
+    func beginDraw(drawAction: () -> CGImage?) -> CGImage? {
+        image.withUnsafeMutableBufferPointer { imagePtr in
+            self.ptr = UnsafeMutableRawPointer(imagePtr.baseAddress!)
         }
+        let cgImage = drawAction()
+        self.ptr = nil
+        return cgImage
     }
 
     /// Clear graphics
-    override func clear(color: RGBAColor? = nil) {
-        // guard isDrawing && imagePtr != nil else { return }
-
-        let c = color ?? self.color
-        image?.withUnsafePointerToVImageBuffer { iptr in
+    func clear(color: RGBAColor? = nil) {
+        let c: RGBAColor = color ?? .black
+        image.withUnsafePointerToVImageBuffer { iptr in
             _ = vImageBufferFill_ARGB8888(iptr, c.pixel, vImage_Flags(kvImageNoFlags))
         }
     }
     
+    /// Move position to specified point
+    func move(to: IPoint) {
+        self.p = to
+    }
+    
     /// Set a pixel
-    override func setPixel(_ x: Int, _ y: Int, color: RGBAColor? = nil) {
-        guard isDrawing else { return }
-
+    func setPixel(_ x: Int, _ y: Int, color: RGBAColor? = nil) {
+        guard let ptr = ptr else { return }
+        
         let c = color ?? self.color
         let index = getBufferIndex(x, y)
-
-        image!.withUnsafeMutableBufferPointer { imagePtr in
-            imagePtr[index]     = c.redi
-            imagePtr[index + 1] = c.greeni
-            imagePtr[index + 2] = c.bluei
-            imagePtr[index + 3] = c.alphai
-        }
+        guard index >= 0 else { return }
+        
+        ptr.storeBytes(of: c.argb8888, toByteOffset: index, as: UInt32.self)
     }
     
     /// Draw a horizontal line without updating drawing position
-    override func drawHLine(_ from: CGPoint, _ to: Int, color: RGBAColor? = nil) -> CGPoint {
-        guard isDrawing else { return from }
-
+    func drawHLine(from: IPoint, to: Int, color: RGBAColor? = nil) {
+        guard let ptr = ptr else { return }
+        
         let c = color ?? self.color
         let index1 = getBufferIndex(from)
-        let index2 = getBufferIndex(to, Int(from.y))
-       
-        image!.withUnsafeMutableBufferPointer { imagePtr in
-            for i in stride(from: index1, to: index2, by: image!.channelCount) {
+        guard index1 >= 0 else { return }
+        //let index2 = getBufferIndex(min(to, width), from.y, clip: false)
+        let count: Int = min(to, width) - from.x
+
+        var pixel = c.argb8888
+        memset_pattern4(ptr + index1, &pixel, count * 4)
+            /*
+            for i in stride(from: index1, to: index2, by: indexSize) {
+                
+                
                 imagePtr[i]     = c.redi
                 imagePtr[i + 1] = c.greeni
                 imagePtr[i + 2] = c.bluei
                 imagePtr[i + 3] = c.alphai
+                
             }
-        }
-        
-        return CGPoint(x: to, y: Int(from.y))
+             */
     }
     
     /// Draw a vertical line without updating drawing position
-    override func drawVLine(_ from: CGPoint, _ to: Int, color: RGBAColor? = nil) -> CGPoint {
-        guard isDrawing else { return from }
-
+    func drawVLine(from: IPoint, to: Int, color: RGBAColor? = nil) {
         let c = color ?? self.color
         let index1 = getBufferIndex(from)
-        let index2 = getBufferIndex(Int(from.x), to)
+        guard index1 >= 0 else { return }
+        let index2 = getBufferIndex(from.x, min(to, height), clip: false)
 
-        image!.withUnsafeMutableBufferPointer { imagePtr in
-            for i in stride(from: index1, to: index2, by: rowBytes) {
+        image.withUnsafeMutableBufferPointer { imagePtr in
+            for i in stride(from: index1, to: index2, by: bytesPerLine) {
                 imagePtr[i]     = c.redi
                 imagePtr[i + 1] = c.greeni
                 imagePtr[i + 2] = c.bluei
                 imagePtr[i + 3] = c.alphai
             }
         }
-        
-        return CGPoint(x: Int(from.x), y: to)
     }
 
     /// Draw a filled rectangle
-    override func drawRectFill(_ x1: Int, _ y1: Int, _ x2: Int, _ y2: Int, color: RGBAColor? = nil) {
-        guard isDrawing else { return }
-
+    func drawRectFill(from: IPoint, to: IPoint, color: RGBAColor? = nil) {
         let c = color ?? self.color
-        var index1 = getBufferIndex(x1, y)
-        let index2 = getBufferIndex(x2, y)
+        var index1 = getBufferIndex(from)
+        guard index1 >= 0 else { return }
+        var index2 = getBufferIndex(min(to.x, width), min(to.y+1, height), clip: false)
 
-        image!.withUnsafeMutableBufferPointer { imagePtr in
-            for _ in y1..<y2 {
-                for i in stride(from: index1, to: index2, by: image!.channelCount) {
+        image.withUnsafeMutableBufferPointer { imagePtr in
+            for _ in from.y...to.y {
+                for i in stride(from: index1, to: index2, by: indexSize) {
+                    if i >= imagePtr.count { break }
                     imagePtr[i]     = c.redi
                     imagePtr[i + 1] = c.greeni
                     imagePtr[i + 2] = c.bluei
                     imagePtr[i + 3] = c.alphai
                 }
-                index1 += rowBytes
+                index1 += bytesPerLine
+                index2 += bytesPerLine
             }
         }
-    }
-
-    /// Initialize graphics from RGBA buffer
-    override func initFromColorArray(_ colors: UnsafeBufferPointer<RGBA>) {
-        guard isDrawing else { return }
-        
-        var imageIndex: Int = 0
-        var arrayIndex: Int = 0
-      
-        image!.withUnsafeMutableBufferPointer { imagePtr in
-            for _ in 0..<height {
-                var lineIndex = imageIndex
-                
-                for _ in 0..<width {
-                    imagePtr[lineIndex]     = colors[arrayIndex].redi
-                    imagePtr[lineIndex + 1] = colors[arrayIndex].greeni
-                    imagePtr[lineIndex + 2] = colors[arrayIndex].bluei
-                    imagePtr[lineIndex + 3] = colors[arrayIndex].alphai
-                    lineIndex += image!.channelCount
-                    arrayIndex += 1
-                }
-                
-                imageIndex += rowBytes
-            }
-        }
-    }
-    
-    /// Convert image buffer to CGImage
-    override func updateCGImage() {
-        let format = vImage_CGImageFormat(bitsPerComponent: 8, bitsPerPixel: 32, colorSpace: CGColorSpaceCreateDeviceRGB(),
-                                          bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue))!
-        cgImage = image?.makeCGImage(cgImageFormat: format)
     }
     
 }

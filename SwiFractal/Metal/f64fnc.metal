@@ -1,5 +1,5 @@
 //
-//  f64fnc.h
+//  f64fnc.metal
 //
 //  Functions for 64 bit floating point GPU/Metal calculations
 //
@@ -9,7 +9,7 @@
 //
 //    A 64 bit float value is represented by float2 data type.
 //    The corresponding Swift data types are SIMD2<Float32> and Float2.
-//      .x = Hight value part
+//      .x = High value part
 //      .y = Low value part
 //
 //  64 bit complex float:
@@ -19,6 +19,13 @@
 //      .xy = float2 with real part high, low
 //      .zw = float2 with imaginary part high, low
 //
+//  References:
+//
+//    "Extended-Precision Floating-Point Numbers for GPU Computation"
+//    Andrew Thall, Alma College
+//
+//    CORDIC algorithms: https://people.sc.fsu.edu/~jburkardt/c_src/cordic/cordic.html
+//
 
 #include <metal_stdlib>
 
@@ -26,9 +33,44 @@
 
 using namespace metal;
 
+
 // ----------------------------------------------------------------------------
 //  Helper functions
 // ----------------------------------------------------------------------------
+
+// Convert float32 to float2
+float2 flt2(float a) {
+    return float2(a, 0.0f);
+}
+
+// Convert float32 to float4
+float4 flt4(float a) {
+    return float4(a, 0.0f, 0.0f, 0.0f);
+}
+
+// Convert float2 to float4
+float4 flt4(float2 a) {
+    return float4(a.x, a.y, 0.0f, 0.0f);
+}
+
+// Fast normalization (single pass)
+// Ensure, that |a.y| <= 0.5 * f64_epsilon of a.x
+float2 quick_renorm(float2 a) {
+    float s = a.x + a.y;
+    float e = a.y - (s - a.x);
+    return float2(s, e);
+}
+
+// Full normalization (two pass)
+float2 full_renorm(float2 a) {
+    // 1st pass
+    float s = a.x + a.y;
+    float e = a.y - (s - a.x);
+    // 2nd pass
+    float ss = s + e;
+    float ee = e - (ss - s);
+    return float2(ss, ee);
+}
 
 // Add hi and lo
 float2 sumq(float a, float b) {
@@ -52,7 +94,6 @@ float4 sump(float2 a_ri, float2 b_ri) {
 
 // Split two 32 bit floats into four 16 bit floats
 float4 split4(float2 c) {
-    // const float split = 4097;
     float2 t = c * 4097.0;
     float2 c_hi = t - (t - c);
     float2 c_lo = c - c_hi;
@@ -67,8 +108,13 @@ float2 prod(float a, float b) {
 }
 
 // ----------------------------------------------------------------------------
-//  Real basic operations
+//  Real operations
 // ----------------------------------------------------------------------------
+
+// Negate
+float2 neg_f64(float2 a) {
+    return float2(-a.x, -a.y);
+}
 
 // Add 2 64 bit floating point values
 float2 add_f64(float2 a, float2 b) {
@@ -77,12 +123,35 @@ float2 add_f64(float2 a, float2 b) {
     st.xy = sumq(st.xy);
     st.y += st.w;
     return sumq(st.xy);
-    //return st.xy;
+}
+
+// Add float to 64 bit floating point
+float2 add_ds(float2 a, float b) {
+    float2 s = sumq(a.x, b);
+    s.y += a.y;
+    return sumq(s);
+}
+
+// Add float to 64 bit floating point
+float2 add_sd(float a, float2 b) {
+    float2 s = sumq(b.x, a);
+    s.y += b.y;
+    return sumq(s);
 }
 
 // Subtract 2 64 bit floating point values
 float2 sub_f64(float2 a, float2 b) {
     return add_f64(a, -b);
+}
+
+// Subtract float from f64
+float2 sub_ds(float2 a, float b) {
+    return add_ds(a, -b);
+}
+
+// Subtract f64 from float
+float2 sub_sd(float a, float2 b) {
+    return -add_sd(a, b);
 }
 
 // Multiplication: f64 * f64
@@ -92,56 +161,43 @@ float2 mul_f64(float2 a, float2 b) {
     return sumq(p);
 }
 
-// Square of f64
-float2 sqr_f64(float2 a) {
-    float2 p = prod(a.x, a.x);
-    float f = a.x * a.y;
-    p.y += f + f;
-    return sumq(p);
-}
-
-// f64 square of float
-float2 sqr_f64(float a) {
-    //float2 p = prod(a, a);
-    //return sumq(p);
-    return sumq(prod(a, a));
-}
-
 // Multiplication: f64 * f32
-float2 mulds(float2 a, float b) {
+float2 mul_ds(float2 a, float b) {
     float2 p = prod(a.x, b);
     p.y += a.y * b;
     return sumq(p);
 }
 
-float2 mulss(float a, float b) {
-    float2 p = prod(a, b);
+// Square of f64
+float2 sqr_f64(float2 a) {
+    float2 p = prod(a.x, a.x);
+    p.y += 2.0f * a.x * a.y;
     return sumq(p);
 }
 
-float2 divds(float2 b, float a) {
-    float xn = 1.0f / a;
-    float yn = b.x * xn;
-    float2 ayn = mulss(a, yn);
-    float diff = sub_f64(b, ayn).x;
-    float2 p = prod(xn, diff);
-    return add_f64(float2(yn, 0.0), p);
+// f64 square of float
+float2 sqr_f64(float a) {
+    return sumq(prod(a, a));
 }
 
 // Division: f64 / f64
-float2 div_f64(float2 b, float2 a) {
-    float xn = 1.0f / a.x;
-    float yn = b.x * xn;
-    float2 ayn = mulds(a, yn);
-    float diff = sub_f64(b, ayn).x;
+float2 div_f64(float2 a, float2 b) {
+    float xn = 1.0f / b.x;
+    float yn = a.x * xn;
+    float2 byn = mul_ds(b, yn);
+    float diff = sub_f64(a, byn).x;
     float2 p = prod(xn, diff);
-    return add_f64(float2(yn, 0.0), p);
+    return add_f64(flt2(yn), p);
 }
 
-// Floating point modulo division: f64 % f64
-float2 mod_f64(float2 a, float2 b) {
-    float di = float(int(div_f64(a, b).x));
-    return sub_f64(a, mulds(b, di));
+// Rounding
+float2 round_f64(float2 a) {
+    float2 h = flt2(0.5f);
+    if (gtZero(a)) {
+        return floor_f64(add_f64(a, h));
+    } else {
+        return neg_f64(floor_f64(add_f64(neg_f64(a), h)));
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -149,8 +205,21 @@ float2 mod_f64(float2 a, float2 b) {
 // ----------------------------------------------------------------------------
 
 // Check for zero
-bool isZero(float2 a) {
+bool isZero_f64(float2 a) {
     return all(a == 0.0);
+}
+
+// Return sign of value: -1: <0, 0: =0, 1: >0
+float sign_f64(float2 a) {
+    if (all(a == 0.0)) {
+        return 0;
+    }
+    else if (a.x < 0.0 || (a.x == 0.0 && a.y < 0.0)) {
+        return -1;
+    }
+    else {
+        return 1;
+    }
 }
 
 // Equal
@@ -168,9 +237,19 @@ bool lt(float2 a, float2 b) {
     return (a.x < b.x || (a.x == b.x && a.y < b.y));
 }
 
+// Less than zero
+bool ltZero(float2 a) {
+    return (a.x < 0.0 || (a.x == 0.0 && a.y < 0.0));
+}
+
 // Greater than
 bool gt(float2 a, float2 b) {
     return (a.x > b.x || (a.x == b.x && a.y > b.y));
+}
+
+// Greater than zero
+bool gtZero(float2 a) {
+    return (a.x > 0.0 || (a.x == 0.0 && a.y > 0.0));
 }
 
 // Less or equal
@@ -183,7 +262,6 @@ bool ge(float2 a, float2 b) {
     return gt(a, b) || eq(a, b);
 }
 
-
 // ----------------------------------------------------------------------------
 //  Square root, exponential, logarithm and trigonomical functions
 // ----------------------------------------------------------------------------
@@ -193,183 +271,194 @@ float2 sqrt_f64(float2 a) {
     float xn = rsqrt(a.x);
     float yn = a.x * xn;
     float diff = (sub_f64(a, sqr_f64(yn))).x;
-    float2 p = prod(xn, diff) / 2.0f;
-    return add_f64(float2(yn, 0.0f), p);
+    float2 p = prod(xn, diff) * 0.5f;
+    return add_f64(flt2(yn), p);
 }
 
 // Exponential
+/*
 float2 exp_f64(float2 a) {
-    float2 s = add_f64(a, float2(1.0f, 0.0f));
-    float2 t = a;
-    float2 d = a;
-    int m = 2;
-    
-    while (abs(t.x) > 1e-20) {
-        d = div_f64(a, float2(m, 0.0f));
-        t = mul_f64(t, d);
-        s = add_f64(s, t);
-        m++;
-    }
+    return exp_iterate(a);
+}
+ */
 
-    return s;
+
+constant float2 F2_LN2_HI = float2(0.693147182f, 0.0f);
+constant float2 F2_LN2_LO = float2(-1.90465429995776020e-9f, 0.0f);
+
+float2 exp_f64(float2 x) {
+    if (gt(x, F2_EXPMAX)) return flt2(INFINITY);
+    if (lt(x, F2_EXPMIN)) return F2_ZERO;
+
+    float2 fm = round_f64(div_f64(x, F2_LOG2));
+    int m = (int)fm.x;
+
+    // Hochpräzise Argumentreduktion in zwei Schritten
+    float2 r = sub_f64(x, mul_f64(fm, F2_LN2_HI));
+    r = sub_f64(r,         mul_f64(fm, F2_LN2_LO));
+
+    float2 er = exp_core(r);
+    
+    float scale = ldexp(1.0f, m);
+    er.x *= scale;
+    er.y *= scale;
+    
+    return er;
+}
+
+
+float2 exp_core(float2 r) {
+    float2 res = float2(7.6471636e-13f, 1.22007105e-20f);                   // 1/15!
+    res = add_f64(float2(1.1470745e-11f, 2.3722077e-19f), mul_f64(r, res)); // 1/14!
+    res = add_f64(float2(1.6059044e-10, -5.3525265e-18), mul_f64(r, res));  // 1/13!
+    res = add_f64(float2(2.0876756e-09, 1.108284e-16),  mul_f64(r, res));   // 1/12!
+    res = add_f64(float2(2.5052108e-08, 4.417623e-16),  mul_f64(r, res));
+    res = add_f64(float2(2.755732e-07, -7.575112e-15),  mul_f64(r, res));
+    res = add_f64(float2(2.7557319e-06, 3.7935712e-14),  mul_f64(r, res));
+    res = add_f64(float2(2.4801588e-05, -3.406996e-13),  mul_f64(r, res));
+    res = add_f64(float2(0.0001984127, -2.7255969e-12),  mul_f64(r, res));
+    res = add_f64(float2(0.0013888889, -3.3631094e-11),  mul_f64(r, res));
+    res = add_f64(float2(0.008333334, -4.346172e-10),  mul_f64(r, res));
+    res = add_f64(float2(0.041666668, -1.2417635e-09),  mul_f64(r, res));
+    res = add_f64(float2(0.16666667, -4.967054e-09),  mul_f64(r, res));
+    res = add_f64(float2(0.5, 0.0),  mul_f64(r, res));
+    res = add_f64(F2_ONE, mul_f64(r, res));  // 1 + r*(...)
+    res = add_f64(F2_ONE, mul_f64(r, res));  // exp(r) = 1 + r*(1 + ...)
+    
+    return res;
 }
 
 // Natural logarithm
 float2 log_f64(float2 a) {
-    float2 xi = 0.0f;
-    
-    if (eq(a, float2(1.0f, 0.0f))) return xi;
-    if (le(a, float2(0.0f, 0.0f))) return NAN;
+    if (eq(a, F2_ONE)) return F2_ZERO;
+    if (le(a, F2_ZERO)) return flt2(NAN);
 
-    xi.x = log(a.x);
-    return add_f64(add_f64(xi, mul_f64(exp_f64(-xi), a)), float2(-1.0f, 0.0f));
+    // Extract exponent from float32
+    uint bits = as_type<uint>(a.x);
+    int e = (int)((bits >> 23) & 0xFF) - 127;
+
+    // m = a * 2^-e, exact because 2^-e is a power of 2
+    float2 m = mul_f64(a, flt2(ldexp(1.0f, -e)));
+
+    // Ensure that m in [1, 2)
+    if (lt(m, F2_ONE)) { m = mul_f64(m, flt2(2.0f)); e--; }
+    if (ge(m, flt2(2.0f))) { m = mul_f64(m, flt2(0.5f)); e++; }
+
+    float2 ln_m = log_remez(m);
+    return add_f64(ln_m, mul_f64(flt2((float)e), F2_LOG2));
+}
+
+float2 log_remez(float2 m) {
+    float2 t  = div_f64(sub_ds(m, 1.0f), add_ds(m, 1.0f));
+    float2 t2 = mul_f64(t, t);
+
+    // 1/23 + t²*(1/21 + t²*(1/19 + t²*1)) ...
+    // Do not use a loop or lookup table! This would drop the performance.
+    // Start with 1/23: error <= 1e-14
+    float2 r = F2_1_23;
+    r = add_f64(F2_1_21, mul_f64(t2, r));
+    r = add_f64(F2_1_19, mul_f64(t2, r));
+    r = add_f64(F2_1_17, mul_f64(t2, r));
+    r = add_f64(F2_1_15, mul_f64(t2, r));
+    r = add_f64(F2_1_13, mul_f64(t2, r));
+    r = add_f64(F2_1_11, mul_f64(t2, r));
+    r = add_f64(F2_1_9, mul_f64(t2, r));
+    r = add_f64(F2_1_7, mul_f64(t2, r));
+    r = add_f64(F2_1_5, mul_f64(t2, r));
+    r = add_f64(F2_1_3, mul_f64(t2, r));
+    r = add_f64(F2_ONE, mul_f64(t2, r));
+    r = mul_f64(mul_ds(t, 2.0f), r);         // 2t  * (...)
+
+    return r;
 }
 
 // Power f64, f64
+// Returns NAN for a < 0
 float2 pow_f64(float2 a, float2 b) {
     return exp_f64(mul_f64(b, log_f64(a)));
 }
 
 // Power f64, int
 float2 pow_f64(float2 a, int b) {
-    float2 r = 1.0f;
-    int i;
-    
-    for (i=0; i<b; i++) {
-        r = mul_f64(r, a);
+    if (b == 0) return F2_ONE;
+    if (b == 1) return a;
+    if (b == 2) return sqr_f64(a);
+    if (b == -1) return div_f64(F2_ONE, a);
+
+    float2 r = F2_ONE;
+    float2 base = a;
+    int e = abs(b);
+
+    while (e > 0) {
+        if (e & 1) {
+            r = mul_f64(r, base);
+        }
+        base = sqr_f64(base); // Square
+        e >>= 1;
     }
-    
-    return r;
+        
+    // a ^ -b = 1 / a ^ b
+    return b >= 0 ? r : div_f64(F2_ONE, r);
 }
 
-// Sine / Cosine. Cosine is calculated if c == 1
-float4 sincos_f64(float2 a, int c = 1) {
-    const float thresh = 1.0e-20 * abs(a.x) * 1.0f;
-    float2 t;
-    float2 p = a;
-    float2 s = a;
-    float2 x = -sqrt_f64(a);
-    float2 f = float2(1.0f, 0.0f);
-    float m = 1.0f;
-    float2 sin_a = 0.0f, cos_a = 0.0f;
-    
-    if (a.x == 0.0f) return float4(0.0f, 0.0f, 1.0f, 0.0f);
-
-    while(1) {
-        p = mul_f64(p, x);
-        m += 2.0f;
-        f = mul_f64(f, float2((m * (m - 1.0f)), 0.0f));
-        t = div_f64(p, f);
-        s = add_f64(s, t);
-        if (abs(t.x) < thresh) break;
+// Floor
+float2 floor_f64(float2 a) {
+    float hi = floor(a.x);
+    if (hi == a.x) {
+        // If high part is Integer, low part is relevant
+        return sumq(hi, floor(a.y));
     }
-    
-    sin_a = s;
-    
-    if (c) cos_a = sqrt_f64(add_f64(float2(1.0f, 0.0f), -sqrt_f64(s)));
-    
-    return float4(sin_a, cos_a);
+    else {
+        return sumq(hi, 0.0);
+    }
+}
+
+// Floating point modulo division
+float2 fmod_f64(float2 a, float2 b) {
+    float2 d = div_f64(a, b);
+    float i = floor(d.x);
+    return sub_f64(a, mul_ds(b, i));
 }
 
 // Sine
 float2 sin_f64(float2 a) {
-    return sincos_f64(a, 0).xy;
+    return sincos_iterate(a).xy;
 }
 
 // Cosine
 float2 cos_f64(float2 a) {
-    return sincos_f64(a, 1).zw;
+    return sincos_iterate(a).zw;
 }
 
 // Tangent
 float2 tan_f64(float2 a) {
-    float4 sc = sincos_f64(a, 1);
-    return div_f64(sc.xy, sc.zw);
+    return tan_iterate(a);
 }
 
-// Arc tangent iteration
-float2 atan_iterate(float2 a, int n) {
-    float2 a2 = mul_f64(a, a);
-    float2 d = float2(n * 2 + 1, 0.0);
-    float2 f;
-    int k;
-    float2 k2;
-    
-    for (k=n; k>0; k--) {
-        f = float2(k * 2 - 1, 0.0f);
-        k2 = float2(k * k);
-        d = add_f64(f, div_f64(mul_f64(k2, a2), d));
-    }
-    
-    return div_f64(a, d);
-}
-
-// Arc tangent
+// Inverse tangent
 float2 atan_f64(float2 a) {
-    if (eq(a, float2(0.0f, 0.0f))) {
-        return float2(0.0f, 0.0f);
-    }
-    else if (gt(a, float2(1.0f, 0.0f))) {
-        return sub_f64(pi2_f2, atan_iterate(div_f64(float2(1.0f, 0.0f), a), 21));
-    }
-    else {
-        return atan_iterate(a, 21);
-    }
+    return atan2_iterate(a, F2_ONE);
 }
 
-// Arc tangent2
+// Inverse tangent2
 float2 atan2_f64(float2 y, float2 x) {
-    if (gt(x, float2(0.0f, 0.0f))) {
-        return atan_f64(div_f64(y, x));
-    }
-    else if (lt(x, float2(0.0f, 0.0f)) && ge(y, float2(0.0f, 0.0f))) {
-        return add_f64(atan_f64(div_f64(y, x)), pi_f2);
-    }
-    else if (isZero(x) && lt(y, float2(0.0f, 0.0f))) {
-        return sub_f64(atan_f64(div_f64(y, x)), pi_f2);
-    }
-    else if (isZero(x) && gt(y, float2(0.0f, 0.0f))) {
-        return pi2_f2;
-    }
-    else if (isZero(x) && lt(y, float2(0.0f, 0.0f))) {
-        return -pi2_f2;
-    }
-    else {
-        return NAN;
-    }
+    return atan2_iterate(y, x);
 }
 
 // Inverse sine
-float2 asin_f64(float2 a) {
-    float2 d = sqrt_f64(sub_f64(float2(1.0f, 0.0f), mul_f64(a, a)));
-    return atan_f64(div_f64(a, d));
+float2 asin_f64(float2 a) {    
+    // asin_iterate() is faster while atan2_iterate is more accurate
+    return asin_iterate(a);
+    // return atan2_iterate(a, sqrt_f64(sub_f64(F2_ONE, sqr_f64(a))));
 }
 
 // Inverse cosine
 float2 acos_f64(float2 a) {
-    float2 d = sqrt_f64(sub_f64(float2(1.0f, 0.0f), mul_f64(a, a)));
-    return sub_f64(pi2_f2, atan_f64(div_f64(a, d)));
-}
-
-float4 sincosh_f64(float2 a) {
-    float2 a1 = exp_f64(a);
-    float2 a2 = exp_f64(-a);
-    float2 sinh_a = mulds(sub_f64(a1, a2), 0.5);
-    float2 cosh_a = mulds(add_f64(a1, a2), 0.5);
-    return float4(sinh_a, cosh_a);
-}
-
-float2 sinh_f64(float2 a) {
-    return sincosh_f64(a).xy;
-}
-
-float2 cosh_f64(float2 a) {
-    return sincosh_f64(a).zw;
-}
-
-float2 tanh_f64(float2 a) {
-    float4 a1 = sincosh_f64(a);
-    return div_f64(a1.xy, a1.zw);
+    if(lt(a, flt2(-1)) || gt(a, F2_ONE)) return NAN;
+    
+    // acos_iterate() is faster while atan2_iterate is more accurate
+    return acos_iterate(a);
+    // return atan2_iterate(sqrt_f64(sub_f64(F2_ONE, sqr_f64(a))), a);
 }
 
 // ----------------------------------------------------------------------------
@@ -397,10 +486,10 @@ float4 mul_c64(float4 a, float4 b) {
 
 // Square of 64 bit complex value
 float4 sqr_c64(float4 a) {
-    float2 r1 = sqr_f64(a.xy);          // a.r * a.r
-    float2 r2 = sqr_f64(a.zw);          // a.i * a.i
-    float2 i1 = mul_f64(a.xy, a.zw);    // a.r * a.i
-    return float4(sub_f64(r1, r2), add_f64(i1, i1));    // a.r * a.r - a.i * a.i, 2 * a.r * a.i
+    float2 r1 = mul_f64(a.xy, a.xy);
+    float2 r2 = mul_f64(a.zw, a.zw);
+    float2 i1 = mul_f64(a.xy, a.zw);
+    return float4(sub_f64(r1, r2), add_f64(i1, i1));
 }
 
 // Divide 2 64 bit complex values
@@ -411,28 +500,21 @@ float4 div_c64(float4 a, float4 b) {
     return float4(r, i);
 }
 
-// Calculate Z * Z + C and norm(Z)
-// Using this function has no measurable performance advantage
-float4 mandel_c64(float4 z, float4 c, thread float2 *zn) {
-    float2 r2 = sqr_f64(z.xy);          // z.r * z.r
-    float2 i2 = sqr_f64(z.zw);          // z.i * z.i
-    *zn = add_f64(r2, i2);              // z.r * z.r + z.i * z.i
-    if (zn->x > 4.0) { return z; }
-    float2 i  = mul_f64(z.xy, z.zw);    // z.r * z.i
-    float2 ra = sub_f64(r2, i2);        // z.r * z.r - z.i * z.i
-    float2 ia = add_f64(i, i);          // 2 * z.r * z.i
-    return float4(add_f64(ra, c.xy), add_f64(ia, c.zw));    // z.r * z.r - z.i * z.i + c.r, 2 * z.r * z.i + c.i
+// 64 bit complex square root
+float4 sqrt_c64(float4 a) {
+    float2 dc = abs_c64(a);
+    float2 r = sqrt_f64(mul_ds(add_f64(dc, a.xy), 0.5));
+    float2 i = lt(a.zw, F2_ZERO) ? -sqrt_f64(mul_ds(sub_f64(dc, a.xy), 0.5)) : sqrt_f64(mul_ds(sub_f64(dc, a.xy), 0.5));
+    return float4(r, i);
 }
 
-// Calculte 2 * D * Z + 1
-// Using this function has no measurable performance advantage
-float4 derivation_c64(float4 z, float4 d) {
-    float4 p = mul_c64(z, d);
-    p = add_c64(p, p);
-    p.x += 1.0;
-    return p;
+// 64 bit complex exponential function
+float4 exp_c64(float4 a) {
+    float2 e = exp_f64(a.xy);
+    return float4(mul_f64(e, cos_f64(a.zw)), mul_f64(e, sin_f64(a.zw)));
 }
 
+// Compare 64 bit complex values
 bool eq(float4 a, float4 b) {
     return all(a == b);
 }
@@ -447,6 +529,29 @@ float2 norm_c64(float4 c) {
 
 float2 abs_c64(float4 c) {
     return sqrt_f64(norm_c64(c));
+}
+
+// ----------------------------------------------------------------------------
+//  Special functions
+// ----------------------------------------------------------------------------
+
+// Calculate Z = Z^2 + C (experimental!)
+// Returns 2 float4 values:
+//   [0] = Zn
+//   [1].xy = norm (float2)
+//   [1].z  = flag (float): 0 = bailout reached, 1 = continue iteration
+//   [1].w  = unused
+float2x4 mandelbrot(float4 z, float4 c, float2 bailout) {
+    float2 r1 = sqr_f64(z.xy);
+    float2 r2 = sqr_f64(z.zw);
+    float2 n = add_f64(r1, r2);
+    
+    if (ge(n, bailout)) return float2x4(z, float4(n, F2_ZERO));
+    
+    float2 i1 = mul_f64(z.xy, z.zw);
+    float4 z1 = float4(add_f64(sub_f64(r1, r2), c.xy), add_f64(add_f64(i1, i1), c.zw));
+    
+    return float2x4(z1, float4(n, F2_ONE));
 }
 
 

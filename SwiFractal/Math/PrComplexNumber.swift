@@ -1,0 +1,245 @@
+//
+//  PrComplexNumber.swift
+//  SwiFractal
+//
+//  Created by Dirk Braner on 07.05.26.
+//
+
+import Numerics
+import SwiftMPx
+
+
+///
+/// Protocol for complex numbers
+///
+protocol ComplexNumber : Sendable {
+    
+    associatedtype RealType: PreciseFloatingPoint
+    
+    // Placeholders for real and imaginary type
+    var real: RealType { get }
+    var imaginary: RealType { get }
+    
+    // Return zero
+    static var zero: Self { get }
+    
+    // Return squared Euclidean norm: real * real + imaginary * imaginary
+    var lengthSquared: RealType { get }
+    
+    // Return Euclidean norm: sqrt(real * real + imaginary * imaginary)
+    var length: RealType { get }
+    
+    // Return square
+    var squared: Self { get }
+    
+    // Return angle betweend imaginary and real part
+    var arg: RealType { get }
+    
+    // Return absolute value
+    
+    // Constructor. Precision is max(real.precision, imaginary.precision)
+    init(_ real: RealType, _ imaginary: RealType)
+    
+    // Constructor with precision support
+    init(_ real: RealType, _ imaginary: RealType, precision: Int)
+    
+    // Convert to Double precision complex value
+    func toCplx() -> Cplx
+    
+    // Convert to arbitrary precision complex value
+    func toMPComplex(precision: Int) -> MPComplex
+
+    // Addition
+    static func + (lhs: Self, rhs: Self) -> Self
+    static func + (lhs: Self, rhs: RealType) -> Self
+    static func + (lhs: RealType, rhs: Self) -> Self
+    
+    // Subtraction
+    static func - (lhs: Self, rhs: Self) -> Self
+    static func - (lhs: Self, rhs: RealType) -> Self
+    static func - (lhs: RealType, rhs: Self) -> Self
+    
+    // Multiplication
+    static func * (lhs: Self, rhs: Self) -> Self
+    static func * (lhs: Self, rhs: RealType) -> Self
+    static func * (lhs: RealType, rhs: Self) -> Self
+    
+    // Division
+    static func / (lhs: Self, rhs: Self) -> Self
+    static func / (lhs: Self, rhs: RealType) -> Self
+    static func / (lhs: RealType, rhs: Self) -> Self
+    
+    // Comparison operators
+    static func == (lhs: Self, rhs: Self) -> Bool
+    static func != (lhs: Self, rhs: Self) -> Bool
+
+}
+
+extension ComplexNumber {
+        
+    var precision: Int {
+        return max(real.precision, imaginary.precision)
+    }
+    
+    static var zero: Self { .init(.zero, .zero) }
+    
+    /// Return squared magnitude of complex number (squared Euclidean norm)
+    var lengthSquared: RealType {
+        real * real + imaginary * imaginary
+    }
+    
+    /// Return magnitude of complex number (Euclidean norm)
+    var length: RealType {
+        .sqrt(lengthSquared)
+    }
+    
+    /// Return square of complex number
+    var squared: Self {
+        .init(real * real - imaginary * imaginary, 2.0 * real * imaginary)
+    }
+    
+    /// Return angle betweend imaginary and real part
+    var arg: RealType {
+        RealType.atan2(y: imaginary, x: real)
+    }
+    
+    //
+    // Addition
+    //
+    
+    static func + (lhs: Self, rhs: Self) -> Self {
+        .init(lhs.real + rhs.real, lhs.imaginary + rhs.imaginary)
+    }
+    
+    static func + (lhs: Self, rhs: RealType) -> Self {
+        .init(lhs.real + rhs, lhs.imaginary)
+    }
+    
+    static func + (lhs: RealType, rhs: Self) -> Self {
+        .init(lhs + rhs.real, rhs.imaginary)
+    }
+    
+    //
+    // Subtraction
+    //
+    
+    static func - (lhs: Self, rhs: Self) -> Self {
+        .init(lhs.real - rhs.real, lhs.imaginary - rhs.imaginary)
+    }
+    
+    static func - (lhs: Self, rhs: RealType) -> Self {
+        .init(lhs.real - rhs, lhs.imaginary)
+    }
+    
+    static func - (lhs: RealType, rhs: Self) -> Self {
+        .init(lhs - rhs.real, -rhs.imaginary)
+    }
+    
+    //
+    // Multiplication
+    //
+    
+    static func * (lhs: Self, rhs: Self) -> Self {
+        .init(lhs.real * rhs.real - lhs.imaginary * rhs.imaginary,
+              lhs.real * rhs.imaginary + lhs.imaginary * rhs.real)
+    }
+    
+    static func * (lhs: Self, rhs: RealType) -> Self {
+        .init(lhs.real * rhs, lhs.imaginary * rhs)
+    }
+    
+    static func * (lhs: RealType, rhs: Self) -> Self {
+        .init(lhs * rhs.real, lhs * rhs.imaginary)
+    }
+    
+    //
+    // Division
+    //
+    
+    static func / (lhs: Self, rhs: Self) -> Self {
+        // Hilfsvariablen zur besseren Lesbarkeit (entspricht der Formel oben)
+        let a = lhs.real
+        let b = lhs.imaginary
+        let c = rhs.real
+        let d = rhs.imaginary
+        
+        let n = (c * c) + (d * d)
+
+        guard n != RealType.zero else {
+            return .init(RealType.nan, RealType.nan)
+        }
+        
+        // Berechnung nach der mathematischen Formel
+        let nr = ((a * c) + (b * d)) / n
+        let ni = ((b * c) - (a * d)) / n
+        
+        return .init(nr, ni)
+    }
+    
+    static func / (lhs: Self, rhs: RealType) -> Self {
+        guard rhs != RealType.zero else {
+            return .init(RealType.nan, RealType.nan)
+        }
+        
+        return .init(lhs.real / rhs, lhs.imaginary / rhs)
+    }
+    
+    static func / (lhs: RealType, rhs: Self) -> Self {
+        let r = lhs
+        let c = rhs.real
+        let d = rhs.imaginary
+        
+        let n = (c * c) + (d * d)
+        
+        // Schutz vor Division durch Null
+        guard n != RealType.zero else {
+            return .init(RealType.nan, RealType.nan)
+        }
+        
+        let nr = (r * c) / n
+        let ni = (-r * d) / n
+        
+        return .init(nr, ni)
+    }
+    
+    //
+    // Comparison operators
+    //
+    
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.real == rhs.real && lhs.imaginary == rhs.imaginary
+    }
+    
+    static func != (lhs: Self, rhs: Self) -> Bool {
+        lhs.real != rhs.real || lhs.imaginary != rhs.imaginary
+    }
+
+}
+
+extension MPComplex: ComplexNumber {
+    
+    typealias RealType = MPFloat
+    
+    /// Convert MPComplex to Cplx (Complex Double)
+    func toCplx() -> Cplx {
+        return Cplx(real.toDouble(), imaginary.toDouble())
+    }
+    
+    /// Change precision of MPComplex value
+    /// - Parameter precision: Mantissa precision (bits)
+    /// - Returns: new MPComplex value with specified precision
+    func toMPComplex(precision: Int) -> MPComplex {
+        return MPComplex(real, imaginary, precision: precision)
+    }
+    
+}
+
+extension Complex<Double> {
+    
+    func toMPComplex(precision: Int) -> MPComplex {
+        return MPComplex(MPFloat(real, precision: precision), MPFloat(imaginary, precision: precision))
+    }
+    
+}
+
+

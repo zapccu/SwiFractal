@@ -17,12 +17,29 @@ extension Double {
     init(_ float2: Float2) {
         self = Double(float2.x) + Double(float2.y)
     }
+    
+}
+
+extension Float {
+
+    /// Convert Float2 to Float
+    init(_ float2: Float2) {
+        self = Float(Double(float2.x) + Double(float2.y))
+    }
+
 }
 
 extension SIMD2<Float32>: @retroactive ExpressibleByFloatLiteral {
     
     /// Convert Double to Float2
     init(_ number: Double = 0.0) {
+        /*
+        let hi = Float32(number)                // First ~7 digits
+        let lo = Float32(number - Double(hi))   // Rest
+        self.init(x: hi, y: lo)
+         */
+        
+        // Use Veltkamp splitter for higher precision
         var hi: Float32 = 0.0
         var lo: Float32 = 0.0
         
@@ -32,7 +49,6 @@ extension SIMD2<Float32>: @retroactive ExpressibleByFloatLiteral {
             hi = Float32(t - (t - number))
             lo = Float32(number - Double(hi))
         }
-        
         self.init(x: hi, y: lo)
     }
     
@@ -46,9 +62,16 @@ extension SIMD2<Float32>: @retroactive ExpressibleByFloatLiteral {
         self.init(Float(number))
     }
     
+    /// Convert String to Float2
+    init(_ sval: String) {
+        self.init(Double(sval) ?? 0.0)
+    }
+    
     /// Assign Double value to Float2
     public init(floatLiteral number: Double) {
         self.init(number)
     }
     
 }
+
+

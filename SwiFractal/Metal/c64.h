@@ -17,9 +17,8 @@
 using namespace metal;
 
 
-/// Struct for 64 bit complex floating point values
 struct c64 {
-    float4 v;   /// A 64 bit complex floating point value is internally stored as float4
+    float4 v;
     
     c64() {
         v = float4(0.0, 0.0, 0.0, 0.0);
@@ -74,15 +73,7 @@ struct c64 {
     f64 imaginary() {
         return f64(v.zw);
     }
-    
-    /// Check for zero
-    bool isZero() {
-        return all(v == 0.0);
-    }
 };
-
-
-// Operators
 
 c64 operator + (c64, c64);
 c64 operator + (c64, f64);
@@ -105,18 +96,18 @@ c64 operator / (f64, c64);
 c64 operator / (c64, float);
 c64 operator / (float, c64);
 
+bool isZero(c64);
+bool notZero(c64);
 bool operator == (c64, c64);
 bool operator != (c64, c64);
 
-bool isZero(c64);
-
-
-// Arithmetic functions
-
 c64 sqr(c64);
+c64 sqrt(c64);
+c64 exp(c64);
+
 f64 norm(c64);
 f64 abs(c64);
-
+f64 arg(c64);
 
 #endif
 

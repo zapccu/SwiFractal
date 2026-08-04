@@ -7,12 +7,6 @@
 
 import Foundation
 
-/*
-@attached(member, names: named(RawValue), named(rawValue), named(`init`), arbitrary)
-@attached(extension, conformances: OptionSet)
-public macro OptionSet<RawType>() =
-        #externalMacro(module: "SwiftMacros", type: "OptionSetMacro")
-*/
 
 ///
 /// BitSet can be used to store values of a given enum as a bitmask.
@@ -38,7 +32,7 @@ public macro OptionSet<RawType>() =
 /// BitSet is conform to Codable. A bitmask is converted to a JSON array containing the names of the bits.
 ///
 
-struct BitSet<Element>: ExpressibleByArrayLiteral, RawRepresentable, Codable
+struct BitSet<Element>: ExpressibleByArrayLiteral, RawRepresentable, Codable, Equatable
 where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int {
     
     // ----------------------------------------------------------------------
@@ -80,6 +74,10 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
             }
         }
     }
+    
+    init(_ element: Element) {
+        self.rawValue = 1 << element.rawValue
+    }
 
     /// Initialize bitset with multiple bits by using a bitwise OR operation
     /// Example: bitset = [.bit1, .bit2 ]
@@ -94,6 +92,11 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
         return String(describing: bit)
     }
 
+    /// Test if no bits are set
+    func noneSet() -> Bool {
+        return rawValue == 0
+    }
+    
     /// Test if all bits in array are set
     func allSet(_ bits: [Element]) -> Bool {
         return bits.allSatisfy( { self.rawValue & (1 << $0.rawValue) != 0} )
@@ -158,7 +161,17 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
             return ""
         }
     }
+    
+    static func == (lhs: BitSet, rhs: Element) -> Bool {
+        let bitMask = 1 << rhs.rawValue
+        return lhs.rawValue == bitMask
+    }
 
+    static func != (lhs: BitSet, rhs: Element) -> Bool {
+        let bitMask = 1 << rhs.rawValue
+        return lhs.rawValue != bitMask
+    }
+    
     // ----------------------------------------------------------------------
     //  Logical operations
     // ----------------------------------------------------------------------

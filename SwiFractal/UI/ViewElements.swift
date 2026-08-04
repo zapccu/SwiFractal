@@ -169,10 +169,10 @@ struct LabeledSlider<T> : View where T.Stride == T, T: BinaryFloatingPoint {
 //
 // Stepper with a text label
 //
-struct LabeledStepper<T: Strideable> : View where T.Stride == T, T: Castable {
+struct LabeledStepper<T: Strideable> : View where T.Stride == T {
     let label: String
     @Binding var value: T
-    var changeHandler: ((T) -> Void)? = nil
+    var changeHandler: ((T, T) -> Void)? = nil
     var unit: String = ""
     var range: ClosedRange<T>
     var step: T
@@ -181,8 +181,8 @@ struct LabeledStepper<T: Strideable> : View where T.Stride == T, T: Castable {
         HStack(spacing: 10) {
             if label != "" { ControlLabel(label) }
             Stepper(formatValue() + unit, value: $value, in: range, step: step)
-                .onChange(of: value) { _, _ in
-                    changeHandler?(value)
+                .onChange(of: value) { oldValue, newValue in
+                    changeHandler?(oldValue, newValue)
                 }
             Spacer()
         }
@@ -196,7 +196,7 @@ struct LabeledStepper<T: Strideable> : View where T.Stride == T, T: Castable {
         self.unit = unit
     }
     
-    func onValueChanged(_ handler: @escaping (T) -> Void) -> Self {
+    func onValueChanged(_ handler: @escaping (T, T) -> Void) -> Self {
         var copy = self
         copy.changeHandler = handler
         return copy
@@ -216,26 +216,30 @@ struct LabeledStepper<T: Strideable> : View where T.Stride == T, T: Castable {
 // Image showing a color table with an optional text label
 //
 struct ColorPalette: View {
-    var colorTable: ColorTable
+    var colorTable: EnumColorTable
     var size: CGSize
     var label: String
 
     var body: some View {
         HStack {
             Image(size: size) { context in
-                let graphics = CanvasGraphics(context, size)
-                if colorTable.count > Int(size.width) {
-                    let di = Float(colorTable.count) / Float(size.width)
+                let graphics = CanvasGraphics(context: context, size: size)
+                if colorTable.ct.count > Int(size.width) {
+                    let di = Float(colorTable.ct.count) / Float(size.width)
                     for x in 0..<Int(size.width) {
                         let ci = Int(Float(x) * di)
-                        _ = graphics.drawVLine(CGPoint(x: x, y: 0), Int(size.height), color: colorTable[ci])
+                        graphics.drawLine(from: IPoint(x: x, y: 0), to: IPoint(x: x, y: Int(size.height)), color: colorTable.ct[ci])
                     }
                 }
                 else {
-                    let dx = Int(Float(size.width) / Float(colorTable.count))
+                    let dx = Int(Float(size.width) / Float(colorTable.ct.count))
                     var ci = 0
                     for x in stride(from: 0, to: Int(size.width), by: dx) {
-                        graphics.drawRectFill(x, 0, x+dx, Int(size.height), color: colorTable[ci])
+                        graphics.drawRectFill(
+                            from: IPoint(x: x, y: 0),
+                            to: IPoint(x: x+dx, y: Int(size.height)-1),
+                            color: colorTable.ct[ci]
+                        )
                         ci += 1
                     }
                 }
@@ -245,80 +249,6 @@ struct ColorPalette: View {
             }
         }
     }
-    
-    init(colorTable: ColorTable, size: CGSize, label: String = "") {
-        self.colorTable = colorTable
-        self.size = size
-        self.label = label
-    }
 
 }
 
-//
-// File export button
-//
-struct ExportButton<T: FractalData>: View {
-    let document: FractalDocument<T>
-    @State private var isExporting = false
-    
-    var body: some View {
-        Button(action: { isExporting = true }) {
-            Label("Export", systemImage: "square.and.arrow.up")
-        }
-        .fileExporter(
-            isPresented: $isExporting,
-            document: document,
-            contentType: .json,
-            defaultFilename: "myFractal.json"
-        ) { result in
-            if case .failure(let error) = result {
-                // Substitute by popup message
-                debugPrint("Export-Error: \(error.localizedDescription)")
-            }
-        }
-    }
-}
-
-//
-// File import button
-//
-struct ImportButton<T: FractalData>: View {
-    @State private var isImporting = false
-    var onImport: (ParSet<T>) -> Void // Callback to main view
-    
-    var body: some View {
-        Button(action: { isImporting = true }) {
-            Label("Import", systemImage: "square.and.arrow.down")
-        }
-        .fileImporter(
-            isPresented: $isImporting,
-            allowedContentTypes: [.json],
-            allowsMultipleSelection: false
-        ) { result in
-            handleResult(result)
-        }
-    }
-    
-    private func handleResult(_ result: Result<[URL], Error>) {
-        Task {
-            do {
-                let urls = try result.get()
-                guard let url = urls.first else { return }
-                
-                if url.startAccessingSecurityScopedResource() {
-                    defer { url.stopAccessingSecurityScopedResource() }
-                    let data = try Data(contentsOf: url)
-                    let decodedData = try JSONDecoder().decode(ParSet<T>.self, from: data)
-                    
-                    // Switch back to Main Actor and return result
-                    await MainActor.run {
-                        onImport(decodedData)
-                    }
-                }
-            } catch {
-                // Substitute by popup message
-                debugPrint("Import-Error: \(error.localizedDescription)")
-            }
-        }
-    }
-}

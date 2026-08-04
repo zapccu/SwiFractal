@@ -7,10 +7,12 @@
 
 import SwiftUI
 
-///
-/// Class for selecting a point or an area on a canvas
-///
+
+//
+// Class for selecting a point or an area on a canvas
+//
 @Observable class Selection {
+    
     enum SelectState: Int {
         case noSelection = 0    // No selection
         case pointSelected = 1  // Point selected
@@ -59,12 +61,10 @@ import SwiftUI
     
     /// Draw rectangle marking the selected area
     func draw(_ graphics: CanvasGraphics) {
-        graphics.setColor(.red)
-
         // Clear existing rectangle
         if drawnRect != .zero {
             let blendMode = graphics.setBlendMode(.clear)
-            graphics.drawRect(drawnRect)
+            graphics.drawRect(rect: IRect(rect: drawnRect), color: .red)
             _ = graphics.setBlendMode(blendMode)
             drawnRect = .zero
         }
@@ -83,11 +83,11 @@ import SwiftUI
                 else {
                     area = CGRect(origin: area.origin, size: CGSize(width: area.width, height: area.width / screenAR))
                 }
-                graphics.drawRect(area)
+                graphics.drawRect(rect: IRect(rect: area), color: .red)
                 drawnRect = area
             }
             else {
-                graphics.drawRect(area)
+                graphics.drawRect(rect: IRect(rect: area), color: .red)
                 drawnRect = area
             }
         }

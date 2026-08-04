@@ -7,19 +7,32 @@
 
 import Foundation
 import Numerics
+import SwiftMPx
 
 // ------------------------------------
 //  Complex<Double>
 // ------------------------------------
 
 /// Shortcut for Complex type for Double values
-typealias Cplx = Complex<Double>
+public typealias Cplx = Complex<Double>
 
-extension Complex<Double>: @retroactive LosslessStringConvertible {
+
+extension Complex<Double>: ComplexNumber, @retroactive LosslessStringConvertible {
+    
+    typealias PrecisionType = Double
+    
+    public init(_ real: Double, _ imaginary: Double, precision: Int = 64) {
+        self.init(real, imaginary)
+    }
+    
+    public init?(_ real: String, _ imaginary: String) {
+        guard let real = Double(real), let imaginary = Double(imaginary) else { return nil }
+        self.init(real, imaginary)
+    }
     
     /// Convert String to Complex
     /// String format: FloatingPoint[+FloatingPoint["i"]]
-    public init? (_ str: String) {
+    public init?(_ str: String) {
         var s = str
         
         if s.last == "i" { s.removeLast() }
@@ -72,6 +85,16 @@ extension Complex<Double>: @retroactive LosslessStringConvertible {
         return Swift.max(real.ulp, imaginary.ulp)
     }
     
+    /// Convert to Cplx
+    func toCplx() -> Cplx {
+        return self
+    }
+    
+    /// Compare Cplx
+    static func != (lhs: Cplx, rhs: Cplx) -> Bool {
+        return lhs.real != rhs.real || lhs.imaginary != rhs.imaginary
+    }
+    
     /// Multiply Cplx with Double
     static func * (lhs: Cplx, rhs: Double) -> Cplx {
         return lhs * Cplx(rhs)
@@ -119,3 +142,4 @@ extension String {
         self = c.description
     }
 }
+

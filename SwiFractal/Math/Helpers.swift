@@ -11,31 +11,14 @@ import Numerics
 //  Arithmetic functions
 // ------------------------------------
 
-/// Modulo division of floating point values
-func %<T: BinaryFloatingPoint>(_ lhs: T, _ rhs: T) -> T {
-    return lhs.truncatingRemainder(dividingBy: rhs)
-}
-
-/*
-
-/// Dot product of two vectors
-func mulDot<T: BinaryFloatingPoint>(_ lhs: [T], _ rhs: [T]) -> T {
-    var s: T = 0
-    guard lhs.count == rhs.count else { return .nan }
+extension BinaryFloatingPoint {
     
-    for i in 0..<lhs.count {
-        s = s + lhs[i] * rhs[i]
+    /// Operator for modulo division of floating point values
+    static func % (_ lhs: Self, _ rhs: Self) -> Self {
+        return lhs.truncatingRemainder(dividingBy: rhs)
     }
     
-    return s
 }
-
-/// Dot product of two vectors
-func mulDot(_ lhs: Vector3, _ rhs: Vector3) -> Double {
-    return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z
-}
-
- */
 
 /// Convert degree to radian
 func deg2rad(_ deg: Double) -> Double {

@@ -8,11 +8,12 @@
 import Foundation
 import Numerics
 
-//
-// Colorize Mode
-//
-// Specifies the kind of value used to calculate the color
-//
+
+///
+/// Colorize Mode
+///
+/// Specifies the kind of value used to calculate the color
+///
 enum EnumColorizeMode: Int, CaseIterable {
     case iterations = 0     // iteration count
     case distance   = 1     // distance to Mandelbrot set
@@ -22,11 +23,11 @@ enum EnumColorizeMode: Int, CaseIterable {
 }
 typealias ColorizeMode = Options<EnumColorizeMode>
 
-//
-// Colorize outside
-//
-// Outside colorization of a fractal
-//
+///
+/// Colorize outside
+///
+/// Outside colorization of a fractal
+///
 enum EnumColorizeOutside: Int, CaseIterable {
     case simple             // No 3D rendering
     case simple3d           // Simple 3D shading
@@ -35,11 +36,11 @@ enum EnumColorizeOutside: Int, CaseIterable {
 }
 typealias ColorizeOutside = Options<EnumColorizeOutside>
 
-//
-// Colorize inside
-//
-// Inside colorization of a fractal
-//
+///
+/// Colorize inside
+///
+/// Inside colorization of a fractal
+///
 enum EnumColorizeInside: Int, CaseIterable {
     case simple             // Inside of Mandelbrot set is set to default color
     case orbits             // Colorize orbits inside Mandelbrot set, implies full orbit detection
@@ -47,13 +48,13 @@ enum EnumColorizeInside: Int, CaseIterable {
 }
 typealias ColorizeInside = Options<EnumColorizeInside>
 
-//
-// Color Palette Mode
-//
-// Specifies how iteration results are mapped to a color table
-//
-// Only used when ColorizeMode = .iterations
-//
+///
+/// Color Palette Mode
+///
+/// Specifies how iteration results are mapped to a color table
+///
+/// Only used when ColorizeMode = .iterations
+///
 enum EnumPaletteMode: Int, CaseIterable {
     case linear           = 0   // linear color mapping
     case modulo           = 1   // color mapping by modulo division
@@ -66,10 +67,16 @@ enum EnumPaletteMode: Int, CaseIterable {
 }
 typealias PaletteMode = Options<EnumPaletteMode>
 
-//
-// Colormapping parameters
-//
-struct MandelbrotColoring: FractalParameters {
+///
+/// Colormapping parameters
+///
+struct FractalColoring: FractalParameters {
+    
+    /// Return default color table (greyscale)
+    var colorTable: EnumColorTable = .smooth(smoothColorTable: ColorTableSmooth(
+        "Grey-1024", colorPoints: [RGBAColor(80.0/255.0, 80.0/255.0, 80.0/255.0), .white], colorCount: 1024, defColor: .black)
+    )
+    
     var colorizeMode = ColorizeMode(.iterations)    // Colorize mode: iterations, distance, potential, steps, stripes
     var colorizeOutside = ColorizeOutside(.simple)  // Colorize outside: simple, simple3D, blinnPhong
     var colorizeInside = ColorizeInside(.simple)    // Colorize inside: simple, orbits, distance
@@ -81,5 +88,6 @@ struct MandelbrotColoring: FractalParameters {
     var steps: Int = 0                              // Step density, frequency for step coloring
                                                     // Range 0-100, 0 = No steps, default = 0
     var ncycle: Double = 1.0                        // Color cycling, must not be 0
+    
 }
 

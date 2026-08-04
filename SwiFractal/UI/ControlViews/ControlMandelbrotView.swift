@@ -6,100 +6,66 @@
 //
 
 import SwiftUI
+import SwiftMPx
 import ParSetKit
 
-struct ControlCommonView: View {
-    //var fractal: Fractal<T, P>
-    var controller: FractalController
-    
-    @Binding var resolution: CGSize
-    @Binding var fit: AspectRatioMode
-    @Binding var method: CalculationMethod
+struct ControlMandelbrotView<RT: PreciseFloatingPoint>: View {
 
-    @State var linkResolution: Bool = true
+    var controller: FractalController
+    var fractal: Mandelbrot<RT>
+
+    @Binding var dimensions: FractalDimensions<MPFloat>     // Fractal controller dimensions
     
+    // Flags for expanding control groups
     @State private var isLightExpanded = false
     @State private var isShadingExpanded = false
+    @State private var isStripesStepsExpanded = false
+    @State private var isCyclesSamplingExpanded = false
     
-    @State private var presetName: String = "Mandelbrotset"
-    @State private var colorTableIndex: Int = 0
-
+    @State private var autoIterations: Bool = false
+    @State private var colorTableName: String = FractalAppData.defaultColorTable
+    
     var body: some View {
 
         //
-        // Preset
+        // Common information
         //
         GroupBox(label: Text("Info").foregroundStyle(.blue).font(.headline)) {
-            HStack {
-                Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 10) {
-                    GridRow {
-                        Text("Name").gridColumnAlignment(.trailing)
-                        TextField("", text: Bindable(fractal).FP.common.name)
-                            .frame(width: 170)
-                    }
-                    
-                    GridRow {
-                        Picker(selection: $fit, label: Text("Fit to:")) {
-                            Text("Image").tag(AspectRatioMode.fitToImageSize)
-                            Text("Fractal").tag(AspectRatioMode.fitToFractalSize)
-                        }
-                        .pickerStyle(.radioGroup)
-                        .horizontalRadioGroupLayout()
-                    }.gridCellColumns(2)
-                }.padding(5)
-                Spacer()
-            }
+            Text("Name").gridColumnAlignment(.trailing)
+            TextField("", text: Bindable(fractal).FP.name)
+                .frame(width: 170)
         }.padding([.top], 10)
-
-        //
-        // Resolution
-        //
-        GroupBox(label: Text("Resolution").foregroundStyle(.blue).font(.headline)) {
-            VStack(alignment: .leading) {
-                HStack(spacing: 20) {
-                    Stepper("\(resolution.width.formatted()) px", value: $resolution.width, in: 100...4096, step: 50) { actionInProgress in
-                        if linkResolution { resolution.height = resolution.width }
-                    }
-                    Stepper("\(resolution.height.formatted()) px", value: $resolution.height, in: 100...4096, step: 50) { actionInProgress in
-                        if linkResolution { resolution.width = resolution.height }
-                    }
-                    Spacer()
-                }
-                Toggle(isOn: $linkResolution) { Text("Aspect ratio") }
-                LabeledPicker(label: "Method", selection: $method)
-            }
-        }.padding([.top, .leading], 10)
         
         //
         // Fractal dimensions and oversampling
         //
         GroupBox(label: Text("Fractal dimensions").foregroundStyle(.blue).font(.headline)) {
             VStack(alignment: .leading) {
-                LabeledInputField("Left",   Bindable(fractal).FP.common.cornerX, width: 170)
-                LabeledInputField("Bottom", Bindable(fractal).FP.common.cornerY, width: 170)
-                LabeledInputField("Size X", Bindable(fractal).FP.common.sizeX, width: 170)
-                LabeledInputField("Size Y", Bindable(fractal).FP.common.sizeY, width: 170)
-                LabeledStepper("Sampling:", Bindable(fractal).FP.common.oversampling, range: 1...3)
+                LabeledInputField("Left",   $dimensions.strDimensions.cornerX, width: 170)
+                LabeledInputField("Bottom", $dimensions.strDimensions.cornerY, width: 170)
+                LabeledInputField("Size X", $dimensions.strDimensions.sizeX, width: 170)
+                LabeledInputField("Size Y", $dimensions.strDimensions.sizeY, width: 170)
+                LabeledStepper("Sampling:", $dimensions.oversampling, range: 1...3)
             }
-        }.padding([.top], 10)
+        }
+        .padding([.top], 10)
         
         //
         // Color table
         //
         GroupBox(label: Text("Color table").foregroundStyle(.blue).font(.headline)) {
-            Picker(selection: $colorTableIndex, label: Text("")) {
-                ForEach(FractalAppData.colorTables.indices, id: \.self) { index in
-                    let table = FractalAppData.colorTables[index]
+            Picker(selection: $colorTableName, label: Text("")) {
+                ForEach(FractalAppData.colorTables.keys.sorted(), id: \.self) { key in
                     ColorPalette(
-                        colorTable: table,
+                        colorTable: FractalAppData.colorTables[key]!,
                         size: CGSize(width: 150, height: 20),
-                        label: table.ct.name
+                        label: key
                     )
-                    .tag(index)
+                    .tag(key)
                 }
-            }.onChange(of: colorTableIndex) { _, newValue in
-                debugPrint("Changing color table to \(newValue) = \(FractalAppData.colorTables[newValue].ct.name)")
-                fractal.FP.common.colorTable = FractalAppData.colorTables[newValue]
+            }.onChange(of: colorTableName) { _, newValue in
+                debugPrint("Changing color table to \(newValue)")
+                fractal.FP.coloring.colorTable = FractalAppData.colorTables[newValue]!
             }
         }.padding([.top], 10)
         
@@ -111,20 +77,20 @@ struct ControlCommonView: View {
                 GroupBox {
                     DisclosureGroup("Shading", isExpanded: $isShadingExpanded) {
                         VStack(alignment: .leading, spacing: 8) {
-                            LabeledStepper("Angle:", Bindable(fractal).FP.common.lightning.angle, range: 0...360, step: 5, unit: "°")
-                            LabeledStepper("Elevation:", Bindable(fractal).FP.common.lightning.elevation, range: 0...90,  step: 5, unit: "°")
+                            LabeledStepper("Angle:", Bindable(fractal).FP.lightParameters.angle, range: 0...360, step: 5, unit: "°")
+                            LabeledStepper("Elevation:", Bindable(fractal).FP.lightParameters.elevation, range: 0...90,  step: 5, unit: "°")
                         }
                     }
                 }
                 GroupBox {
                     DisclosureGroup("Light", isExpanded: $isLightExpanded) {
                         VStack(alignment: .leading, spacing: 8) {
-                            LabeledSlider("Opacity:", Bindable(fractal).FP.common.lightning.opacity, range: 0.0...1.0, step: 0.1, width: 100, format: "%.1f")
-                            LabeledSlider("Ambient:", Bindable(fractal).FP.common.lightning.ambient, range: 0.0...1.0, step: 0.05, width: 100, format: "%.2f")
-                            LabeledSlider("Diffuse:", Bindable(fractal).FP.common.lightning.diffuse, range: 0.0...1.0, step: 0.05, width: 100, format: "%.2f")
-                            LabeledSlider("Specular:", Bindable(fractal).FP.common.lightning.specular, range: 0.0...1.0, step: 0.05, width: 100, format: "%.2f")
-                            LabeledSlider("Shininess:", Bindable(fractal).FP.common.lightning.shininess, range: 1.0...30.0, step: 1.0, width: 100, format: "%2.0f")
-                            LabeledSlider("Gamma:", Bindable(fractal).FP.common.lightning.gamma, range: 0.1...9.9, step: 0.1, width: 100, format: "%.1f")
+                            LabeledSlider("Opacity:", Bindable(fractal).FP.lightParameters.opacity, range: 0.0...1.0, step: 0.1, width: 100, format: "%.1f")
+                            LabeledSlider("Ambient:", Bindable(fractal).FP.lightParameters.ambient, range: 0.0...1.0, step: 0.05, width: 100, format: "%.2f")
+                            LabeledSlider("Diffuse:", Bindable(fractal).FP.lightParameters.diffuse, range: 0.0...1.0, step: 0.05, width: 100, format: "%.2f")
+                            LabeledSlider("Specular:", Bindable(fractal).FP.lightParameters.specular, range: 0.0...1.0, step: 0.05, width: 100, format: "%.2f")
+                            LabeledSlider("Shininess:", Bindable(fractal).FP.lightParameters.shininess, range: 1.0...30.0, step: 1.0, width: 100, format: "%2.0f")
+                            LabeledSlider("Gamma:", Bindable(fractal).FP.lightParameters.gamma, range: 0.1...9.9, step: 0.1, width: 100, format: "%.1f")
                         }
                     }
                 }
@@ -193,12 +159,12 @@ struct ControlCommonView: View {
         //
         // Iterations
         //
-        GroupBox(label: Text("Mandelbrot Set").foregroundStyle(.blue).font(.headline)) {
+        GroupBox(label: Text("Iteration control").foregroundStyle(.blue).font(.headline)) {
             VStack(alignment: .leading, spacing: 8) {
                 Toggle(isOn: $autoIterations) { Text("Auto iterations") }
                     .onChange(of: autoIterations) { oldValue, newValue in
                         if newValue {
-                            fractal.FP.limits.iterations = fractal.maxIterationCount
+                            fractal.FP.limits.iterations = fractal.FP.current.maxIterationCount
                         }
                     }
                 LabeledStepper("Iterations:", Bindable(fractal).FP.limits.iterations, range: 0...8192, step: 50)

@@ -55,15 +55,21 @@ struct MandelbrotComputeParameters {
     float2 diag;
 };
 
+#define R_DEFAULT_COLOR 0
+#define R_MAX_ITERATIONS 1
+#define R_BAILOUT 2
+#define R_INSIDE 4
+
 // Iteration results
 struct MandelbrotResult {
-    int32_t iterations;
     float2 smoothIter;
     float2 nZ;
-    float4 ZD;
+    float2 normalReal;
+    float2 normalImag;
     float2 distance;
     float2 potential;
     float2 stripeAvg;
+    int flags;
 };
 
 

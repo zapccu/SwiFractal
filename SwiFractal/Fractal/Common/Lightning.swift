@@ -14,6 +14,7 @@ import Numerics
 //
 // Lightning
 //
+@dynamicMemberLookup
 struct Lightning {
     
     let parameters: LightningParameters
@@ -27,6 +28,11 @@ struct Lightning {
     // Vector and height factor for simple shading
     var vecSimple: Vector<Double>
     var height: Double
+    
+    /// Direct access to LightningParameters
+    subscript<V>(dynamicMember keyPath: WritableKeyPath<LightningParameters, V>) -> V {
+        get { parameters[keyPath: keyPath] }
+    }
     
     /// Initialize lightning object
     /// - Parameter parameters: Struct with lightning parameters

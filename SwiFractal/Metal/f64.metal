@@ -11,84 +11,90 @@
 
 using namespace metal;
 
+// Convert to float
+float flt(f64 a) {
+    return a.v.x;
+}
 
-// Arithmetic functions
+// Floor
+f64 floor(f64 a) {
+    return f64(floor_f64(a.v));
+}
 
-/// Square root of f64 value
+// Round
+f64 round(f64 a) {
+    return f64(round_f64(a.v));
+}
+
+// Floating point modulo division
+f64 fmod(f64 a, f64 b) {
+    return f64(fmod_f64(a.v, b.v));
+}
+
+/// Square
+f64 sqr(f64 a) {
+    return f64(sqr_f64(a.v));
+}
+
+/// Square root
 f64 sqrt(f64 a) {
     return f64(sqrt_f64(a.v));
 }
 
-/// Exponential function
-f64 exp(f64 a) {
-    return f64(exp_f64(a.v));
-}
-
-/// Natural logarithm
-f64 log(f64 a) {
-    return f64(log_f64(a.v));
-}
-
-/// Real power
-f64 pow(f64 a, f64 b) {
-    return f64(pow_f64(a.v, b.v));
-}
-
-/// Int power
+// Power, exponent = int
 f64 pow(f64 a, int b) {
     return f64(pow_f64(a.v, b));
 }
 
-/// Sine
+// Power, exponent = f64
+f64 pow(f64 a, f64 b) {
+    return f64(exp_iterate(mul_f64(b.v, log_iterate(a.v))));
+}
+
+// Exponential function
+f64 exp(f64 a) {
+    return f64(exp_iterate(a.v));
+}
+
+// Natural logarithm
+f64 log(f64 a) {
+    return f64(log_iterate(a.v));
+}
+
+// Sine
 f64 sin(f64 a) {
-    return f64(sin_f64(a.v));
+    return f64(sincos_iterate(a.v).xy);
 }
 
-/// Cosine
-f64 tan(f64 a) {
-    return f64(cos_f64(a.v));
-}
-
-/// Tangent
+// Cosine
 f64 cos(f64 a) {
-    return f64(tan_f64(a.v));
+    return f64(sincos_iterate(a.v).zw);
 }
 
-/// Arc sine
+// Tangent
+f64 tan(f64 a) {
+    return f64(tan_iterate(a.v));
+}
+
+// Arc Sine
 f64 asin(f64 a) {
-    return f64(asin_f64(a.v));
+    return f64(asin_iterate(a.v));
 }
 
-/// Arc cosine
+// Arc Cosine
 f64 acos(f64 a) {
-    return f64(acos_f64(a.v));
+    return f64(acos_iterate(a.v));
 }
 
-/// Arc tangent
+// Arc Tangent
 f64 atan(f64 a) {
-    return f64(atan_f64(a.v));
+    return f64(atan2_iterate(a.v, F2_ONE));
 }
 
-/// Arc tangent 2
+// Arc Tangent2
 f64 atan2(f64 a, f64 b) {
-    return f64(atan2_f64(a.v, b.v));
+    return f64(atan2_iterate(a.v, b.v));
 }
-
-/// Sine hyperbolicus
-f64 sinh(f64 a) {
-    return f64(sinh_f64(a.v));
-}
-
-/// Cosine hyperbolicus
-f64 cosh(f64 a) {
-    return f64(cosh_f64(a.v));
-}
-
-/// Tangent hyperbolicus
-f64 tanh(f64 a) {
-    return f64(tanh_f64(a.v));
-}
-
 
 // Overloaded operators
 
@@ -101,11 +107,11 @@ f64 operator + (f64 a, f64 b) {
 }
 
 f64 operator + (f64 a, float b) {
-    return f64(add_f64(a.v, float2(b, 0.0f)));
+    return f64(add_ds(a.v, b));
 }
 
 f64 operator + (float b, f64 a) {
-    return f64(add_f64(a.v, float2(b, 0.0f)));
+    return f64(add_ds(a.v, b));
 }
 
 f64 operator - (f64 a, f64 b) {
@@ -113,11 +119,11 @@ f64 operator - (f64 a, f64 b) {
 }
 
 f64 operator - (f64 a, float b) {
-    return f64(sub_f64(a.v, float2(b, 0.0f)));
+    return f64(sub_ds(a.v, b));
 }
 
 f64 operator - (float b, f64 a) {
-    return f64(sub_f64(a.v, float2(b, 0.0f)));
+    return f64(-sub_ds(a.v, b));
 }
 
 f64 operator * (f64 a, f64 b) {
@@ -125,11 +131,11 @@ f64 operator * (f64 a, f64 b) {
 }
 
 f64 operator * (f64 a, float b) {
-    return f64(mulds(a.v, b));
+    return f64(mul_ds(a.v, b));
 }
 
 f64 operator * (float a, f64 b) {
-    return f64(mulds(b.v, a));
+    return f64(mul_ds(b.v, a));
 }
 
 f64 operator / (f64 a, f64 b) {
@@ -137,24 +143,11 @@ f64 operator / (f64 a, f64 b) {
 }
 
 f64 operator / (f64 a, float b) {
-    return f64(divds(a.v, b));
-    //return f64(div_f64(a.v, float2(b, 0.0f)));
+    return f64(div_f64(a.v, float2(b, 0.0f)));
 }
 
 f64 operator / (float b, f64 a) {
     return f64(div_f64(a.v, float2(b, 0.0f)));
-}
-
-f64 operator % (f64 a, f64 b) {
-    return f64(mod_f64(a.v, b.v));
-}
-
-f64 operator % (f64 a, float b) {
-    return f64(mod_f64(a.v, float2(b, 0.0f)));
-}
-
-f64 operator % (float a, f64 b) {
-    return f64(mod_f64(float2(a, 0.0f), b.v));
 }
 
 bool operator == (f64 a, f64 b) {
@@ -185,10 +178,10 @@ bool isZero(f64 a) {
     return all(a.v == 0.0);
 }
 
-int32_t toInt32(f64 a) {
-    return int32_t(a.v.x);
+bool notZero(f64 a) {
+    return any(a.v != 0.0);
 }
 
-float toFloat(f64 a) {
-    return a.v.x;
+int sign(f64 a) {
+    return sign_f64(a.v);
 }

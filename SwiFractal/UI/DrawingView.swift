@@ -10,25 +10,30 @@ import SwiftUI
 //
 // Drawing View
 //
-// Contains the fractal graphic
+// Graphical output of the current fractal
 //
 struct DrawingView: View {
-    @Binding var redraw: Bool
-    @Binding var isDrawing: Bool
-    
-    var graphics: Graphics
-    //var fractal: Fractal
-    
+
+    var controller: FractalController
+        
     var body: some View {
         Canvas { context, size in
-            if redraw == redraw {
-                print ("drawing cached image")
-                graphics.drawImage(context)
+            let graphics = CanvasGraphics(context: context, size: size)
+            debugPrint ("drawing cached image")
+            if controller.isImageZoomed {
+                // Draw zoomed image if available
+                if let cgImage = controller.zoomedImage {
+                    graphics.drawImage(cgImage: cgImage)
+                }
+            }
+            else {
+                // Draw fractal image if available
+                if let cgImage = controller.image {
+                    graphics.drawImage(cgImage: cgImage)
+                }
             }
         }
-        .frame(width: graphics.frameSize.width, height: graphics.frameSize.height, alignment: .topLeading)
-        .background(Color(CGColor(red: 0.8, green: 0.8, blue: 0.8, alpha: 1.0)))
-        // Flip verically: .scaleEffect(CGSize(width: 1, height: -1))
+        .frame(width: controller.resolution.width, height: controller.resolution.height, alignment: .topLeading)
+        .background(Color.gray.opacity(0.8))
     }
-
 }

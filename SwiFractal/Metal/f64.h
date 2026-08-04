@@ -20,58 +20,61 @@
 
 using namespace metal;
 
-
-/// Struct for 64 bit floating points
+// Struct for 64 bit floating points
 struct f64 {
-    float2 v;   /// A 64 bit floating point value is internally stored as float2
+    float2 v;
     
-    /// Construct f64 with value 0
     f64() {
-        v = float2(0.0f, 0.0f);
+        v = F2_ZERO;
     }
     
-    /// Construct f64 from float
     f64(float a) {
         v = float2(a, 0.0f);
     }
     
-    /// Construct f64 from float2
     f64(float2 a) {
         v = a;
     }
     
-    /// Construct f64 from 2 floats
     f64(float a, float b) {
         v = float2(a, b);
     }
     
-    /// Assign float to f64
     f64 operator = (float a) {
         v = float2(a, 0.0f);
         return *this;
     }
     
-    /// Check if zero
-    bool isZero() {
-        return all(v == 0.0);
+    f64 operator = (int a) {
+        v = float2(float(a), 0.0f);
+        return *this;
     }
+
 };
 
-
 // Constants
+constant f64 F64_PI     = f64(3.1415927, -8.742278e-08);    // PI
+constant f64 F64_1_PI   = f64(0.31830987, 1.28412765e-08);  // 1 / PI
+constant f64 F64_PI_2   = f64(1.5707964, -4.371139e-08);    // PI / 2
+constant f64 F64_2_PI   = f64(6.2831855, -1.7484555e-07);   // PI * 2
+constant f64 F64_PI_180 = f64(0.017453292, 1.351996e-10);   // PI / 180
+constant f64 F64_LOG2   = f64(0.6931472, -1.9046542e-09);   // LOG(2)
+constant f64 F64_1_LOG2 = f64(1.442695, 1.925963e-08);      // 1 / LOG(2)
+constant f64 F64_E      = f64(2.7182817, 8.2548404e-08);    // E
+constant f64 F64_1_E    = f64(0.36787945, -9.149755e-09);   // 1 / E
+constant f64 F64_1_3    = f64(0.33333334, -9.934108e-09);   // 1 / 3
 
-constant f64 pi_f64   = f64(3.1415927, -8.742278e-08);      // PI
-constant f64 pi2_f64  = f64(1.5707964, -4.371139e-08);      // PI / 2
-constant f64 log2_f64 = f64(0.6931472, -1.9046542e-09);     // LOG(2)
-
-
-// Arithmetic functions
-
+// Functions
+float flt(f64);
+f64 floor(f64);
+f64 round(f64);
+f64 fmod(f64, f64);
+f64 sqr(f64);
 f64 sqrt(f64);
+f64 pow(f64, int);
+f64 pow(f64, f64);
 f64 exp(f64);
 f64 log(f64);
-f64 pow(f64, f64);
-f64 pow(f64, int);
 f64 sin(f64);
 f64 cos(f64);
 f64 tan(f64);
@@ -79,12 +82,6 @@ f64 asin(f64);
 f64 acos(f64);
 f64 atan(f64);
 f64 atan2(f64, f64);
-f64 sinh(f64);
-f64 cosh(f64);
-f64 tanh(f64);
-
-
-// Operators
 
 f64 operator - (f64);
 f64 operator + (f64, f64);
@@ -99,9 +96,6 @@ f64 operator * (float, f64);
 f64 operator / (f64, f64);
 f64 operator / (f64, float);
 f64 operator / (float, f64);
-f64 operator % (f64, f64);
-f64 operator % (f64, float);
-f64 operator % (float, f64);
 
 bool operator == (f64, f64);
 bool operator != (f64, f64);
@@ -110,12 +104,9 @@ bool operator > (f64, f64);
 bool operator <= (f64, f64);
 bool operator >= (f64, f64);
 
-
-// Conversion and testing functions
-
 bool isZero(f64);
-int32_t toInt32(f64);
-float toFloat(f64);
+bool notZero(f64);
+int sign(f64);
 
 #endif
 

@@ -134,7 +134,7 @@ func getColor(smoothValue: Double, maxIter: Int) -> (r: Double, g: Double, b: Do
         return (0, 0, 0)
     }
     
-    // Die Frequenz bestimmt, wie schnell sich die Farben wiederholen
+    // Die Frequenz bestimmt, wieq schnell sich die Farben wiederholen
     let frequency = 0.1
     // Ein Versatz (Offset) sorgt dafür, dass die Kanäle nicht identisch sind
     let r = 0.5 + 0.5 * sin(frequency * smoothValue + 0.0)
