@@ -1,0 +1,42 @@
+{
+	"bailout": 10000000000,
+	"colorMapping": {
+		"colorizeOutside": "distance",
+		"colorTable": "Sinus",
+		"defaultColor": {
+			"alpha": 1,
+			"red": 0,
+			"blue": 0,
+			"green": 0
+		},
+		"colorizeMode": "iterations",
+		"ncycle": 32,
+		"colorizeInside": "simple",
+		"stripeSig": 0.9,
+		"paletteMode": "linear",
+		"steps": 0,
+		"stripes": 2
+	},
+	"iterations": 5000,
+	"orbitDelta2": 1e-11,
+	"orbitLength": 20,
+	"orbitDelta3": 1e-10,
+	"common": {
+		"oversampling": 1,
+		"sizeX": "0.4017961905506883",
+		"cornerY": "-0.5503293049351449",
+		"lightning": {
+			"angle": 45,
+			"ambient": 0.2,
+			"shininess": 20,
+			"diffuse": 0.5,
+			"gamma": 1,
+			"specular": 0.5,
+			"opacity": 0.75,
+			"elevation": 45
+		},
+		"sizeY": "0.4017961905506883",
+		"cornerX": "-0.5503295086752807"
+	},
+	"orbitDelta1": 1e-15
+}
