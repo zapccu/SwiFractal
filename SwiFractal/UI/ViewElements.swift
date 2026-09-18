@@ -28,60 +28,39 @@ struct ControlLabel : View {
 //
 // Picker with label
 //
-struct LabeledPicker<T: Hashable>: View where T: RawRepresentable, T: CaseIterable, T: Identifiable {
-    let label: String
+struct CasePicker<T: Hashable>: View where T: RawRepresentable, T: CaseIterable, T: Identifiable {
     @Binding var selection: T
-    var changeHandler: ((T) -> Void)? = nil
+    
+    var width: CGFloat
     
     var body: some View {
-        HStack(spacing: 10) {
-            ControlLabel(label)
-            Picker("", selection: $selection) {
-                ForEach(Array(T.allCases)) { item in
-                    Text(String(describing: item).capitalized).tag(item)
-                }
+        Picker("", selection: $selection) {
+            ForEach(Array(T.allCases)) { item in
+                Text(String(describing: item).capitalized).tag(item)
             }
-            .onChange(of: selection) { _, _ in
-                changeHandler?(selection)
-            }
-            Spacer()
-        }.frame(alignment: .leading)
+        }.frame(width: width)
     }
     
 }
 
-//
-// Options picker with label
-//
+///
+/// Options picker. Options must be CaseIterable.
+/// - Parameters:
+///   - options: Binding
+///   - width: Width of picker
 struct OptionsPicker<T>: View where T: RawRepresentable, T: CaseIterable, T.RawValue == Int {
-    let label: String
     @Binding var options: Options<T>
-    var changeHandler: ((Options<T>) -> Void)? = nil
+    
+    var width: CGFloat
+    var alignment: Alignment = .leading
     
     var body: some View {
-        HStack(spacing: 10) {
-            ControlLabel(label)
-            Picker("", selection: $options.rawValue) {
-                ForEach(Array(T.allCases), id: \.rawValue) { item in
-                    Text(String(describing: item).capitalized).tag(item.rawValue)
-                }
+        Picker("", selection: $options.rawValue) {
+            ForEach(Array(T.allCases), id: \.rawValue) { item in
+                Text(String(describing: item).capitalized).tag(item.rawValue)
             }
-            .onChange(of: options.rawValue) { _, _ in
-                changeHandler?(options)
-            }
-            Spacer()
-        }.frame(alignment: .leading)
-    }
-    
-    init(options: Binding<Options<T>>, _ label: String = "") {
-        self.label = label
-        self._options = options
-    }
-    
-    func onValueChanged(_ handler: @escaping (Options<T>) -> Void) -> Self {
-        var copy = self
-        copy.changeHandler = handler
-        return copy
+        }
+        .frame(minWidth: width, maxWidth: .infinity, alignment: alignment)
     }
 }
 
@@ -215,34 +194,22 @@ struct LabeledStepper<T: Strideable> : View where T.Stride == T {
 //
 // Image showing a color table with an optional text label
 //
-struct ColorPalette: View {
-    var colorTable: EnumColorTable
+struct ColoringView: View {
+    var coloring: EnumColoring
     var size: CGSize
     var label: String
 
     var body: some View {
         HStack {
             Image(size: size) { context in
-                let graphics = CanvasGraphics(context: context, size: size)
-                if colorTable.ct.count > Int(size.width) {
-                    let di = Float(colorTable.ct.count) / Float(size.width)
-                    for x in 0..<Int(size.width) {
-                        let ci = Int(Float(x) * di)
-                        graphics.drawLine(from: IPoint(x: x, y: 0), to: IPoint(x: x, y: Int(size.height)), color: colorTable.ct[ci])
-                    }
-                }
-                else {
-                    let dx = Int(Float(size.width) / Float(colorTable.ct.count))
-                    var ci = 0
-                    for x in stride(from: 0, to: Int(size.width), by: dx) {
-                        graphics.drawRectFill(
-                            from: IPoint(x: x, y: 0),
-                            to: IPoint(x: x+dx, y: Int(size.height)-1),
-                            color: colorTable.ct[ci]
-                        )
-                        ci += 1
-                    }
-                }
+                context.fill(
+                    Path(CGRect(origin: .zero, size: size)),
+                    with: .linearGradient(
+                        Gradient(colors: coloring.coloringType.gradient),
+                        startPoint: .zero,
+                        endPoint: CGPoint(x: size.width, y: 0)
+                    )
+                )
             }
             if label != "" {
                 Text(label)
@@ -252,3 +219,147 @@ struct ColorPalette: View {
 
 }
 
+/// Linear stepper
+/// - Parameters:
+///   - value: Bindable value
+///   - unit: Unit string. Default = ""
+///   - range: Range of stepper
+///   - step: Step width. Default = 1
+///   - format: C-Style format string. Default = nil
+struct LinearStepper<T: Strideable> : View where T.Stride == T {
+    @Binding var value: T
+    var unit: String = ""
+    var range: ClosedRange<T>
+    var step: T = 1
+    var format: String? = nil
+ 
+    var formattedValue: String {
+        if let fmt = format, let arg = value as? CVarArg {
+            return String(format: fmt, arg) + unit
+        }
+        return "\(value)\(unit)"
+    }
+    
+    var body: some View {
+        Stepper(formattedValue, value: $value, in: range, step: step)
+    }
+}
+
+/// Linear slider
+/// - Parameters:
+///   - value: Binding
+///   - range: Stride with slider value range
+///   - step: Step width. Default = 1
+///   - format: Output format of current slider value
+///   - width: Width of slider
+struct LinearSlider: View {
+    
+    @Binding var value: Double
+    
+    var range: ClosedRange<Double>
+    var step: Double = 1.0
+    var format: String
+    var width: CGFloat
+    
+    private var steppedValue: Binding<Double> {
+        Binding(
+            get: { value },
+            set: { newValue in
+                let rounded = (newValue / step).rounded() * step
+                value = min(max(rounded, range.lowerBound), range.upperBound)
+            }
+        )
+    }
+    
+    var body: some View {
+        Slider(value: steppedValue, in: range)
+            .frame(width: width)
+        Text("\(value, specifier: format)").font(.body)
+    }
+    
+}
+
+/// Non linear slider
+/// - Parameters:
+///   - value: Binding
+///   - strides: Array with strides
+///   - format: Output format of current slider value
+///   - width: Width of slider
+struct NonLinearSlider: View {
+    
+    @Binding var value: Double
+    
+    var strides: [StrideThrough<Double>]
+    var format: String
+    var width: CGFloat
+    
+    /// Return array with all possible values
+    var valueList: [Double] {
+        strides.flatMap { Array($0) }
+    }
+    
+    /// Return the total number of steps over all strides
+    var maxIndex: Double {
+        Double(valueList.count - 1)
+    }
+    
+    private var indexBinding: Binding<Double> {
+        Binding(
+            get: { Double(valueList.firstIndex(of: value)!) },
+            set: { newIndex in value = valueList[Int(newIndex)] }
+        )
+    }
+    
+    var body: some View {
+        Slider(value: indexBinding, in: 0...maxIndex)
+            .frame(width: width)
+        Text("\(value, specifier: format)").font(.body)
+    }
+    
+}
+
+struct NonLinearSliderStepper: View {
+    @Binding var value: Double
+    var range: ClosedRange<Double> = 0.1...50.0
+    
+    // Total steps: 0.1...1.0 (10 steps: indices 0..9), 2.0...50.0 (49 steps: indices 10..58)
+    private let maxIndex: Double = 58
+    
+    private var indexBinding: Binding<Double> {
+        Binding(
+            get: { index(for: value) },
+            set: { newIndex in value = value(for: newIndex) }
+        )
+    }
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            Slider(value: indexBinding, in: 0...maxIndex, step: 1)
+            
+            Stepper(value: indexBinding, in: 0...maxIndex, step: 1) {
+                Text("Wert: \(value, specifier: value < 1.0 ? "%.1f" : "%.0f")")
+                    .font(.body)
+            }
+        }
+    }
+    
+    // MARK: - Mapping Helpers
+    private func value(for index: Double) -> Double {
+        let i = Int(round(index))
+        if i <= 9 {
+            return Double(i + 1) * 0.1
+        } else {
+            return Double(i - 9) + 1.0
+        }
+    }
+    
+    private func index(for val: Double) -> Double {
+        if val <= 1.0 {
+            let steps = round(val / 0.1) - 1.0
+            return max(0, min(9, steps))
+        } else {
+            let steps = round(val) - 1.0 + 9.0
+            return max(10, min(maxIndex, steps))
+        }
+    }
+}

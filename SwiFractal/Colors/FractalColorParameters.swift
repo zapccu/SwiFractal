@@ -57,27 +57,35 @@ typealias ColorizeInside = Options<EnumColorizeInside>
 ///
 enum EnumPaletteMode: Int, CaseIterable {
     case linear           = 0   // linear color mapping
-    case modulo           = 1   // color mapping by modulo division
+    case interpolated     = 1   // Interpolation
     case hue              = 2
     case huedyn           = 3
-    case lchdyn           = 4
     case histogram        = 5   // Histogram color mapping
-    case inverseHistogram = 6
+    case inverseHistogram = 6   // Inverse histogram coloring
     case cycling          = 7
 }
 typealias PaletteMode = Options<EnumPaletteMode>
 
 ///
-/// Colormapping parameters
+/// Color parameters
 ///
-struct FractalColoring: FractalParameters {
+struct FractalColorParameters: FractalParameters {
     
-    /// Return default color table (greyscale)
-    var colorTable: EnumColorTable = .smooth(smoothColorTable: ColorTableSmooth(
+    /// Coloring name
+    var coloringName: String = "Grey-1024"
+    
+    /// Coloring. Default = Greyscale color table with 1024 colors
+    var coloring: EnumColoring = .smooth(smoothColorTable: ColorTableSmooth(
         "Grey-1024", colorPoints: [RGBAColor(80.0/255.0, 80.0/255.0, 80.0/255.0), .white], colorCount: 1024, defColor: .black)
     )
     
-    var colorizeMode = ColorizeMode(.iterations)    // Colorize mode: iterations, distance, potential, steps, stripes
+    /// Colorize mode: iterations, distance, potential, steps, stripes
+    var colorizeMode = ColorizeMode(.iterations)
+    
+    /// Colorize outside\
+    /// `.simple`: No shading\
+    /// `.simple3D`: Simple 3D shading (fast)\
+    /// `.blinnPhong`: Blinn-Phong 3D shading
     var colorizeOutside = ColorizeOutside(.simple)  // Colorize outside: simple, simple3D, blinnPhong
     var colorizeInside = ColorizeInside(.simple)    // Colorize inside: simple, orbits, distance
     var paletteMode = PaletteMode(.linear)          // Palette assignment mode: linear, modulo, hue, huedyn, lchdyn
@@ -87,7 +95,11 @@ struct FractalColoring: FractalParameters {
                                                     // Range 0-1, 0 = No stripes, default = 0.9
     var steps: Int = 0                              // Step density, frequency for step coloring
                                                     // Range 0-100, 0 = No steps, default = 0
-    var ncycle: Double = 1.0                        // Color cycling, must not be 0
+    var ncycle: Double = 1.0                        // Color cycling, must be > 0
+    var scale: Double = 1.0                         // Color changing frequency
     
+    var offset: Double = 0.0                        // Offset to first color
+    var compression: Int = 1                        // Color palette compression. nth root of iteration count, must be > 0
+
 }
 

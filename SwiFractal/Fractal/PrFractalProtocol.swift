@@ -15,7 +15,7 @@ import ParSetKit
 // Protocol for fractals
 //
 @MainActor
-protocol FractalProtocol {
+protocol FractalProtocol: AnyObject {
     
     // Type of fractal parameters
     associatedtype DataType: IterationData
@@ -24,7 +24,7 @@ protocol FractalProtocol {
     associatedtype ResultType: CalculationResult
     
     // Type of dynamic parameters
-    associatedtype DynParType: PrDynamicParameters
+    // associatedtype DynParType: PrDynamicParameters
     
     associatedtype RT: PreciseFloatingPoint
     
@@ -42,45 +42,49 @@ protocol FractalProtocol {
     
     // Set of fractal parameters
     var FP: ParSet<DataType> { get set }
-    
+        
     // Return number of available parameter versions
     var versionsCount: Int { get }
     
     // Check if current parameter set version has been modified
     var hasChanges: Bool { get }
-    
-    // Current image
-    //var image: CGImage? { get set }
-    
-    // Zoomed image
-    // var zoomedImage: CGImage? { get set }
-    
+        
     //
     // Parameterset operations
     //
     
     // Switch back to previous parameter version
-    mutating func undo()
+    func undo()
     
     // Switch back to initial parameter version
-    mutating func reset()
+    func reset()
     
     // Return dimension with arbitrary precision
     func getDimensions() -> FractalDimensions<MPFloat>
     
-    // Return color table
-    func getColorTable() -> EnumColorTable
+    // Return color parameters
+    func getColorParameters() -> FractalColorParameters
     
-    mutating func fitDimensionsToImageSize(resolution: CGSize)
+    // Return color table
+    func getColoring() -> EnumColoring
+    
+    // Return limits
+    func getLimits() -> FractalLimits
+    
+    // Return lightning parameters
+    func getLightningParameters() -> LightningParameters
+    
+    func fitDimensionsToImageSize(resolution: CGSize)
     
     func fitImageSizeToDimensions(resolution: CGSize) -> CGSize
     
     // Mark start of calculation.
     // Return dynamic calculation parameters
-    func beginCalculation(resolution: CGSize) -> DynParType?
-    
-    // Render fractal
-    func render(method: CalculationMethod, resolution: CGSize) async -> (CalculationState, CGImage?)
+    // func beginCalculation(resolution: CGSize) -> DynParType?
+    func beginCalculation(resolution: CGSize) -> DynamicParameters<DataType>?
+
+    // Calculate fractal
+    func calculate(method: CalculationMethod, resolution: CGSize) async -> (CalculationState, Matrix<MandelbrotResult>?)
     
     // Mark end of calculation.
     // Define this function in a fractal class if anything must be
@@ -103,10 +107,10 @@ protocol FractalProtocol {
 extension FractalProtocol {
     
     /// Switch back to previous parameter set
-    mutating func undo() { FP.undo() }
+    func undo() { FP.undo() }
     
     /// Reset parameters to initial version
-    mutating func reset() { FP.reset() }
+    func reset() { FP.reset() }
     
     /// Return number of parameter set versions
     var versionsCount: Int { FP.versionsCount }
@@ -117,13 +121,27 @@ extension FractalProtocol {
     /// Return fractal dimensions
     func getDimensions() -> FractalDimensions<MPFloat> { FP.current.dimensions.asMPFloat }
     
-    /// Return color table
-    func getColorTable() -> EnumColorTable { FP.coloring.colorTable }
+    /// Return coloring parameters
+    func getColorParameters() -> FractalColorParameters { FP.colorParameters }
     
-    mutating func fitDimensionsToImageSize(resolution: CGSize) {
+    /// Return color table
+    func getColoring() -> EnumColoring { FP.colorParameters.coloring }
+    
+    /// Return fractal limits
+    func getLimits() -> FractalLimits { FP.limits }
+    
+    /// Return lightning parameters
+    func getLightningParameters() -> LightningParameters { FP.lightParameters }
+    
+    /// Map fractal dimensions to image resolution
+    /// - Parameter resolution: Image resolution
+    func fitDimensionsToImageSize(resolution: CGSize) {
         FP.dimensions.fitFractalToImageSize(resolution: resolution)
     }
     
+    /// Map image resolution to fractal dimensions
+    /// - Parameter resolution: Current image resolution
+    /// - Returns: New image resolution
     func fitImageSizeToDimensions(resolution: CGSize) -> CGSize {
         return FP.dimensions.fitImageToFractalSize(resolution: resolution)
     }
@@ -140,7 +158,11 @@ extension FractalProtocol {
     
     /// Mark end of calculation. Default implementation does nothing.
     func endCalculation() {
-        // Does nothing
+        // Does nothing by default
+    }
+    
+    static func getSetting<T>(forKey key: String, defaultValue: T) -> T {
+        UserDefaults.standard.object(forKey: key) as? T ?? defaultValue
     }
     
 }

@@ -11,7 +11,7 @@ import SwiftMPx
 
 struct ControlView: View {
 
-    var controller: FractalController
+    @Bindable var controller: FractalController
 
     // Bindings from parent view
     //@Binding var selection: Selection
@@ -32,31 +32,44 @@ struct ControlView: View {
                 // Resolution
                 //
                 GroupBox(label: Text("Resolution").foregroundStyle(.blue).font(.headline)) {
-                    VStack(alignment: .leading) {
-                        HStack(spacing: 20) {
-                            Stepper("\(controller.resolution.width.formatted()) px", value: Bindable(controller).resolution.width, in: 100...4096, step: 50) { actionInProgress in
-                                if linkResolution { controller.resolution.height = controller.resolution.width }
-                            }
-                            Stepper("\(controller.resolution.height.formatted()) px", value: Bindable(controller).resolution.height, in: 100...4096, step: 50) { actionInProgress in
-                                if linkResolution { controller.resolution.width = controller.resolution.height }
-                            }
+                    Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
+                        GridRow {
+                            LinearStepper(value: Bindable(controller).resolution.width, unit: " px", range: 100...4096, step: 50, format: "%.0f")
+                                .onChange(of: controller.resolution.width) { _, newValue in
+                                    if linkResolution { controller.resolution.height = newValue }
+                                }
+                            LinearStepper(value: Bindable(controller).resolution.height, unit: " px", range: 100...4096, step: 50, format: "%.0f")
+                                .onChange(of: controller.resolution.height) { _, newValue in
+                                    if linkResolution { controller.resolution.width = newValue }
+                                }
                             Spacer()
                         }
-                        Toggle(isOn: $linkResolution) { Text("Aspect ratio") }
-                        LabeledPicker(label: "Method", selection: $method)
-                    }
+                        GridRow {
+                            Toggle(isOn: $linkResolution) { Text("Aspect ratio") }
+                        }
+                        GridRow {
+                            Toggle("Spherical", isOn: $controller.isSphericalDisplay)
+                        }
+                        GridRow {
+                            Text("Method")
+                            CasePicker(selection: $method, width: 120)
+                        }
+                    }.padding(.horizontal, 5)
                 }.padding([.top, .leading], 10)
-                
+
                 switch controller.kind {
                 case .mandelbrotDP(let f):
-                    ControlMandelbrotView(controller: controller, fractal: f, dimensions: Bindable(controller).dimensions)
+                    ControlParameterView(controller: controller, fractal: f)
                 case .mandelbrotAP(let f):
-                    ControlMandelbrotView(controller: controller, fractal: f, dimensions: Bindable(controller).dimensions)
+                    ControlParameterView(controller: controller, fractal: f)
                 case .juliaDP(let f):
-                    ControlJuliaView(controller: controller, fractal: f, dimensions: Bindable(controller).dimensions)
+                    ControlParameterView(controller: controller, fractal: f)
                 case .juliaAP(let f):
-                    ControlJuliaView(controller: controller, fractal: f, dimensions: Bindable(controller).dimensions)                }
+                    ControlParameterView(controller: controller, fractal: f)
+                }
+
             }
         }
     }
 }
+

@@ -22,7 +22,7 @@ public enum PrecisionTag: String, Codable {
 protocol PreciseFloatingPoint: BasicCalculations & RealFunctions & Codable & Sendable & ExpressibleByFloatLiteral, Comparable {
     
     // Associated complex type
-    associatedtype ComplexType: ComplexNumber where ComplexType.RealType == Self
+    associatedtype CT: ComplexNumber where CT.RT == Self
     
     // Precision tag for JSON export/import
     static var precisionTag: PrecisionTag { get }
@@ -105,6 +105,16 @@ extension PreciseFloatingPoint {
         return t * t * (3.0 - 2.0 * t)
     }
     
+    /// Linear interpolation
+    public static func lerp(a: Self, b: Self, t: Self) -> Self {
+        return a + (b - a) * t
+    }
+    
+    /// Exact linear interpolation
+    public static func lerpExact(a: Self, b: Self, t: Self) -> Self {
+        return (1.0 - t) * a + t * b
+    }
+    
 }
 
 //
@@ -113,6 +123,11 @@ extension PreciseFloatingPoint {
 extension PreciseFloatingPoint {
     
     /// Create an array with linear distributed foating point values
+    /// - Parameters:
+    ///   - start: First value of array
+    ///   - end: Last value of array
+    ///   - n: Number of values in array
+    /// - Returns: Array of size n
     public static func linspace(_ start: Self, _ end: Self, _ n: Int) -> [Self] {
         guard n > 0 else { return [] }
         let step = (end - start) / Self(n - 1, precision: start.precision)
@@ -131,7 +146,7 @@ extension PreciseFloatingPoint {
 //
 extension Double : PreciseFloatingPoint {
     
-    typealias ComplexType = Cplx    // Cplx = Complex<Double>
+    typealias CT = Cplx    // Cplx = Complex<Double>
     
     static var precisionTag: PrecisionTag { .double }
     
@@ -209,8 +224,8 @@ extension MPFloat: @retroactive AdditiveArithmetic {}
 
 extension MPFloat : PreciseFloatingPoint {
     
-    typealias ComplexType = MPComplex
-    
+    typealias CT = MPComplex
+
     public static var precisionTag: PrecisionTag { .mpfloat }
     
     public static var zero: MPFloat { MPFloat(0) }
@@ -227,5 +242,4 @@ extension MPFloat : PreciseFloatingPoint {
     }
     
 }
-
 

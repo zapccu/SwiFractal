@@ -13,8 +13,8 @@ import SwiftMPx
 //
 struct LightningParameters: FractalParameters {
     
-    var angle: Int = 45
-    var elevation: Int = 45
+    var angle: Int = 45             // Angle of light source in degrees (0...360)
+    var elevation: Int = 45         // Elevation of light source in degrees (0...90)
     var opacity: Double = 0.75
     var ambient: Double = 0.2
     var diffuse: Double = 0.5

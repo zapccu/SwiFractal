@@ -8,10 +8,11 @@
 import SwiftUI
 import Accelerate
 
-//
-//  Draw into vImage buffer
-//
-class ImageGraphics : Graphics {
+
+///
+///  Draw into vImage buffer
+///
+final class ImageGraphics : Graphics {
         
     /// Size considering oversampling factor
     var size: ISize
@@ -116,13 +117,28 @@ class ImageGraphics : Graphics {
     }
      */
     
+    /// Start drawing. Initialize pointer to image buffer and call drawing action.
+    /// - Parameter drawAction: Drawing action (closure)
+    /// - Returns: Image
     func beginDraw(drawAction: () -> CGImage?) -> CGImage? {
-        image.withUnsafeMutableBufferPointer { imagePtr in
+        return image.withUnsafeMutableBufferPointer { imagePtr in
             self.ptr = UnsafeMutableRawPointer(imagePtr.baseAddress!)
+            let cgImage = drawAction()
+            self.ptr = nil
+            return cgImage
         }
-        let cgImage = drawAction()
-        self.ptr = nil
-        return cgImage
+    }
+    
+    /// Start drawing. Initialize pointer to image buffer and call drawing action.
+    /// - Parameter drawAction: Drawing action (closure).
+    /// - Returns: Image
+    /// - Note: Passing 2 parameters to drawing action: Pointer and size of a pixel in byte.
+    func beginDrawParallel(drawAction: (UnsafeMutableRawPointer, Int) -> Void) -> CGImage? {
+        return image.withUnsafeMutableBufferPointer { imagePtr in
+            let base = UnsafeMutableRawPointer(imagePtr.baseAddress!)
+            drawAction(base, indexSize)
+            return self.cgImage
+        }
     }
 
     /// Clear graphics
@@ -134,11 +150,16 @@ class ImageGraphics : Graphics {
     }
     
     /// Move position to specified point
+    @inline(__always)
     func move(to: IPoint) {
         self.p = to
     }
     
-    /// Set a pixel
+    /// Set a pixel at coordinates
+    /// - Parameters:
+    ///   - x: X coordinate
+    ///   - y: Y coordinate
+    ///   - color: Color
     func setPixel(_ x: Int, _ y: Int, color: RGBAColor? = nil) {
         guard let ptr = ptr else { return }
         
@@ -147,6 +168,36 @@ class ImageGraphics : Graphics {
         guard index >= 0 else { return }
         
         ptr.storeBytes(of: c.argb8888, toByteOffset: index, as: UInt32.self)
+    }
+    
+    /// Set multiple pixels starting from byte offset to the same color
+    /// - Parameters:
+    ///   - fromByteOffset: Byte offset from buffer start
+    ///   - count: Number of pixels
+    ///   - color: Color
+    ///   - indexSize: Size of a pixel in byte
+    /// - Returns: New byte offset
+    @inline(__always)
+    func setPixels(fromByteOffset: Int, count: Int, color: RGBAColor, indexSize: Int) -> Int {
+        guard let ptr = ptr else { return fromByteOffset }
+        ptr.advanced(by: fromByteOffset)
+           .initializeMemory(as: UInt32.self, repeating: color.argb8888, count: count)
+        return fromByteOffset + count * indexSize
+    }
+    
+    /// Set multiple pixels starting from byte offset to the same color
+    /// - Parameters:
+    ///   - base: Buffer start address
+    ///   - fromByteOffset: Byte offset from base
+    ///   - count: Number of pixels
+    ///   - color: Color
+    ///   - indexSize: Size of a pixel in byte
+    /// - Returns: New byte offset
+    @inline(__always)
+    static func setPixels(base: UnsafeMutableRawPointer, fromByteOffset: Int, count: Int, color: RGBAColor, indexSize: Int) -> Int {
+        base.advanced(by: fromByteOffset)
+                .initializeMemory(as: UInt32.self, repeating: color.argb8888, count: count)
+        return fromByteOffset + count * indexSize
     }
     
     /// Draw a horizontal line without updating drawing position
@@ -161,17 +212,6 @@ class ImageGraphics : Graphics {
 
         var pixel = c.argb8888
         memset_pattern4(ptr + index1, &pixel, count * 4)
-            /*
-            for i in stride(from: index1, to: index2, by: indexSize) {
-                
-                
-                imagePtr[i]     = c.redi
-                imagePtr[i + 1] = c.greeni
-                imagePtr[i + 2] = c.bluei
-                imagePtr[i + 3] = c.alphai
-                
-            }
-             */
     }
     
     /// Draw a vertical line without updating drawing position
@@ -214,5 +254,3 @@ class ImageGraphics : Graphics {
     }
     
 }
-
-

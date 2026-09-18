@@ -17,6 +17,7 @@ protocol BasicCalculations {
     static func * (_ lhs: Self, _ rhs: Self) -> Self
     static func * (_ lhs: Self, _ rhs: Double) -> Self
     static func / (_ lhs: Self, _ rhs: Self) -> Self
+    static func / (_ lhs: Self, _ rhs: Double) -> Self
     
     static func == (_ lhs: Self, _ rhs: Self) -> Bool
     static func != (_ lhs: Self, _ rhs: Self) -> Bool

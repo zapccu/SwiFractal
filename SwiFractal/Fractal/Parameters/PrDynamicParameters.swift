@@ -63,7 +63,7 @@ extension PrDynamicParameters {
     
     var limits: FractalLimits { fractalParameters.limits }
     
-    var coloring: FractalColoring { fractalParameters.coloring }
+    var colorParameters: FractalColorParameters { fractalParameters.colorParameters }
 
     var lightning: Lightning { Lightning(fractalParameters.lightParameters) }
 }

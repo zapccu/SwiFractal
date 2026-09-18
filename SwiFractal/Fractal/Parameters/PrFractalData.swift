@@ -17,13 +17,16 @@ protocol FractalData<RT>: Codable, Sendable, Equatable {
     associatedtype MPFloatVersion: FractalData = Self
     associatedtype DoubleVersion: FractalData = Self
     
-    typealias CT = RT.ComplexType
+    typealias CT = RT.CT
     
     /// Datatype name
     static var dataType: String { get }
     
     /// Data structure with default values
     static var defaultData: Self { get }
+    
+    /// Name of fractal
+    var name: String { get set }
     
     /// Fractal dimensions
     var dimensions: FractalDimensions<RT> { get set }
@@ -32,7 +35,7 @@ protocol FractalData<RT>: Codable, Sendable, Equatable {
     var limits: FractalLimits { get set }
     
     /// Coloring
-    var coloring: FractalColoring { get set }
+    var colorParameters: FractalColorParameters { get set }
     
     /// Lightning
     var lightParameters: LightningParameters { get set }

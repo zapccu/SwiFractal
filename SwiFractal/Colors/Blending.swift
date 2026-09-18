@@ -7,9 +7,9 @@
 
 import Foundation
 
-//
-// Blending
-//
+///
+/// Blending
+///
 enum BlendingMode<T: BinaryFloatingPoint> {
     
     case hardLight

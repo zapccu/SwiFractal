@@ -21,11 +21,6 @@ protocol FractalParameters : Codable, Equatable {
     //func toMPFloat(precision: Int) -> MPFloatVersion
     
 }
-/*
-extension FractalParameters where MPFloatVersion == Self {
-    func toMPFloat(precision: Int) -> Self { self }
-}
-*/
 
 //
 // Fractal parameters depending on precision

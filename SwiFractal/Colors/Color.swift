@@ -10,78 +10,85 @@ import Cocoa
 import SwiftUI
 import SwiftMPx
 
+/// Type for SIMD3``<Float>``
+typealias SIMD3f = SIMD3<Float>
 
-// Type for RGBA color value with components in range 0..1
-typealias RGBA = SIMD4<Float32>
+/// Type for RGB color value with components in range 0...1
+typealias RGB = SIMD3<Float>
 
-// Type for RGBAI color values with components in range 0..255
-typealias RGBAI = SIMD4<UInt8>
+/// Type for RGBA color value with components in range 0...1
+typealias RGBA = SIMD4<Float>
 
-// Type for HSB color value
+/// Type for HSB color value
 typealias HSB = (hue: Float, saturation: Float, brightness: Float)
 
-// Type for HSL color value
+/// Type for HSL color value
 typealias HSL = (hue: Float, saturation: Float, lightness: Float)
 
-// Type for OKLCH / LCH color value
+/// Type for OKLCH / LCH color value
 typealias LCH = (lightness: Float, chroma: Float, hue: Float)
 
+
+extension SIMD3: @retroactive ExpressibleByFloatLiteral where Scalar: ExpressibleByFloatLiteral {
+    public init(floatLiteral value: Scalar.FloatLiteralType) {
+        self.init(repeating: Scalar(floatLiteral: value))
+    }
+}
+
+extension SIMD4 {
+    
+    /// Access elements x,y,z as SIMD3
+    var xyz: SIMD3<Scalar> {
+        get { SIMD3(x, y, z) }
+        set {
+            self.x = newValue.x
+            self.y = newValue.y
+            self.z = newValue.z
+        }
+    }
+    
+    /// Initialize SIMD4 value with SIMD3 and scalar value
+    init(xyz: SIMD3<Scalar>, w: Scalar) {
+        self.init(xyz.x, xyz.y, xyz.z, w)
+    }
+    
+}
+
 // Extension for RGBA type
-extension SIMD4<Float32> {
+extension SIMD4 where Scalar: BinaryFloatingPoint {
     
     // Floating point components
-    var red: Float   { x }      // red
-    var green: Float { y }      // green
-    var blue: Float  { z }      // blue
-    var alpha: Float { w }      // alpha
+    var red: Scalar   { x }
+    var green: Scalar { y }
+    var blue: Scalar  { z }
+    var alpha: Scalar { w }
     
-    // Integer components
+    /// Return red component as UInt8
     var redi: UInt8   { UInt8(x * 255.0) }
+    
+    /// Return green component as UInt8
     var greeni: UInt8 { UInt8(y * 255.0) }
+    
+    /// Return blue component as UInt8
     var bluei: UInt8  { UInt8(z * 255.0) }
+    
+    /// Return alpha component as UInt8
     var alphai: UInt8 { UInt8(w * 255.0) }
     
-    var pixel: [UInt8] { RGBAI(self).pixel }
-    
-    init(_ x: UInt8, _ y: UInt8, _ z: UInt8, _ w: UInt8) {
-        self.init(Float32(x) / 255.0, Float32(y) / 255.0, Float32(z) / 255.0, Float32(w) / 255.0)
+    public init(_ x: UInt8, _ y: UInt8, _ z: UInt8, _ w: UInt8) {
+        self.init(Scalar(x) / 255.0, Scalar(y) / 255.0, Scalar(z) / 255.0, Scalar(w) / 255.0)
     }
     
-    init(_ v: SIMD4<UInt8>) {
+    public init(_ v: SIMD4<UInt8>) {
         self.init(v.x, v.y, v.z, v.w)
     }
+
 }
 
-
-// Extension for RGBAI type (aka SIMD4<UInt8>)
-extension SIMD4<UInt8> {
-    
-    var red: UInt8   { x }      // red
-    var green: UInt8 { y }      // green
-    var blue: UInt8  { z }      // blue
-    var alpha: UInt8 { w }      // alpha
-    
-    var pixel: [UInt8] { [x, y, z, w] }
-    
-    init(_ x: Float, _ y: Float, _ z: Float, _ w: Float) {
-        self.init(UInt8(x * 255.0), UInt8(y * 255.0), UInt8(z * 255.0), UInt8(w * 255.0))
-    }
-
-    init(_ x: Double, _ y: Double, _ z: Double, _ w: Double) {
-        self.init(UInt8(x * 255.0), UInt8(y * 255.0), UInt8(z * 255.0), UInt8(w * 255.0))
-    }
-    
-    init(_ v: SIMD4<Float32>) {
-        self.init(v.x, v.y, v.z, v.w)
-    }
-}
-
-
-//
-// Fractal color type
-//
-// 4 color channels: red, green, blue, alpha in range 0..1
-//
+///
+/// Fractal color type. A RGBAColor has 4 channels: red green, blue, alpha.
+/// Each channel is in range 0..1. Channels are stored internally as SIMD4``<Float>``
+///
 struct RGBAColor: FractalParameters {
     
     // Predefined colors
@@ -92,11 +99,43 @@ struct RGBAColor: FractalParameters {
     static let blue   = RGBAColor(0.0, 0.0, 1.0, 1.0)
     static let yellow = RGBAColor(1.0, 1.0, 0.0, 1.0)
     
-    // Color channels: float values in range 0..1
-    var red:   Float = 0.0
-    var green: Float = 0.0
-    var blue:  Float = 0.0
-    var alpha: Float = 1.0
+    // Custom encoding to prevent raw SIMD4 encoding of "colorValue"
+    enum CodingKeys: String, CodingKey {
+        case red, green, blue, alpha
+    }
+    
+    // Color channels: Float values in range 0..1
+    var colorValue: SIMD4<Float>
+    
+    /// Access red component of RGBAColor value
+    var red: Float {
+        get { colorValue.x }
+        set { colorValue.x = newValue }
+    }
+
+    /// Access green component of RGBAColor value
+    var green: Float {
+        get { colorValue.y }
+        set { colorValue.y = newValue }
+    }
+    
+    /// Access blue component of RGBAColor value
+    var blue: Float {
+        get { colorValue.z }
+        set { colorValue.z = newValue }
+    }
+    
+    /// Access alpha component of RGBAColor value
+    var alpha: Float {
+        get { colorValue.w }
+        set { colorValue.w = newValue }
+    }
+    
+    /// Access RGB components of RGBAColor value
+    var rgb: SIMD3<Float> {
+        get { colorValue.xyz }
+        set { colorValue.xyz = newValue }
+    }
     
     /// Return red channel as UInt8 value in range 0..255
     var redi:   UInt8 { return UInt8(red * 255.0) }
@@ -109,11 +148,6 @@ struct RGBAColor: FractalParameters {
 
     /// Return alpha channel as UInt8 value in range 0..255
     var alphai: UInt8 { return UInt8(alpha * 255.0) }
-
-    /// Return color channels as tuple of Float values in range 0..1
-    var rgba: RGBA {
-        return RGBA(red, green, blue, alpha)
-    }
     
     /// Return color channels as 32 bit integer in format 0xRRGGBBAA
     var rgbi32: UInt32 {
@@ -123,11 +157,6 @@ struct RGBAColor: FractalParameters {
     /// Return color channels as 32 bit integer in format 0xAARRGGBB
     var argb8888: UInt32 {
         return UInt32((UInt32(bluei) << 24) | (UInt32(greeni) << 16) | (UInt32(redi) << 8) | UInt32(alphai))
-    }
-    
-    /// Return color channels as tuple of UInt8 values in range 0..255
-    var rgbai: RGBAI {
-        return RGBAI(red, green, blue, alpha)
     }
 
     /// Return color channels as CGColor object
@@ -165,30 +194,70 @@ struct RGBAColor: FractalParameters {
         return GraphicsContext.Shading.color(color)
     }
     
+    /// Custom encoder
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(red, forKey: .red)
+        try container.encode(green, forKey: .green)
+        try container.encode(blue, forKey: .blue)
+        try container.encode(alpha, forKey: .alpha)
+    }
     
-    // --------------------------------
+    //
     //  Initialization functions
-    // --------------------------------
+    //
+    
+    /// Decoding initializer
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // decodeIfPresent gibt nil zurück, falls der Key im JSON fehlt
+        let red = try container.decodeIfPresent(Float.self, forKey: .red) ?? 0.0
+        let green = try container.decodeIfPresent(Float.self, forKey: .green) ?? 0.0
+        let blue = try container.decodeIfPresent(Float.self, forKey: .blue) ?? 0.0
+        let alpha = try container.decodeIfPresent(Float.self, forKey: .alpha) ?? 1.0
+        
+        self.colorValue = SIMD4<Float>(red, green, blue, alpha)
+    }
+
+    /// Init with SIMD4 value
+    init(colorValue: SIMD4<Float>) {
+        self.colorValue = colorValue
+    }
+    
+    /// Default initializer (black)
+    init() {
+        self.colorValue = SIMD4<Float>(0.0, 0.0, 0.0, 1.0)
+    }
     
     /// Init color channels with Float values in range 0..1
-    init (_ red: Float = 0.0, _ green: Float = 0.0, _ blue: Float = 0.0, _ alpha: Float = 1.0) {
-        self.red   = max(min(red, 1.0), 0.0)
-        self.green = max(min(green, 1.0), 0.0)
-        self.blue  = max(min(blue, 1.0), 0.0)
-        self.alpha = max(min(alpha, 1.0), 0.0)
+    init (_ red: Float, _ green: Float, _ blue: Float, _ alpha: Float = 1.0) {
+        self.colorValue = SIMD4<Float>(red, green, blue, alpha).clamped
     }
     
     /// Init color channels with Double values in range 0..1
-    init (_ red: Double = 0.0, _ green: Double = 0.0, _ blue: Double = 0.0, _ alpha: Double = 1.0) {
+    init (_ red: Double, _ green: Double, _ blue: Double, _ alpha: Double = 1.0) {
         self.init(Float(red), Float(green), Float(blue), Float(alpha))
+    }
+    
+    /// Init color with channels in range 0..255
+    init (_ red: UInt8, _ green: UInt8, _ blue: UInt8, _ alpha: UInt8 = 255) {
+        self.init(Float(red)/255.0, Float(green)/255.0, Float(blue)/255.0, Float(alpha)/255.0)
+    }
+    
+    /// Init color with RGB Value
+    init(rgb: RGB, _ alpha: Float = 1.0) {
+        self.colorValue = RGBA(rgb, alpha).clamped
+    }
+    
+    /// Init color with RGBA value
+    init(rgba: RGBA) {
+        self.colorValue = rgba.clamped
     }
 
     /// Init grey color with Float value
     init(grey: Float, _ alpha: Float = 1.0) {
-        self.red = grey
-        self.green = grey
-        self.blue = grey
-        self.alpha = alpha
+        self.colorValue = SIMD4<Float>(grey, grey, grey, alpha).clamped
     }
     
     /// Init grey color with Double value
@@ -197,118 +266,122 @@ struct RGBAColor: FractalParameters {
     }
     
     /// Init color with vector of channels in range 0..1
-    init (_ vector: [Float]) {
-        self.init(
+    init (vector: [Float]) {
+        self.colorValue = SIMD4<Float>(
             vector.count > 0 ? vector[0] : 0.0,
             vector.count > 1 ? vector[1] : 0.0,
             vector.count > 2 ? vector[2] : 0.0,
             vector.count > 3 ? vector[3] : 1.0
-        )
+        ).clamped
     }
     
     /// Init color with vector of channels in range 0..1
-    init (_ vector: [Double]) {
-        self.init(vector.map { Float($0) })
-    }
-
-    /// Init color with channels in range 0..255
-    init (_ red: UInt8, _ green: UInt8, _ blue: UInt8, _ alpha: UInt8 = 255) {
-        self.init(Float(red)/255.0, Float(green)/255.0, Float(blue)/255.0, Float(alpha)/255.0)
-    }
-    
-    /// Init color with RGBA value
-    init (_ rgba: RGBA) {
-        self.init(rgba.x, rgba.y, rgba.z, rgba.w)
-    }
-    
-    /// Init color with RGBAI value
-    init (_ rgbai: RGBAI) {
-        self.init(rgbai.red, rgbai.green, rgbai.blue, rgbai.alpha)
+    init (vector: [Double]) {
+        self.init(vector: vector.map { Float($0) })
     }
     
     /// Init color with COL3 value
-    init (_ col3: COL3) {
+    init (col3: COL3) {
         self.init(col3.x, col3.y, col3.z, 1.0)
     }
     
     /// Init color with HSB color
-    init (_ hsb: HSB) {
-        self.init(ColConv.hsb2rgb(COL3(hsb)))
+    init (hsb: HSB) {
+        self.init(col3: ColConv.hsb2rgb(COL3(hsb)))
     }
     
     /// Init with HSL color
-    init (_ hsl: HSL) {
-        self.init(ColConv.hsl2rgb(COL3(hsl)))
+    init (hsl: HSL) {
+        self.init(col3: ColConv.hsl2rgb(COL3(hsl)))
     }
     
     /// Init with LCH color
-    init (_ lch: LCH) {
-        self.init(ColConv.xyz2rgb(ColConv.lab2xyz(ColConv.oklch2lab(COL3(lch.0, lch.1, lch.2)))))
+    init (lch: LCH) {
+        self.init(col3: ColConv.xyz2rgb(ColConv.lab2xyz(ColConv.oklch2lab(COL3(lch.0, lch.1, lch.2)))))
     }
-        
+
     /// Gamma correction
     /// - Parameter gamma: Gamma value
     /// - Returns: Corrected color
+    @inline(__always)
     func gammaCorrection(_ gamma: Double) -> RGBAColor {
         guard gamma != 1.0 else { return self }
         let rcp = Float(1.0/gamma)
-        return RGBAColor(pow(rgba.red, rcp), pow(rgba.green, rcp), pow(rgba.blue, rcp), rgba.alpha)
+        return RGBAColor(pow(red, rcp), pow(green, rcp), pow(blue, rcp), alpha)
     }
     
     /// Overlay, alpha channel is not touched
+    @inline(__always)
     mutating func hardLight(top: Float) {
-        red   = BlendingMode.hardLight.blend(base: red, top: top)
-        green = BlendingMode.hardLight.blend(base: green, top: top)
-        blue  = BlendingMode.hardLight.blend(base: blue, top: top)
+        colorValue.x = BlendingMode.hardLight.blend(base: colorValue.x, top: top)
+        colorValue.y = BlendingMode.hardLight.blend(base: colorValue.y, top: top)
+        colorValue.z = BlendingMode.hardLight.blend(base: colorValue.z, top: top)
+    }
+    
+    /// Exact linear interpolation between two colors based on a weight factor
+    /// - Parameters:
+    ///   - from: First color
+    ///   - to: Second color
+    ///   - factor: Normalized weight factor in range 0...1
+    /// - Returns: Interpolated color
+    @inline(__always)
+    static func lerpExact(from: RGBAColor, to: RGBAColor, factor: Float) -> RGBAColor {
+        return RGBAColor(rgba: SIMD4.lerpExact(a: from.colorValue, b: to.colorValue, t: factor.clamped))
     }
     
     /// Linear interpolation between two colors based on a weight factor
     /// - Parameters:
-    ///   - other: Other color
-    ///   - factor: Weight factor in range 0...1
-    mutating func mix(with other: RGBAColor, factor: Float) {
-        let clampedFactor = min(max(factor, 0.0), 1.0)
-        red   = red   * (1.0 - clampedFactor) + other.red   * clampedFactor
-        green = green * (1.0 - clampedFactor) + other.green * clampedFactor
-        blue  = blue  * (1.0 - clampedFactor) + other.blue  * clampedFactor
+    ///   - from: First color
+    ///   - to: Second color
+    ///   - factor: Normalized weight factor in range 0...1
+    /// - Returns: Interpolated color
+    @inline(__always)
+    static func lerp(from: RGBAColor, to: RGBAColor, factor: Float) -> RGBAColor {
+        return RGBAColor(rgba: SIMD4.lerp(a: from.colorValue, b: to.colorValue, t: factor.clamped))
     }
     
-    // --------------------------------
+    /// Cosine interpolation
+    /// - Parameters:
+    ///   - from: First color
+    ///   - to: Second color
+    ///   - factor: Normalized weight factor in range 0...1
+    /// - Returns: Interpolated color
+    @inline(__always)
+    static func cosineInterpolate(from: RGBAColor, to: RGBAColor, factor: Float) -> RGBAColor {
+        RGBAColor(rgba: SIMD4.cosineInterpolate(a: from.colorValue, b: to.colorValue, t: factor))
+    }
+    
+    //
     //  Compare colors
-    // --------------------------------
+    //
 
     static func == (lhs: RGBAColor, rhs: RGBAColor) -> Bool {
-        return lhs.rgba == rhs.rgba
+        return lhs.colorValue == rhs.colorValue
     }
     
     static func != (lhs: RGBAColor, rhs: RGBAColor) -> Bool {
         return !(lhs == rhs)
     }
-    
-    // --------------------------------
-    //  Subtract / add colors
-    // --------------------------------
 
+    /// Subtract colors
     static func - (lhs: RGBAColor, rhs: RGBAColor) -> RGBAColor {
-        return RGBAColor(lhs.red - rhs.red, lhs.green - rhs.green, lhs.blue - rhs.blue, lhs.alpha - rhs.alpha)
+        return RGBAColor(rgba: lhs.colorValue - rhs.colorValue)
     }
     
+    /// Add colors
     static func + (lhs: RGBAColor, rhs: RGBAColor) -> RGBAColor {
-        return RGBAColor(lhs.red + rhs.red, lhs.green + rhs.green, lhs.blue + rhs.blue, lhs.alpha + rhs.alpha)
+        return RGBAColor(rgba: lhs.colorValue + rhs.colorValue)
     }
 
-    // --------------------------------------------------------
-    //  Multiply / divide colors with/by float or double value
-    //  Alpha channel is not modified!
-    // --------------------------------------------------------
-
+    ///  Multiply color with float value
     static func * (lhs: RGBAColor, rhs: Float) -> RGBAColor {
-        return RGBAColor(lhs.red * rhs, lhs.green * rhs, lhs.blue * rhs, lhs.alpha)
+        return RGBAColor(rgba: lhs.colorValue * rhs)
     }
 
+    /// Divide color by Float value
     static func / (lhs: RGBAColor, rhs: Float) -> RGBAColor {
         guard rhs != 0 else { return lhs }
-        return RGBAColor(lhs.red / rhs, lhs.green / rhs, lhs.blue / rhs, lhs.alpha)
+        return RGBAColor(rgba: lhs.colorValue / rhs)
     }
     
     /// Linear spacing
@@ -317,13 +390,13 @@ struct RGBAColor: FractalParameters {
     ///   - end: Last color of resulting array
     ///   - n: Number of colors in resulting array
     /// - Returns: Array with colors
-    static func linspace(_ start: RGBAColor, _ end: RGBAColor, _ n: Int) -> [RGBAColor] {
-        guard n > 0 else { return [] }
-        let step = (end - start) / Float(n - 1)
-        var a = Array(0..<n).map { step * Float($0) + start }
+    static func linspace(_ start: RGBAColor, _ end: RGBAColor, _ count: Int) -> [RGBAColor] {
+        guard count > 0 else { return [] }
+        let step = (end - start) / Float(count - 1)
+        var a = Array(0..<count).map { step * Float($0) + start }
         
         // Prevent rounding errors for last array element
-        if n > 1 { a[n-1] = end }
+        if count > 1 { a[count-1] = end }
         
         return a
     }

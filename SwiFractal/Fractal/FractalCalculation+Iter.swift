@@ -15,12 +15,13 @@ extension FractalCalculation {
         
     /// Calculate point of Mandelbrot set
     /// - Parameters:
-    ///   - CP: Complex point
+    ///   - Z0: Initial value of Z
+    ///   - C: Initial value of C
     ///   - P: Dynamic parameter structure
     /// - Returns: Result structure
     nonisolated static func calculatePointZ2(Z0: CT, C: CT, P: DynamicParameters<PT>) -> MandelbrotResult {
         
-        let prec: Int = P.dimensions.precision.bits
+        let prec: Int = P.fp.dimensions.precision.bits
         
         var result: MandelbrotResult = .defaultValue
         
@@ -39,46 +40,42 @@ extension FractalCalculation {
         var smoothIter: Double = 0      // Smooth iteration counter
 
         // Create array for storing orbits
-        var orbits = Array<CT>(repeating: CT.zero, count: P.limits.iterations+1)
-        
-        for i in 0...P.limits.iterations {
+        var orbits = Array<CT>(repeating: CT.zero, count: P.fp.limits.iterations+1)
+
+        for i in 0...P.fp.limits.iterations {
             
             // Iteration formula
             Z = Z.squared + C
             
             if P.bStripes {
                 // stripet = (sin(Double(P.MP.stripes) * Z.arg) + 1.0) * 0.5
-                stripet = (sin(Double(P.coloring.stripes) * Z.arg.toDouble()) + 1) * 0.5
+                stripet = (sin(Double(P.fp.colorParameters.stripes) * Z.arg.toDouble()) + 1) * 0.5
             }
             
             nZ = Z.lengthSquared.toDouble()
             
-            if nZ > P.limits.bailout {
+            if nZ > P.fp.limits.bailout {
                 absZ = sqrt(nZ)           // aZ = abs(Z)
                 let logAbsZ = log(absZ)   // logaZ = log(abs(Z))
                 
                 // logRatio = 2 * log(aZ) / log(bailout)
                 // Using precalculated values
                 // div_2_logBailout = 2 / log(bailout)
-                let logRatio = logAbsZ * P.div_2_logBailout
+                // let logRatio = logAbsZ * P.div_2_logBailout
                 //let logRatio = 2.0 * logaZ / log(P.MP.bailout)
                 
                 // Calculate smooth iteration value for smooth coloring
                 // This value must be added to the iteration count.
-                //
-                // 1.0 - log2(0.5 * log(Z) / log(b))
-                //
-                //smoothIter = 1.0 - log2(log(nZ) / P.logBailout2)
-                smoothIter = 1.0 - log(logRatio) * _NC.RLOG2
+                // smoothIter = 1.0 - log(logRatio) * _NC.RLOG2
+                smoothIter = -log(log(absZ)/P.logBailout) * _NC.RLOG2
                 
                 // Calculate exterior distance to Mandelbrot set
                 //
                 // Dist = ((aZ * log(aZ)) / abs(D)) * 2.0
                 //
-                let rtAbsZ: PT.RT = PT.RT(absZ, precision: prec)
-                let rtLogAbsZ: PT.RT = PT.RT(logAbsZ, precision: prec)
+                let rtAbsZ: RT = RT(absZ, precision: prec)
+                let rtLogAbsZ: RT = RT(logAbsZ, precision: prec)
                 let rtDistance = ((rtAbsZ * rtLogAbsZ) / D.length) * 2.0
-                let distThreshold = P.dx * 0.5
                 distance = (rtDistance * P.diag).toDouble()
                 
                 // Calculate potential
@@ -97,11 +94,13 @@ extension FractalCalculation {
                 if P.bStripes {
                     // Exponential moving average
                     // stripeAvg = stripeAvg * (1.0 + smoothIter * (P.MP.stripeSig - 1.0)) + stripet * smoothIter * (1.0 - P.MP.stripeSig)
-                    stripeAvg *= (1.0 + smoothIter * (P.coloring.stripeSig - 1.0))
-                    stripeAvg += stripet * smoothIter * (1.0 - P.coloring.stripeSig)
+                    //stripeAvg *= (1.0 + smoothIter * (P.fp.colorParameters.stripeSig - 1.0))
+                    //stripeAvg += stripet * smoothIter * (1.0 - P.fp.colorParameters.stripeSig)
+                    stripeAvg = expMovAvg(previousAvg: stripeAvg, smooth: P.fp.colorParameters.stripeSig, newValue: stripet, smoothIter: smoothIter)
                     
                     // BIAS correction
-                    stripeAvg = stripeAvg / (1 - pow(P.coloring.stripeSig, Double(i)) * (1 + smoothIter * (P.coloring.stripeSig - 1)))
+                    //stripeAvg = stripeAvg / (1 - pow(P.fp.colorParameters.stripeSig, Double(i)) * (1 + smoothIter * (P.fp.colorParameters.stripeSig - 1)))
+                    stripeAvg = biasCorrect(previousAvg: stripeAvg, smooth: P.fp.colorParameters.stripeSig, iter: i, smoothIter: smoothIter)
                 }
                 
                 // Prepare result values
@@ -109,7 +108,7 @@ extension FractalCalculation {
                 let normal = Z/D
                 let normalReal = normal.real.toDouble()
                 let normalImag = normal.imaginary.toDouble()
-                let filamentStrength = PT.RT.interpolateCubic(edge0: distThreshold * 1.5, edge1: distThreshold * 0.5, x: rtDistance)
+                let filamentStrength = RT.interpolateCubic(edge0: P.distThreshold * 1.5, edge1: P.distThreshold * 0.5, x: rtDistance)
                 
                 // Return iteration result. Double values only
                 return MandelbrotResult(
@@ -128,12 +127,12 @@ extension FractalCalculation {
                 var idx: Int = -1
                 let end: Int = max(-1, i - 100)
                 
-                for t in [P.limits.orbitDelta1, P.limits.orbitDelta2] {
+                for t in [P.fp.limits.orbitDelta1, P.fp.limits.orbitDelta2] {
                     for n in stride(from: i-1, to: end, by: -1) {
                         let d = Z - orbits[n]
                         if d.lengthSquared.toDouble() < t {
                             idx = n
-                            break
+                            break   // Leave inner loop
                         }
                     }
                 }
@@ -148,12 +147,12 @@ extension FractalCalculation {
             }
             else {
                 // Simplified periodicity check, no orbit colorization
-                if abs(nZ - nZ1) < P.limits.orbitDelta3 {
+                if abs(nZ - nZ1) < P.fp.limits.orbitDelta3 {
                     return result
                 }
                 
                 period += 1
-                if period > P.limits.orbitLength {
+                if period > P.fp.limits.orbitLength {
                     period = 0
                     nZ1 = nZ
                 }
@@ -162,7 +161,7 @@ extension FractalCalculation {
             if P.bStripes {
                 // Calculate exponential moving average of stripe value
                 // stripeAvg = expMovAvg(previousAvg: stripeAvg, smooth: P.MP.stripeSig, newValue: stripet)
-                stripeAvg = stripeAvg * P.coloring.stripeSig + stripet * (1 - P.coloring.stripeSig)
+                stripeAvg = stripeAvg * P.fp.colorParameters.stripeSig + stripet * (1 - P.fp.colorParameters.stripeSig)
             }
             
             // Derivation D of Z

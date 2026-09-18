@@ -11,14 +11,14 @@ import SwiftUI
 //
 // Extend FractalProtocol by render functions
 //
-extension FractalProtocol where DynParType == DynamicParameters<DataType> {
+extension FractalProtocol { // where DynParType == DynamicParameters<DataType> {
 
-    /// Render fractal
+    /// Calculate fractal
     /// - Parameters:
     ///   - method: Calculation method
     ///   - resolution: Image resolution
-    /// - Returns: Tuple of calculation state and image
-    func render(method: CalculationMethod, resolution: CGSize) async -> (CalculationState, CGImage?) {
+    /// - Returns: Tuple of calculation state and result
+    func calculate(method: CalculationMethod, resolution: CGSize) async -> (CalculationState, Matrix<MandelbrotResult>?) {
         // Get calculation function for specified method
         guard let function = FractalCalculation<DataType>.getFunction(method: method, P: FP.current)  else {
             return (.error("Calculation method not supported"), nil)
@@ -29,24 +29,12 @@ extension FractalProtocol where DynParType == DynamicParameters<DataType> {
             return (.error("Setup of calculation environment failed"), nil)
         }
         
-        // Calculate fractal
+        // Calculate the fractal
         let result = await function(DP)
         
-        // Calculate color histogram
-        let histogram = Histogram(result: result, maxValue: DP.limits.iterations)
+        endCalculation()
         
-        // Create color mapper
-        let mapper = ColorMapper(coloring: DP.coloring, limits: DP.limits, histogram: histogram, lightning: DP.lightning)
-        
-        // Draw the image
-        if let image = drawResultSet(result: result, resolution: resolution, size: DP.osSize, mapper: mapper) {
-            endCalculation()
-            return (.completed(), image)
-        }
-        else {
-            endCalculation()
-            return (.error("Failed to draw fractal"), nil)
-        }
+        return (.completed(), result)
     }
     
     /// Draw results into graphics
@@ -70,13 +58,15 @@ extension FractalProtocol where DynParType == DynamicParameters<DataType> {
                 
                 // Color of first point in line
                 var currentResult = result[y, 0]
-                var color = mapper.mapResult(result: currentResult)
+                //var color = mapper.mapResult(result: currentResult)
+                var color = mapper.mapColor(result: currentResult)
                 
                 for x in 1..<result.cols {
                     let r = result[y, x]
                     if r == currentResult { continue }
                     currentResult = r
-                    let newColor = mapper.mapResult(result: currentResult)
+                    //let newColor = mapper.mapResult(result: currentResult)
+                    let newColor = mapper.mapColor(result: currentResult)
                     if newColor != color {
                         graphics.drawHLine(from: point, to: x, color: color)
                         point.x = x

@@ -1,26 +1,57 @@
 //
-//  LinAlgebra.swift
+//  Helpers.swift
+//  SwiFractal
 //
-//  Created by Dirk Braner on 15.11.24.
+//  Created by Dirk Braner on 27.08.26.
 //
 
 import Foundation
-import Numerics
 
-// ------------------------------------
-//  Arithmetic functions
-// ------------------------------------
 
 extension BinaryFloatingPoint {
     
     /// Operator for modulo division of floating point values
-    static func % (_ lhs: Self, _ rhs: Self) -> Self {
+    @inline(__always)
+    public static func % (_ lhs: Self, _ rhs: Self) -> Self {
         return lhs.truncatingRemainder(dividingBy: rhs)
     }
     
-}
+    /// Floating point modulo division
+    @inline(__always)
+    public static func fmod(_ lhs: Self, _ rhs: Self) -> Self {
+        return lhs.truncatingRemainder(dividingBy: rhs)
+    }
 
-/// Convert degree to radian
-func deg2rad(_ deg: Double) -> Double {
-    return Double.pi * deg / 180.0
+    /// Convert degree to radian
+    @inline(__always)
+    public var deg2rad: Self {
+        Self.pi * self / 180.0
+    }
+    
+    /// Fast power function for integer exponents
+    /// - Parameter exponent: Exponent
+    /// - Returns: Power to exponent
+    public func pow(_ exponent: Int) -> Self {
+        guard exponent != 0 else { return 1.0 }
+        
+        var base = self
+        var exp = exponent
+        var result: Self = 1.0
+            
+        if exp < 0 {
+            base = 1.0 / base
+            exp = -exp
+        }
+        
+        while exp > 0 {
+            if exp & 1 == 1 {
+                result *= base
+            }
+            base *= base
+            exp >>= 1
+        }
+        
+        return result
+    }
+    
 }

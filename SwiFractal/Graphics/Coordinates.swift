@@ -13,16 +13,16 @@
 
 import SwiftUI
 
-//
-// Point with integer coordinates
-//
+///
+/// Point with integer coordinates
+///
 struct IPoint {
     var x: Int
     var y: Int
     
     static let zero = IPoint(x: 0, y: 0)
   
-    /// Returns point as CGPoint
+    /// Returns IPoint as CGPoint
     var cgPoint: CGPoint { CGPoint(x: x, y: y) }
     
     /// Initialize point from CGPoint
@@ -47,13 +47,14 @@ extension CGPoint {
     
 }
 
-//
-// Size with integer coordinates
-//
+///
+/// Size with integer coordinates
+///
 struct ISize {
     var width: Int
     var height: Int
     
+    /// Return ISize as CGSize
     var cgSize: CGSize { CGSize(width: width, height: height) }
     
     init(width: Int, height: Int) {
@@ -78,24 +79,25 @@ struct ISize {
 
 extension CGSize {
     
+    /// Initialize CGSize from ISize
     init(size: ISize) {
         self.init(width: size.width, height: size.height)
     }
     
 }
 
-//
-// Aspect ratio mode
-//
+///
+/// Aspect ratio mode
+///
 enum AspectRatioMode {
     case ignoreAspectRatio
     case fitToImageSize
     case fitToFractalSize
 }
 
-//
-// Rectangle with integer coordinates
-//
+///
+/// Rectangle with integer coordinates
+///
 struct IRect {
     var origin: IPoint
     var width: Int
@@ -105,14 +107,17 @@ struct IRect {
         IPoint(x: origin.x + width, y: origin.y + height)
     }
     
+    /// Return size of rectangle
     var size: ISize {
         ISize(width: width, height: height)
     }
     
+    /// Return IRect as CGRect
     var cgRect: CGRect {
         CGRect(x: origin.x, y: origin.y, width: width, height: height)
     }
     
+    /// Return size of rectangle as CGSize
     var cgSize: CGSize {
         CGSize(width: width, height: height)
     }
@@ -138,6 +143,7 @@ struct IRect {
 
 extension CGRect {
     
+    /// Initialize CGRect from IRect
     init(rect: IRect) {
         self.init(origin: rect.origin.cgPoint, size: rect.cgSize)
     }

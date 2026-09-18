@@ -26,9 +26,9 @@ struct FractalLimits: FractalParameters {
     var orbitLength: Int = 20                       // Limit for fast orbit detection = 20
 }
 
-//
-// Static Mandelbrot calculation parameters
-//
+///
+/// Static Mandelbrot calculation parameters
+///
 nonisolated struct MandelbrotParameters<RT: PreciseFloatingPoint> : IterationData {
     
     /// Return default parameters
@@ -37,22 +37,22 @@ nonisolated struct MandelbrotParameters<RT: PreciseFloatingPoint> : IterationDat
         return MandelbrotParameters<RT>(dimensions: defaultDimensions)
     }
 
-    // Name of fractal
+    /// Name of fractal
     var name: String = "MandelbrotSet"
 
-    // Dimensions
+    /// Dimensions
     var dimensions: FractalDimensions<RT>
 
-    // Lightning parameters
+    /// Lightning parameters
     var lightParameters: LightningParameters = LightningParameters()
     
-    // Mandelbrot limits
+    /// Mandelbrot limits
     var limits: FractalLimits = FractalLimits()
 
-    // Coloring parameters
-    var coloring: FractalColoring = FractalColoring()
+    /// Coloring parameters
+    var colorParameters: FractalColorParameters = FractalColorParameters()
     
-    /// Return supported calculation methods
+    /// Return calculation methods supported by Mandelbrot fractal type
     var supportedCalculationMethods: [CalculationMethod] {
         [.sequential, .parallel, .metalcompute ]
     }
@@ -64,7 +64,7 @@ nonisolated struct MandelbrotParameters<RT: PreciseFloatingPoint> : IterationDat
     }
     
     /// Return initial values for Z and C
-    @inlinable func initialValues(v: CT) -> (z0: CT, c: CT) {
+    @inline(__always) func initialValues(v: CT) -> (z0: CT, c: CT) {
         return (z0: CT.zero, c: v)
     }
     
@@ -76,7 +76,7 @@ nonisolated struct MandelbrotParameters<RT: PreciseFloatingPoint> : IterationDat
         
         newMandelbrotParameters.lightParameters = lightParameters
         newMandelbrotParameters.limits          = limits
-        newMandelbrotParameters.coloring        = coloring
+        newMandelbrotParameters.colorParameters = colorParameters
         
         return newMandelbrotParameters
     }
@@ -90,7 +90,7 @@ nonisolated struct MandelbrotParameters<RT: PreciseFloatingPoint> : IterationDat
         
         newMandelbrotParameters.lightParameters = lightParameters
         newMandelbrotParameters.limits          = limits
-        newMandelbrotParameters.coloring        = coloring
+        newMandelbrotParameters.colorParameters = colorParameters
         
         return newMandelbrotParameters
     }

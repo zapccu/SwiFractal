@@ -11,22 +11,31 @@ import Foundation
 import Numerics
 
 
-//
-// Lightning
-//
+///
+/// Lightning. Created from LigthningParameters
+///
 @dynamicMemberLookup
 struct Lightning {
     
+    /// Lightning parameters
     let parameters: LightningParameters
     
-    // Vectors for Blinn-Phong-Shading
+    /// Viewer angle in radian
     var angleRad: Double
+    
+    /// Elevation angle in radian
     var elevationRad: Double
+    
+    /// Light vector for Blinn-Phong-Shading
     var vecLight: Vector<Double>
+    
+    /// Azimuth vector for Blinn-Phong-Shading
     var vecAzimuth: Vector<Double>
     
-    // Vector and height factor for simple shading
+    /// Vector for simple shading
     var vecSimple: Vector<Double>
+    
+    /// Height factor for simple shading
     var height: Double
     
     /// Direct access to LightningParameters
@@ -41,8 +50,8 @@ struct Lightning {
         self.parameters = parameters
         
         // Convert angles from degree to rad
-        self.angleRad     = deg2rad(Double(parameters.angle))
-        self.elevationRad = deg2rad(Double(parameters.elevation))
+        self.angleRad     = Double(parameters.angle).deg2rad
+        self.elevationRad = Double(parameters.elevation).deg2rad
         
         // angle = theta, elevation = phi
         // light vector = [ cos(theta) * cos(phi), sin(theta) * cos(phi), sin(phi) ]
@@ -64,7 +73,9 @@ struct Lightning {
     /// - Returns: brightness in range 0-1
     func simple3D(_ normal: Vector<Double>) -> Double {
         let diffuseLight = normal * vecSimple + height
-        return diffuseLight / (1.0 + height)
+        let brightness = diffuseLight / (1.0 + height)
+        
+        return brightness.clamped
     }
     
     /// Blinn-Phong-Shading
@@ -78,7 +89,7 @@ struct Lightning {
         // theta: light angle
         // phi:   light azimuth
         //
-        // light_vector  = [cos(theta)cos(phi), sin(theta)cos(phi), sin(phi)]
+        // light_vector  = [cos(theta)*cos(phi), sin(theta)*cos(phi), sin(phi)]
         // normal_vector = [normal.real, normal.imag, 1]
         //
         // diffuseLight  = dot product(light_vector, normal_vector)
@@ -88,9 +99,9 @@ struct Lightning {
         
         // Calculate specular light
         //
-        // phi2:  average between phi and pi/2 (viewer azimuth)
+        // phi2: average between phi and pi/2 (viewer azimuth)
         //
-        // specularLight = dot product(phi2, normal)
+        // specularLight = dot-product(phi2, normal)
         var specularLight = normal * vecAzimuth
         // Normalization
         specularLight = specularLight / (1 + vecAzimuth[2])
@@ -104,6 +115,6 @@ struct Lightning {
         // Add intensity
         brightness = brightness * parameters.opacity + (1 - parameters.opacity) / 2
         
-        return brightness
+        return brightness.clamped
     }
 }

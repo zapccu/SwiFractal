@@ -33,7 +33,7 @@ nonisolated struct JuliaParameters<RT: PreciseFloatingPoint> : IterationData {
     var limits: FractalLimits = FractalLimits()
 
     // Coloring parameters
-    var coloring: FractalColoring = FractalColoring()
+    var colorParameters: FractalColorParameters = FractalColorParameters()
     
     /// Real value of complex point of Julia set
     var cPointX: RT
@@ -80,7 +80,7 @@ nonisolated struct JuliaParameters<RT: PreciseFloatingPoint> : IterationData {
         
         newJuliaParameters.lightParameters = lightParameters
         newJuliaParameters.limits          = limits
-        newJuliaParameters.coloring        = coloring
+        newJuliaParameters.colorParameters = colorParameters
         newJuliaParameters.cPointX         = cPointX.asDouble
         newJuliaParameters.cPointY         = cPointY.asDouble
         
@@ -96,7 +96,7 @@ nonisolated struct JuliaParameters<RT: PreciseFloatingPoint> : IterationData {
         
         newJuliaParameters.lightParameters = lightParameters
         newJuliaParameters.limits          = limits
-        newJuliaParameters.coloring        = coloring
+        newJuliaParameters.colorParameters = colorParameters
         newJuliaParameters.cPointX         = cPointX.toMPFloat(precision: precision)
         newJuliaParameters.cPointY         = cPointY.toMPFloat(precision: precision)
 

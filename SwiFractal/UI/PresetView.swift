@@ -9,9 +9,9 @@ import SwiftUI
 import SwiftMPx
 
 //
-// Status view
+// Preset view
 //
-// Used for showing status information on bottom of window
+// Show available presets on top of window
 //
 struct PresetView: View {
     

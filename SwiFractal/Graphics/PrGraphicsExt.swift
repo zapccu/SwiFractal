@@ -81,7 +81,7 @@ extension Graphics {
             for x in 0..<width {
                 let offset = y * width + x
                 if offset >= colors.count { return }
-                self.setPixel(x, y, color: RGBAColor(colors[offset]))
+                self.setPixel(x, y, color: RGBAColor(rgba: colors[offset]))
             }
         }
     }

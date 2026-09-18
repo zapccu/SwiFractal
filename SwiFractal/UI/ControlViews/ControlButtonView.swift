@@ -13,10 +13,10 @@ import SwiftMPx
 // View containing the control buttons
 //
 struct ControlButtonView: View {
+    @Environment(AppSettings.self) private var settings
 
     let controller: FractalController   // Fractal controller
     let method: CalculationMethod       // Calculation method
-    //let selection: Selection            // Current selection
     
     @Binding var info: Info
     
@@ -66,6 +66,22 @@ struct ControlButtonView: View {
                         calculationTask = Task {
                             // Render fractal
                             controller.beginCalculation()
+                            let st = await controller.calculate(method: method)
+                            guard !Task.isCancelled else {
+                                controller.endCalculation(.cancelled("Cancelled."))
+                                info.setState(currentAction: "Cancelled.")
+                                return
+                            }
+                            controller.endCalculation(st)
+                            if settings.drawParallel {
+                                debugPrint("Drawing parallel")
+                                await controller.drawResultSetParallel()
+                            }
+                            else {
+                                debugPrint("Drawing sequential")
+                                await controller.drawResultSet()
+                            }
+/*
                             let (st, image) = await controller.fractal.render(method: method, resolution: controller.resolution)
                             guard !Task.isCancelled else {
                                 controller.endCalculation(.cancelled("Cancelled."))
@@ -75,6 +91,7 @@ struct ControlButtonView: View {
                             
                             controller.image = image
                             controller.endCalculation(st)
+ */
                             info.setState(currentAction: st.message, statusMessage: "Calculation time: \(controller.formattedCalculationTime)")
                         }
 

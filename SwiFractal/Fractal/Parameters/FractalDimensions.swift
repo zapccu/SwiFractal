@@ -7,21 +7,22 @@
 
 import Foundation
 import SwiftMPx
+import Metal64
 
 
-//
-// Iteration precision type
-//
+///
+/// Iteration precision type
+///
 enum DimensionsPrecisionType {
     case double(FractalDimensions<Double>)
     case mpfloat(FractalDimensions<MPFloat>)
 }
 
 
-//
-// Fractal dimension as numeric strings.
-// Used for UI input/output
-//
+///
+/// Fractal dimension as numeric strings.
+/// Used for UI input/output
+///
 struct StringDimensions {
     
     var cornerX: String = "0"
@@ -36,6 +37,7 @@ struct StringDimensions {
         guard let pr = MPFloat.getPrecision(real: sizeX, scale: scale) else { return nil }
 
         if pr.isDbl {
+            // Double precision
             return .double(FractalDimensions<Double>(
                 cornerX: Double(cornerX),
                 cornerY: Double(cornerY),
@@ -44,6 +46,7 @@ struct StringDimensions {
             ))
         }
         else {
+            // Arbitrary precision
             return .mpfloat(FractalDimensions<MPFloat>(
                 cornerX: MPFloat(cornerX, precision: pr.bits),
                 cornerY: MPFloat(cornerY, precision: pr.bits),
@@ -55,23 +58,29 @@ struct StringDimensions {
     
 }
 
-//
-// Fractal dimensions
-//
+///
+/// Fractal dimensions
+///
 struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, Sendable {
     
-    typealias CT = RT.ComplexType
+    typealias CT = RT.CT
     
-    // Corner (for calculation)
+    /// Corner real (for calculation)
     var cornerX: RT
+    
+    /// Corner imaginary (for calculation)
     var cornerY: RT
 
-    // Corner as MPFloat (for zooming and precision detection)
+    /// Corner real as MPFloat (for zooming and precision detection)
     var mpfCornerX: MPFloat { cornerX.toMPFloat(precision: precision.bits ) }
+    
+    /// Corner imaginary as MPFloat (for zooming and precision detection)
     var mpfCornerY: MPFloat { cornerY.toMPFloat(precision: precision.bits ) }
 
-    // Size (for calculation)
+    /// Size real (for calculation)
     var sizeX: RT
+    
+    /// Size imaginary (for calculation)
     var sizeY: RT
 
     /// Return horizontal fractal size as MPFloat (for zooming and precision detection)
@@ -80,7 +89,7 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
     /// Return vertical fractal size as MPFloat (for zooming and precision detection)
     var mpfSizeY: MPFloat { sizeY.toMPFloat(precision: precision.bits ) }
     
-    /// Oversampling factor
+    /// Oversampling factor. Range 1...3. 1 = No oversampling
     var oversampling: Int = 1
     
     /// Precision information
@@ -88,6 +97,11 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
     
     /// Render precision strategy
     var renderPrecision: RenderPrecisionStrategy
+    
+    /// Return dimensions in Double precision
+    var asDouble: FractalDimensions<Double> {
+        toDouble()
+    }
     
     /// Get/set StringDimensions.
     /// Setting StringDimensions will fail if precision required for conversion of StringDimensions is higher than current precision
@@ -140,11 +154,13 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
     ///   - cornerY: Lower corner of fractal
     ///   - sizeX: Width of fractal, must be > 0
     ///   - sizeY: Height of fractal, must be > 0
-    init(cornerX: RT, cornerY: RT, sizeX: RT, sizeY: RT) {
+    ///   - oversampling: Oversampling factor in range 1...3
+    init(cornerX: RT, cornerY: RT, sizeX: RT, sizeY: RT, oversampling: Int = 1) {
         let sx = RT.abs(sizeX)
         let sy = RT.abs(sizeY)
         
         let bits = sx.precision
+        
         if sx is Double {
             let size = min(sx, sy).asMPFloat
             self.precision = .init(isDbl: true, bits: bits)
@@ -154,10 +170,13 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
             self.precision = .init(isDbl: false, bits: bits)
             self.renderPrecision = .arbitrary
         }
+        
         self.cornerX = cornerX
         self.cornerY = cornerY
         self.sizeX = sx
         self.sizeY = sy
+        
+        self.oversampling = max(min(oversampling, 3), 1)
     }
     
     /// Convert dimension to Double
@@ -166,7 +185,8 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
             cornerX: cornerX.toDouble(),
             cornerY: cornerY.toDouble(),
             sizeX: sizeX.toDouble(),
-            sizeY: sizeY.toDouble()
+            sizeY: sizeY.toDouble(),
+            oversampling: oversampling
         )
     }
     
@@ -178,7 +198,8 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
             cornerX: cornerX.toMPFloat(precision: precision),
             cornerY: cornerY.toMPFloat(precision: precision),
             sizeX: sizeX.toMPFloat(precision: precision),
-            sizeY: sizeY.toMPFloat(precision: precision)
+            sizeY: sizeY.toMPFloat(precision: precision),
+            oversampling: oversampling
         )
     }
     
@@ -344,16 +365,118 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
         )
     }
     
-    func mapScreenCoordinates(resolution: CGSize, osSize: ISize, aspectRatio: Bool = true) -> Matrix<CT> {
+    /// Map screen coordinates to complex coordinates of type Cplx or MPComplex.
+    /// Supports real datatypes Double and MPFloat
+    /// - Parameters:
+    ///   - resolution: Screen resolution without oversampling
+    ///   - osSize: Screen resolution considering oversampling
+    ///   - aspectRatio: Adjust aspect ratio
+    /// - Returns: Linebuffer with complex coordinates
+    func mapScreenCoordinates(resolution: CGSize, osSize: ISize, aspectRatio: Bool = true) -> LinearBuffer<CT> {
+        let buffer = LinearBuffer<CT>(width: osSize.width, height: osSize.height, initialValue: .zero)
+        
         let newDimensions = aspectRatio ? adjustAspectRatio(resolution: resolution) : self
-        return Matrix<CT>((osSize.height, osSize.width), start: newDimensions.corner, end: newDimensions.corner + newDimensions.size)
+        let start = newDimensions.corner
+        let end   = newDimensions.corner + newDimensions.size
+        let realParts = RT.linspace(start.real, end.real, osSize.width)
+        let imagParts = RT.linspace(start.imaginary, end.imaginary, osSize.height)
+        
+        // Initialize linear buffer
+        var i = 0
+        for y in 0..<osSize.height {
+            for x in 0..<osSize.width {
+                buffer.pointer[i] = CT(realParts[x], imagParts[y])
+                i += 1
+            }
+        }
+
+        return buffer
     }
     
-    func mapScreenCoordinates(refPoint: CT, resolution: CGSize, osSize: ISize, aspectRatio: Bool = true) -> Matrix<CT> {
+    /// Map screen coordinates to complex distance values to reference point.
+    /// The resulting buffer is used by perturbation algorithm.
+    /// - Parameters:
+    ///   - refPoint: Reference point as MPComplex value
+    ///   - resolution: Screen resolution without oversampling
+    ///   - osSize: Screen resolution considering oversampling
+    ///   - aspectRatio: Adjust aspect ratio
+    /// - Returns: Linebuffer with complex distance values as Cplx
+    func mapScreenCoordinates(refPoint: MPComplex, resolution: CGSize, osSize: ISize, aspectRatio: Bool = true) -> LinearBuffer<Cplx> where RT == MPFloat {
+        let buffer = LinearBuffer<Cplx>(width: osSize.width, height: osSize.height, initialValue: .zero)
+        
         let newDimensions = aspectRatio ? adjustAspectRatio(resolution: resolution) : self
         let startDelta = newDimensions.corner - refPoint
         let endDelta   = refPoint + startDelta
-        return Matrix<CT>((osSize.height, osSize.width), start: startDelta, end: endDelta)
+        let realParts = RT.linspace(startDelta.real, endDelta.real, osSize.width)
+        let imagParts = RT.linspace(startDelta.imaginary, endDelta.imaginary, osSize.height)
+        
+        // Initialize linear buffer
+        var i = 0
+        for y in 0..<osSize.height {
+            for x in 0..<osSize.width {
+                buffer.pointer[i] = Cplx(realParts[x].asDouble, imagParts[y].asDouble)
+                i += 1
+            }
+        }
+
+        return buffer
+    }
+
+    /// Map screen coordinates to complex coordinates of type Complex2.
+    /// Supports real datatype Float2
+    /// - Parameters:
+    ///   - resolution: Screen resolution without oversampling
+    ///   - osSize: Screen resolution considering oversampling
+    ///   - aspectRatio: Adjust aspect ratio
+    /// - Returns: Linebuffer with complex coordinates
+    func mapScreenCoordinates(resolution: CGSize, osSize: ISize, aspectRatio: Bool = true) -> LinearBuffer<Complex2> where RT == Double {
+        let buffer = LinearBuffer<Complex2>(width: osSize.width, height: osSize.height, initialValue: .zero)
+        
+        let newDimensions = aspectRatio ? adjustAspectRatio(resolution: resolution) : self
+        let start = newDimensions.corner
+        let end   = newDimensions.corner + newDimensions.size
+        let realParts = Double.linspace(start.real, end.real, osSize.width)
+        let imagParts = Double.linspace(start.imaginary, end.imaginary, osSize.height)
+        
+        // Initialize matrix
+        var i = 0
+        for y in 0..<osSize.height {
+            for x in 0..<osSize.width {
+                buffer.pointer[i] = Complex2(realParts[x], imagParts[y])
+                i += 1
+            }
+        }
+
+        return buffer
+    }
+    
+    /// Map screen coordinates to complex distance values to reference point.
+    /// The resulting buffer is used by perturbation algorithm.
+    /// - Parameters:
+    ///   - refPoint: Reference point as MPComplex value
+    ///   - resolution: Screen resolution without oversampling
+    ///   - osSize: Screen resolution considering oversampling
+    ///   - aspectRatio: Adjust aspect ratio
+    /// - Returns: Linebuffer with complex distance values as Float2 where x = real, y = imaginary
+    func mapScreenCoordinates(refPoint: Double, resolution: CGSize, osSize: ISize, aspectRatio: Bool = true) -> LinearBuffer<Float2> where RT == Double {
+        let buffer = LinearBuffer<Float2>(width: osSize.width, height: osSize.height, initialValue: .zero)
+        
+        let newDimensions = aspectRatio ? adjustAspectRatio(resolution: resolution) : self
+        let startDelta = newDimensions.corner - refPoint
+        let endDelta   = refPoint + startDelta
+        let realParts = RT.linspace(startDelta.real, endDelta.real, osSize.width)
+        let imagParts = RT.linspace(startDelta.imaginary, endDelta.imaginary, osSize.height)
+        
+        // Initialize linear buffer
+        var i = 0
+        for y in 0..<osSize.height {
+            for x in 0..<osSize.width {
+                buffer.pointer[i] = Float2(Float32(realParts[x]), Float32(imagParts[y]))
+                i += 1
+            }
+        }
+
+        return buffer
     }
 
 }

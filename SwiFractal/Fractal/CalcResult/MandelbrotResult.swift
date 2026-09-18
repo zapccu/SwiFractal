@@ -6,17 +6,7 @@
 //
 
 import Foundation
-
-/*
-enum EnumMandelbrotResultFlags: Int, CaseIterable {
-    case defaultColor
-    case maxIterations
-    case bailout
-    case inside
-    case error
-}
-typealias MandelbrotResultFlags = BitSet<EnumMandelbrotResultFlags>
-*/
+import Metal64
 
 
 protocol Bitmaskable : CaseIterable {
@@ -33,6 +23,9 @@ extension Bitmaskable {
     
 }
 
+///
+/// Mandelbrot result flags
+///
 struct MandelbrotResultFlags: OptionSet, Bitmaskable, Sendable {
 
     let rawValue: Int
@@ -48,9 +41,9 @@ struct MandelbrotResultFlags: OptionSet, Bitmaskable, Sendable {
 }
 
 
-//
-// Mandelbrot calculation result
-//
+///
+/// Mandelbrot calculation result
+///
 struct MandelbrotResult : CalculationResult {
 
     // Result values
@@ -64,6 +57,21 @@ struct MandelbrotResult : CalculationResult {
     var filament: Double = 0.0          // Filament strength
     
     var flags: MandelbrotResultFlags = .defaultColor
+    
+    /// Convert MandelbrotResult to MandelbrotResultMtl
+    var mandelbrotResultMtl: MandelbrotResultMtl {
+        MandelbrotResultMtl(
+            smoothIter: Float2(smoothIter),
+            nZ: Float2(nZ),
+            normalReal: Float2(normalReal),
+            normalImag: Float2(normalImag),
+            distance: Float2(distance),
+            potential: Float2(potential),
+            stripeAvg: Float2(stripeAvg),
+            filament: Float2(filament),
+            flags: Int32(flags.rawValue)
+        )
+    }
 
     /// Return smoothIter as histogram value
     var histValue: Double { smoothIter }
@@ -73,8 +81,40 @@ struct MandelbrotResult : CalculationResult {
     
     static let zero: MandelbrotResult = MandelbrotResult()
     static let defaultValue: MandelbrotResult = MandelbrotResult()
-
+    
 }
 
+///
+/// Mandelbrot Result returned by Metal calculation function.
+/// Must be converted into MandelbrotResult
+///
+struct MandelbrotResultMtl {
+    
+    var smoothIter: Float2
+    var nZ: Float2
+    var normalReal: Float2
+    var normalImag: Float2
+    var distance: Float2
+    var potential: Float2
+    var stripeAvg: Float2
+    var filament: Float2
+    var flags: Int32
+    
+    /// Convert MandelbrotResultMtl to MandelbrotResult
+    var mandelbrotResult: MandelbrotResult {
+        MandelbrotResult(
+            smoothIter: Double(smoothIter),
+            nZ: Double(nZ),
+            normalReal: Double(normalReal),
+            normalImag: Double(normalImag),
+            distance: Double(distance),
+            potential: Double(potential),
+            stripeAvg: Double(stripeAvg),
+            filament: Double(filament),
+            flags: MandelbrotResultFlags(rawValue: Int(flags))
+        )
+    }
+    
+}
 
 

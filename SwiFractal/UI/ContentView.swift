@@ -29,21 +29,20 @@ struct Info {
 // Container for preset view, drawing view, status view and control view
 //
 struct ContentView: View {
-    var resolution: CGSize
-    
+    //@Environment(AppSettings.self) private var settings
+
     @State private var info: Info = Info()
     //@State private var selection = Selection(fromMidPoint: false, keepAspectRatio: true)
     
-    // The fractal controller object
+    /// The fractal controller object
     @State private var controller: FractalController
     
     // Adjust either complex or image resolution to match aspect ratio
     @State private var fit: AspectRatioMode = .fitToFractalSize
     
     /// Initialize ContentView
-    init(resolution: CGSize) {
-        self.resolution = resolution
-        _controller = State(initialValue: FractalController(resolution: resolution))
+    init() {
+        _controller = State(initialValue: FractalController())
     }
     
     var body: some View {

@@ -15,8 +15,6 @@ import SwiftUI
 struct SelectionView: View {
     var controller: FractalController
 
-    //@Binding var selection: Selection
-
     private func handleSelection() -> some Gesture {
         return DragGesture(minimumDistance: 0)
             .onChanged { event in

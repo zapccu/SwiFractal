@@ -7,10 +7,9 @@
 
 import Foundation
 
-//
-// Color type consisting of 3 components
-//
+/// Color type consisting of 3 components
 typealias COL3 = SIMD3<Float32>
+
 
 extension SIMD3<Float32> {
     
@@ -21,7 +20,7 @@ extension SIMD3<Float32> {
     var tuple3: (Float, Float, Float) {
         (x, y, z)
     }
-    
+
     init (_ hsb: HSB) {
         self.init(hsb.hue, hsb.saturation, hsb.brightness)
     }

@@ -89,19 +89,19 @@ struct Matrix<E: Sendable> : Sendable {
     ///   - y: row
     ///   - x: column
     /// - Returns: Position of element in grid
-    @inlinable func idx(_ y: Int, _ x: Int) -> Int {
+    @inline(__always) func idx(_ y: Int, _ x: Int) -> Int {
         return y * dim.1 + x
     }
     
     /// Return array index of first element of row
     /// - Parameter y: row
     /// - Returns: Position of first element of row in grid
-    @inlinable func idx(_ y: Int) -> Int {
+    @inline(__always) func idx(_ y: Int) -> Int {
         return y * dim.1
     }
     
     /// Access matrix element [row, col]
-    subscript(y: Int, x: Int) -> E {
+    @inline(__always) subscript(y: Int, x: Int) -> E {
         get {
             assert(x >= 0 && x < dim.1, "Column index out of bounds")
             assert(y >= 0 && y < dim.0, "Line index out of bounds")
@@ -115,7 +115,7 @@ struct Matrix<E: Sendable> : Sendable {
     }
     
     /// Access matrix row
-    subscript(y: Int) -> [E] {
+    @inline(__always) subscript(y: Int) -> [E] {
         get {
             assert(y >= 0 && y < dim.0, "Line index out of bounds")
             let start = y * dim.1
@@ -132,7 +132,7 @@ struct Matrix<E: Sendable> : Sendable {
     }
 
     /// Access matrix column
-    subscript(col x: Int) -> [E] {
+    @inline(__always) subscript(col x: Int) -> [E] {
         get {
             assert(x >= 0 && x < dim.1, "Column index out of bounds")
             return (0..<dim.0).map { y in grid[y * dim.1 + x] }
@@ -147,7 +147,7 @@ struct Matrix<E: Sendable> : Sendable {
     }
     
     /// Reset array to default value
-    mutating func reset() {
+    @inline(__always) mutating func reset() {
         for i in grid.indices {
             grid[i] = defaultValue
         }
@@ -177,6 +177,17 @@ extension Matrix {
         return grid.map(selector).max()
     }
 
+}
+
+//
+// Provide map function for matrix
+//
+extension Matrix {
+    
+    func map<T>(_ transform: (E) -> T) -> [T] {
+        return grid.map(transform)
+    }
+    
 }
 
 extension Matrix: ExpressibleByArrayLiteral where E: Numeric {
@@ -257,6 +268,7 @@ extension Matrix: ExpressibleByArrayLiteral where E: Numeric {
 extension Matrix where E: FloatingPoint {
 
     /// Divide each matrix element by scalar value
+    @inline(__always)
     static func /= (lhs: inout Matrix<E>, rhs: E) {
         for i in 0..<lhs.grid.count {
             lhs.grid[i] /= rhs
@@ -264,6 +276,7 @@ extension Matrix where E: FloatingPoint {
     }
     
     /// Divide each matrix element by scalar value
+    @inline(__always)
     static func / (lhs: Matrix<E>, rhs: E) -> Matrix<E> {
         var newMatrix = lhs
         newMatrix /= rhs
@@ -292,7 +305,7 @@ extension Matrix where E: BinaryInteger {
 
 extension Matrix where E: ComplexNumber {
     
-    typealias RT = E.RealType
+    typealias RT = E.RT
     
     /// Initialize a matrix with linear distributed complex values
     init(_ dim: (Int, Int), start: E, end: E) {

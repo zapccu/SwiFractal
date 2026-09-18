@@ -91,9 +91,9 @@ extension FractalProtocol {
 
 typealias FractalFactory = (Data) throws -> FractalKind
 
-//
-// Import JSON data
-//
+///
+/// Fractal registry. Import fractal from JSON data
+///
 @MainActor
 enum FractalRegistry {
 
@@ -119,7 +119,10 @@ enum FractalRegistry {
             return .juliaAP(Julia(juliaParameters: envelope.parameters))
         }
     ]
-
+    
+    /// Import fractal from JSON data
+    /// - Parameter data: JSON data
+    /// - Returns: Fractal kind
     static func importJSON(from data: Data) throws -> FractalKind {
         let header: FractalExportHeader
         do {
@@ -139,14 +142,20 @@ enum FractalRegistry {
             throw FractalIOError.underlying(error)
         }
     }
-
+    
+    /// Import fractal from JSON string
+    /// - Parameter string: JSON string
+    /// - Returns: Fractal kind
     static func importJSON(fromString string: String) throws -> FractalKind {
         guard let data = string.data(using: .utf8) else {
             throw FractalIOError.decodingFailed
         }
         return try importJSON(from: data)
     }
-
+    
+    /// Import fractal from URL
+    /// - Parameter url: URL
+    /// - Returns: Fractal kind
     static func importJSON(from url: URL) throws -> FractalKind {
         try importJSON(from: try Data(contentsOf: url))
     }

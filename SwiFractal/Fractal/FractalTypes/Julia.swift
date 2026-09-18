@@ -22,7 +22,7 @@ class Julia<RT: PreciseFloatingPoint> : FractalProtocol {
 
     typealias DataType = JuliaParameters<RT>
     typealias ResultType = MandelbrotResult
-    typealias CT = RT.ComplexType
+    typealias CT = RT.CT
     
     /// Default dimensions of Julia set
     static var defaultDimensions: FractalDimensions<Double> {
@@ -33,12 +33,6 @@ class Julia<RT: PreciseFloatingPoint> : FractalProtocol {
 
     /// Parameter set with Julia set parameters
     var FP: ParSet<JuliaParameters<RT>>
-    
-    /// Current image
-    //var image: CGImage?
-    
-    /// Zoomed image
-    //var zoomedImage: CGImage?
     
     /// Initialize Mandelbrot set
     /// - Parameter mandelbrotParameters: Mandelbrot parameters
@@ -52,8 +46,8 @@ class Julia<RT: PreciseFloatingPoint> : FractalProtocol {
     ///   - size: Output graphics size
     /// - Returns: true if calculation parameters prepared successfully
     func beginCalculation(resolution: CGSize) -> DynamicParameters<DataType>? {
-        return DynamicParameters(anypar: FP.current, resolution: resolution)
-        //return DynamicParameters<RT>(parameters: FP.current.mandelbrotParameters, resolution: resolution)
+        let settingsSnapshot = AppSettings.shared.snapshot()
+        return DynamicParameters<DataType>(anypar: FP.current, resolution: resolution, settings: settingsSnapshot)
     }
     
     /// Zoom into fractal

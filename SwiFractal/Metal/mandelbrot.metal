@@ -5,76 +5,103 @@
 //
 
 #include <metal_stdlib>
-#include "c64.h"
+#include <c64.h>
 #include "mandelbrot.h"
 
 using namespace metal;
 
-
-// ==========================================================
-//  Calculate Mandelbrot set, using classes c64 and f64
-// ==========================================================
-
-/// Mandelbrot iteration
-MandelbrotResult iterate(c64 C, device const float4 *P, device const MandelbrotComputeParameters *MP) {
-    c64 Z;
-    c64 D = 1.0;
-    c64 normal;
-    f64 nZ = 0.0, aZ = 0.0, nZ1 = 10.0;
-    f64 logRatio;
-    f64 logZn;
-    f64 logaZ;
-    f64 stripet;
-    f64 smoothIter = 0.0;
-    f64 stripeAvg = 0.0;
-    f64 distance = 0.0;
-    f64 potential = 0.0;
-    f64 logBailout = log(f64(MP->bailout));
-    int i;
-    int period = 0;
+// Cubic Hermite interpolation
+f64 interpolateCubic(f64 edge0, f64 edge1, f64 x) {
+    // map x into [0, 1]
+    // If x < edge0: t = 0; if x > edge1: t = 1
+    f64 t = min(max((x - edge0) / (edge1 - edge0), f64(0.0)), f64(1.0));
     
+    // Cubic Hermite interpolation
+    t = t * t * (3.0 - 2.0 * t);
+    
+    // Return
+    return max(min(t, 1.0), 0.0);
+}
+
+// Mandelbrot iteration
+MandelbrotResult iterate(c64 C, device const MetalComputeParameters *MP, device const float2 *Potentials) {
+    
+    f64 distance = 0.0;      // Distance of current point to Mandelbrot set
+    f64 potential = 0.0;     // Potential of current point
+    f64 stripeAvg = 0.0;     // Stripe average value
+    f64 stripet = 0.0;       // Current stripe value
+
+    f64 diag = f64(MP->diag);
+    f64 stripes = f64(MP->stripes);
+    f64 stripeSig = f64(MP->stripeSig);
+
+    c64 Z = 0.0;             // Start of iteration: Z = 0
+    f64 nZ = 0.0;            // Squared norm of Z: Z.imaginary * Z.imaginary + Z.real * Z.real
+    f64 nZ1 = 10.0;          // Old value of nZ for fast orbit detection
+    f64 absZ = 0.0;          // abs(Z) = sqrt(nZ)
+    f64 logAbsZ = 0.0;
+    f64 logRatio = 0.0;
+    f64 logZn;
+    c64 normal;
+
+    int period = 0;          // Period counter for fast orbit detection
+    c64 D = 0.0;             // 1st derivation of Z: D = 0
+    f64 smoothIter = 0.0;    // Smooth iteration counter
+    f64 distThreshold = f64(MP->distThreshold);
+    f64 filament = 0.0;
+    int i;
+
     for(i=0; i<=MP->iterations; i++) {
-        if (MP->bDist || MP->bShading) {
-            // 1st derivation of Z
-            D = D * 2.0 * Z + 1.0;
-        }
         
+        // Iteration formula
         Z = sqr(Z) + C;
         
         if (MP->bStripes) {
-            stripet = (sin(f64(MP->stripes) * atan2(Z.imaginary(), Z.real())) + 1.0) / 2.0;
+            stripet = (sin(stripes * atan2(Z.imaginary(), Z.real())) + 1.0) * 0.5;
         }
         
         nZ = norm(Z);
-        if (flt(nZ) > MP->bailout.x) {
-            if (MP->bDist || MP->bStripes) {
-                // Distance calculation
-                aZ = sqrt(nZ);
-                logaZ = log(aZ);
-                logRatio = (logaZ + logaZ) / logBailout;
-                smoothIter = 1.0 - log(logRatio) / F64_LOG2;
-                distance = (aZ * logaZ / norm(D) * 0.5);
-            }
+        
+        if (nZ.v.x > MP->bailout) {
+            // Distance calculation
+            absZ = sqrt(nZ);
+            logAbsZ = log(absZ);
+
+            logRatio = logAbsZ * f64(MP->div_2_logBailout);
+            
+            smoothIter = 1.0 - log(logRatio) * F64_1_LOG2;
+            
+            distance = ((absZ * logAbsZ) / norm(D)) * 2.0;
+            distance = distance * diag;
             
             if (MP->bStripes) {
                 // Stripes calculation
-                stripeAvg = (stripeAvg * (1.0 + smoothIter * (f64(MP->stripeSig)-1.0)) + stripet * smoothIter * (1.0 - f64(MP->stripeSig)));
-                stripeAvg = stripeAvg / (1.0 - pow(f64(MP->stripeSig), f64(i)) * (1.0 + smoothIter * (f64(MP->stripeSig) - 1.0)));
+                stripeAvg = (stripeAvg * (1.0 + smoothIter * (stripeSig-1.0)) + stripet * smoothIter * (1.0 - stripeSig));
+                stripeAvg = stripeAvg / (1.0 - pow(stripeSig, f64(i)) * (1.0 + smoothIter * (stripeSig - 1.0)));
             }
             
-            if (MP->bPotential) {
-                // Potential calculation
-                logZn = log(nZ) / 2.0;
-                potential = log(logZn / F64_LOG2) / F64_LOG2;
-            }
+            potential = logAbsZ * f64(Potentials[i]);
 
+            smoothIter += i;
             normal = Z / D;
-            return { smoothIter.v, nZ.v, normal.real().v, normal.imaginary().v, distance.v, potential.v, stripeAvg.v, R_BAILOUT };
+            
+            filament = interpolateCubic(distThreshold * 1.5, distThreshold * 0.5, distance);
+
+            return {
+                smoothIter.v,
+                nZ.v,
+                normal.real().v, normal.imaginary().v,
+                distance.v,
+                potential.v,
+                stripeAvg.v,
+                filament.v,
+                R_BAILOUT
+            };
         }
         
         // Simplified periodicity check, no orbit colorization
         if (abs(nZ.v.x - nZ1.v.x) < 1.0e-10) {
-            return { smoothIter.v, nZ.v, normal.real().v, normal.imaginary().v, distance.v, potential.v, stripeAvg.v, R_MAX_ITERATIONS };
+            return { smoothIter.v, nZ.v, normal.real().v, normal.imaginary().v, distance.v, potential.v, stripeAvg.v, filament.v, R_MAX_ITERATIONS };
         }
         else {
             period++;
@@ -83,21 +110,23 @@ MandelbrotResult iterate(c64 C, device const float4 *P, device const MandelbrotC
                 nZ1 = nZ;
             }
         }
+        
+        D = (Z + Z) * D + 1.0;
     }
     
-    return { smoothIter.v, nZ.v, normal.real().v, normal.imaginary().v, distance.v, potential.v, stripeAvg.v, R_MAX_ITERATIONS };
+    return { smoothIter.v, nZ.v, normal.real().v, normal.imaginary().v, distance.v, potential.v, stripeAvg.v, filament.v, R_MAX_ITERATIONS };
 }
 
 
-/// Kernel function for Mandelbrot calculation
+// Kernel function for Mandelbrot calculation
 kernel void mandelbrot(device const float4 *C,                          // Array with complex coordinates
-                       device const float4 *P,                          // Color palette
-                       device const MandelbrotComputeParameters *MP,    // Compute parameters
-                       device MandelbrotResult *resultArray,                      // Calculation results
+                       device const MetalComputeParameters *MP,         // Compute parameters
+                       device const float2 *Potentials,                 // Potential factors
+                       device MandelbrotResult *resultArray,            // Calculation results
                        uint   index [[ thread_position_in_grid ]])
 {
-    // Result array contains a MandelbrotResult element for each point in array C
-    resultArray[index] = iterate(c64(C[index]), P, MP);
+    // Result array contains a MandelbrotResultMtl element for each point in array C
+    resultArray[index] = iterate(c64(C[index]), MP, Potentials);
 }
 
 

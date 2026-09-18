@@ -10,6 +10,10 @@ import SwiftMPx
 import ParSetKit
 
 
+private struct SendableRawPointer: @unchecked Sendable {
+    let ptr: UnsafeMutableRawPointer
+}
+
 /// Calculation state
 /// - idle: No calculation is running
 /// - completed: Calculation finished successfully
@@ -69,6 +73,9 @@ class FractalController {
 
     /// The fractal
     var fractal: any FractalProtocol
+
+    /// Read access to settings
+    let settings = AppSettings.shared
     
     /// Image resolution without oversampling
     var resolution: CGSize
@@ -82,11 +89,20 @@ class FractalController {
     /// Selection
     var selection: Selection = Selection(fromMidPoint: false, keepAspectRatio: true)
     
+    /// Calculation result
+    @ObservationIgnored var result: Matrix<MandelbrotResult>?
+    
+    /// Histogram
+    @ObservationIgnored var histogram: Histogram?
+    
     /// Rendered image
     var image: CGImage?
     
     /// Zoomed image
     var zoomedImage: CGImage?
+    
+    /// Display image spherical
+    var isSphericalDisplay: Bool = false
     
     /// Flag for signalling zoomed image
     @ObservationIgnored var isImageZoomed: Bool = false
@@ -130,24 +146,31 @@ class FractalController {
     }
 
     /// Initialize fractal controller
-    /// - Parameter resolution: Image resolution
-    init(resolution: CGSize) {
+    init() {
         let mandelbrot = Mandelbrot<Double>()
-        self.resolution = resolution
+        self.resolution = settings.resolution
         self.initialDimensions = Mandelbrot<Double>.defaultDimensions.asMPFloat
         self.dimensions = Mandelbrot<Double>.defaultDimensions.asMPFloat
         self.kind = .mandelbrotDP(mandelbrot)
         self.fractal = mandelbrot
     }
     
+    /// Clear calculation results
+    func clearResults() {
+        image = nil
+        result = nil
+        histogram = nil
+    }
+    
     /// Set new fractal object and adjust image resolution or fractal dimensions depending
     /// on specified aspect ratio mode.
+    /// Reset image, result and histogram.
     /// - Parameters:
     ///   - kind: New fractal
     ///   - fit: Aspect ratio mode. Default = .ignoreAspectRatio
     func setFractal(kind: FractalKind, fit: AspectRatioMode = .ignoreAspectRatio) {
         self.kind = kind
-        
+
         switch kind {
         case .mandelbrotDP(let f):
             self.fractal = f
@@ -159,6 +182,13 @@ class FractalController {
             self.fractal = f
         }
         
+        // Clear current calculation results
+        clearResults()
+        
+        // Reset resolution to default
+        resolution = settings.resolution
+        
+        // Fit dimensions or image size
         if fit == .fitToImageSize {
             fractal.fitDimensionsToImageSize(resolution: resolution)
         }
@@ -166,12 +196,13 @@ class FractalController {
             resolution = fractal.fitImageSizeToDimensions(resolution: resolution)
         }
         
-        // Store dimensions
+        // Store dimensions of new fractal in fractal controller
         dimensions = fractal.getDimensions()
         initialDimensions = dimensions
         
-        // Add or update color table
-        FractalAppData.addColorTable(colorTable: fractal.getColorTable())
+        // Add or update coloring.
+        let coloring = fractal.getColoring()
+        FractalAppData.addColoring(coloring: coloring, name: coloring.coloringType.name)
     }
     
     /// Undo parameter changes
@@ -277,11 +308,166 @@ class FractalController {
     }
     
     /// End of calculation. Measure calculation time
+    /// - Parameter state: Calculation state
     func endCalculation(_ state: CalculationState) {
         isCalculating = false
         endTime = clock.now
         calculationTime = endTime - startTime
         calcState = state
+    }
+    
+    /// Calculate fractal
+    /// - Parameter method: Calculation method
+    /// - Returns: Calculation state
+    func calculate(method: CalculationMethod) async -> CalculationState {
+        let (st, result) = await fractal.calculate(method: method, resolution: resolution)
+        if result != nil {
+            self.result = result!
+            self.histogram = Histogram(result: result!, maxValue: fractal.getLimits().iterations)
+        }
+        return st
+    }
+    
+ 
+    /// Draw results into graphics
+    func drawResultSet() async {
+        guard let result = result, let histogram = histogram else {
+            debugPrint("No results to draw")
+            return
+        }
+        
+        // Measure drawing time
+        let time1: ContinuousClock.Instant = .now
+        
+        let size = ISize(width: Int(resolution.width) * dimensions.oversampling, height: Int(resolution.height) * dimensions.oversampling)
+        let limits = fractal.getLimits()
+        let lightning = Lightning(fractal.getLightningParameters())
+        
+        // Create a color mapper
+        let mapper = ColorMapper(colorParameters: fractal.getColorParameters(), limits: limits, histogram: histogram, lightning: lightning)
+        
+        // Create a graphics device
+        let graphics = ImageGraphics(frameSize: resolution, size: size)
+
+        image = graphics.beginDraw {
+            graphics.clear(color: .blue)
+            
+            var byteOffset = 0
+            var currentResult = result.grid[0]
+            var color = mapper.mapColor(result: currentResult)
+            //var color = mapper.mapResult(result: currentResult)
+            var pixelCount = 1
+
+            for r in result.grid {
+                if r == currentResult {
+                    pixelCount += 1
+                    continue
+                }
+                currentResult = r
+                let newColor = mapper.mapColor(result: r)
+                //let newColor = mapper.mapResult(result: r)
+                if newColor != color {
+                    byteOffset = graphics.setPixels(fromByteOffset: byteOffset, count: pixelCount,
+                                                    color: color, indexSize: graphics.indexSize)
+                    color = newColor
+                    pixelCount = 1
+                }
+                else {
+                    pixelCount += 1
+                }
+            }
+            _ = graphics.setPixels(fromByteOffset: byteOffset, count: pixelCount, color: color, indexSize: graphics.indexSize)
+            
+            // Measure drawing time
+            let time2: ContinuousClock.Instant = clock.now
+            let duration: Duration = time2 - time1
+            let strDuration = duration.formatted(
+                .time(pattern: .hourMinuteSecond(
+                    padHourToLength: 2, fractionalSecondsLength: 3)
+                )
+            )
+            debugPrint("Drawing time \(strDuration)")
+            
+            return graphics.cgImage
+        }
+    }
+
+    /// Draw calculation result parallel.
+    /// - Note: This is slower than drawing results sequentially
+    func drawResultSetParallel() async {
+        guard let result = result, let histogram = histogram else {
+            debugPrint("No results to draw")
+            return
+        }
+
+        let time1: ContinuousClock.Instant = .now
+
+        let size = ISize(width: Int(resolution.width) * dimensions.oversampling,
+                          height: Int(resolution.height) * dimensions.oversampling)
+        let limits = fractal.getLimits()
+        let lightning = Lightning(fractal.getLightningParameters())
+        let mapper = ColorMapper(colorParameters: fractal.getColorParameters(),
+                                  limits: limits, histogram: histogram, lightning: lightning)
+        let graphics = ImageGraphics(frameSize: resolution, size: size)
+
+        image = graphics.beginDrawParallel { base, indexSize in
+            graphics.clear(color: .blue)
+
+            let totalCount = result.grid.count
+            let coreCount = ProcessInfo.processInfo.activeProcessorCount
+            let oversubscriptionFactor = 2
+            let targetChunkCount = coreCount * oversubscriptionFactor
+            let chunkSize = max(1, (totalCount + targetChunkCount - 1) / targetChunkCount)
+            let chunkCount = (totalCount + chunkSize - 1) / chunkSize
+            debugPrint("Concurrent iterations (chunked): \(chunkCount)")
+
+            let sendableBase = SendableRawPointer(ptr: base)
+
+            DispatchQueue.concurrentPerform(iterations: chunkCount) { chunkIndex in
+                let start = chunkIndex * chunkSize
+                let end = min(start + chunkSize, totalCount)
+                guard start < end else { return }
+
+                // byteOffset ist NICHT kumulativ über den ganzen Grid-Verlauf,
+                // sondern direkt aus dem Chunk-Start berechenbar -> Chunks sind
+                // vollkommen unabhängig voneinander, keine Cross-Chunk-Dependency.
+                var byteOffset = start * indexSize
+                var currentResult = result.grid[start]
+                //var color = mapper.mapResult(result: currentResult)
+                var color = mapper.mapColor(result: currentResult)
+                var pixelCount = 1
+
+                for i in (start + 1)..<end {
+                    let r = result.grid[i]
+                    if r == currentResult {
+                        pixelCount += 1
+                        continue
+                    }
+                    currentResult = r
+                    //let newColor = mapper.mapResult(result: r)
+                    let newColor = mapper.mapColor(result: r)
+                    if newColor != color {
+                        byteOffset = ImageGraphics.setPixels(base: sendableBase.ptr,
+                                                             fromByteOffset: byteOffset, count: pixelCount,
+                                                             color: color, indexSize: indexSize)
+                        color = newColor
+                        pixelCount = 1
+                    } else {
+                        pixelCount += 1
+                    }
+                }
+                _ = ImageGraphics.setPixels(base: sendableBase.ptr,
+                                        fromByteOffset: byteOffset, count: pixelCount,
+                                        color: color, indexSize: indexSize)
+            }
+        }
+
+        let time2: ContinuousClock.Instant = .now
+        let duration = time2 - time1
+        let strDuration = duration.formatted(
+            .time(pattern: .hourMinuteSecond(padHourToLength: 2, fractionalSecondsLength: 3))
+        )
+        debugPrint("Drawing time \(strDuration)")
     }
     
     /// Magnify area of current image

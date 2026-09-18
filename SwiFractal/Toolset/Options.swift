@@ -28,7 +28,7 @@ import Foundation
 ///
 ///         var options: DrawingAttributes = Options(.solid)
 ///
-/// Options is conform to Codable. An option is converted to a JSON String containing the option name.
+/// *Options* is conform to Codable. An option is converted to a JSON String containing the option name.
 ///
 
 struct Options<Element>: RawRepresentable, Codable, Equatable
