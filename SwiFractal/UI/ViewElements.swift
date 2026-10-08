@@ -48,7 +48,7 @@ struct CasePicker<T: Hashable>: View where T: RawRepresentable, T: CaseIterable,
 /// - Parameters:
 ///   - options: Binding
 ///   - width: Width of picker
-struct OptionsPicker<T>: View where T: RawRepresentable, T: CaseIterable, T.RawValue == Int {
+struct OptionsPicker<T>: View where T: RawRepresentable, T: CaseIterable, T: Equatable, T.RawValue == Int {
     @Binding var options: Options<T>
     
     var width: CGFloat
@@ -69,7 +69,7 @@ struct OptionsPicker<T>: View where T: RawRepresentable, T: CaseIterable, T.RawV
 //
 struct LabeledInputField : View {
     @State private var numberFormatter: NumberFormatter = {
-        var numberFormatter = NumberFormatter()
+        let numberFormatter = NumberFormatter()
         numberFormatter.numberStyle = .decimal
         return numberFormatter
     }()
@@ -252,29 +252,55 @@ struct LinearStepper<T: Strideable> : View where T.Stride == T {
 ///   - step: Step width. Default = 1
 ///   - format: Output format of current slider value
 ///   - width: Width of slider
-struct LinearSlider: View {
+///   - debounce: Debounce time in milliseconds. Default = 0 (no debouncing)
+///   - action: Optional async action to perform when slider value changes or when user stops dragging the slider. Default = nil (no action)
+/// - Note: If debounce is 0, the action is triggered immediately when the user stops dragging the slider.
+/// If debounce is greater than 0, the action is triggered after the specified debounce time has passed since the last value change.
+struct LinearSlider<T: BinaryFloatingPoint>: View where T.Stride: BinaryFloatingPoint {
     
-    @Binding var value: Double
+    @Binding var value: T
+    @State private var isFirstRun: Bool = true
+    @State private var lastValue: T? = nil
     
-    var range: ClosedRange<Double>
-    var step: Double = 1.0
+    var range: ClosedRange<T>
+    var step: T = 1.0
     var format: String
     var width: CGFloat
+    var debounce: Int = 0
+    var action: (() async -> Void)? = nil
     
-    private var steppedValue: Binding<Double> {
+    private var steppedValue: Binding<T> {
         Binding(
             get: { value },
             set: { newValue in
-                let rounded = (newValue / step).rounded() * step
-                value = min(max(rounded, range.lowerBound), range.upperBound)
+                let rounded = T((newValue / step).rounded() * step)
+                value = T(min(max(rounded, range.lowerBound), range.upperBound))
             }
         )
     }
     
     var body: some View {
-        Slider(value: steppedValue, in: range)
+        Slider(value: steppedValue, in: range) { editing in
+            if debounce == 0 && !editing && value != lastValue {
+                lastValue = value
+                Task {
+                    await action?()
+                }
+            }
+        }
             .frame(width: width)
-        Text("\(value, specifier: format)").font(.body)
+            .task(id: value) {
+                guard debounce > 0 && value != lastValue else { return }
+                if isFirstRun  {
+                    isFirstRun = false
+                    return
+                }
+                lastValue = value
+                try? await Task.sleep(for: .milliseconds(debounce))
+                guard !Task.isCancelled else { return }
+                await action?()
+            }
+        Text("\(Double(value), specifier: format)").font(.body)
     }
     
 }

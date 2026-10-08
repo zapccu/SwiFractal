@@ -21,18 +21,19 @@ struct MetalComputeParameters {
     float2 div_2_logBailout;
     float2 stripes;
     float2 stripeSig;
-    float2 steps;
     float2 diag;
     float2 distThreshold;
 };
 
 /// Result flags
 /// Must match exactly with Swift struct MandelbrotResultFlags
-#define R_DEFAULT_COLOR 1
-#define R_MAX_ITERATIONS 2
-#define R_BAILOUT 4
-#define R_INSIDE 8
-#define R_ERROR 16
+#define R_CALCULATE 1
+#define R_DEFAULT_COLOR 2
+#define R_MAX_ITERATIONS 4
+#define R_BAILOUT 8
+#define R_INSIDE 16
+#define R_ERROR 32
+#define R_ALLCASES (R_DEFAULT_COLOR | R_MAX_ITERATIONS | R_BAILOUT | R_INSIDE | R_ERROR)
 
 /// Iteration results
 /// This struct must match exactly with the Swift struct MandelbrotResultMtl

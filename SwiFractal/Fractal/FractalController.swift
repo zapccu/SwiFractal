@@ -10,6 +10,9 @@ import SwiftMPx
 import ParSetKit
 
 
+///
+/// Provide a sendable pointer for parallel drawing of calculation results
+///
 private struct SendableRawPointer: @unchecked Sendable {
     let ptr: UnsafeMutableRawPointer
 }
@@ -38,7 +41,7 @@ enum CalculationState {
 }
 
 ///
-/// Enum for fractal kinde ID
+/// Enum for fractal kind ID
 ///
 enum FractalKindID: String, CaseIterable {
     case mandelbrot = "Mandelbrot"
@@ -78,7 +81,12 @@ class FractalController {
     let settings = AppSettings.shared
     
     /// Image resolution without oversampling
-    var resolution: CGSize
+    var resolution: CGSize {
+        didSet {
+            self.selection = Selection(resolution: resolution, flip: true)
+            self.cursorLocation = CursorLocation(resolution: resolution, flip: true)
+        }
+    }
     
     /// Initial fractal dimensions (always MPFloat)
     var initialDimensions: FractalDimensions<MPFloat>
@@ -86,8 +94,14 @@ class FractalController {
     /// Current fractal dimensions (always MPFloat)
     var dimensions: FractalDimensions<MPFloat>
     
-    /// Selection
-    var selection: Selection = Selection(fromMidPoint: false, keepAspectRatio: true)
+    /// Mouse pointer position
+    var cursorLocation: CursorLocation
+    
+    /// Area or point selection
+    var selection: Selection
+    
+    /// Status view information
+    var info: Info
     
     /// Calculation result
     @ObservationIgnored var result: Matrix<MandelbrotResult>?
@@ -131,18 +145,24 @@ class FractalController {
         fractal.hasChanges || dimensionsChanged
     }
     
+    /// Return screen location as formatted String
+    var fmtScreenLocation: String {
+        String(format: "X: %d, Y: %d", Int(cursorLocation.location.x), Int(cursorLocation.location.y))
+    }
+    
+    /// Return complex location as formatted string
+    var fmtComplexLocation: String {
+        let (r, i) = dimensions.mapPoint(cursorLocation.location, resolution: resolution)
+        return "C: \(MPComplex(r, i).toString(digits: 5))"
+    }
+    
     /// Return calculation time as formatted String
-    var formattedCalculationTime: String {
+    var fmtCalculationTime: String {
         calculationTime.formatted(
             .time(pattern: .hourMinuteSecond(
                 padHourToLength: 2, fractionalSecondsLength: 3)
             )
         )
-    }
-    
-    /// Return CPU count (currently limitted to 4)
-    var cpuCount: Int {
-        min(ProcessInfo.processInfo.processorCount, 4)
     }
 
     /// Initialize fractal controller
@@ -153,6 +173,9 @@ class FractalController {
         self.dimensions = Mandelbrot<Double>.defaultDimensions.asMPFloat
         self.kind = .mandelbrotDP(mandelbrot)
         self.fractal = mandelbrot
+        self.selection = Selection(resolution: settings.resolution, flip: true)
+        self.info = Info()
+        self.cursorLocation = CursorLocation(resolution: settings.resolution, flip: true)
     }
     
     /// Clear calculation results
@@ -185,15 +208,17 @@ class FractalController {
         // Clear current calculation results
         clearResults()
         
-        // Reset resolution to default
+        // Reset resolution to default settings
         resolution = settings.resolution
         
         // Fit dimensions or image size
         if fit == .fitToImageSize {
-            fractal.fitDimensionsToImageSize(resolution: resolution)
+            // Fit fractal dimensions to resolution
+            fractal.fitDimensionsToImageSize(resolution: settings.resolution)
         }
         else if fit == .fitToFractalSize {
-            resolution = fractal.fitImageSizeToDimensions(resolution: resolution)
+            // Fit resolution to fractal dimensions
+            resolution = fractal.fitImageSizeToDimensions(resolution: settings.resolution)
         }
         
         // Store dimensions of new fractal in fractal controller
@@ -212,7 +237,7 @@ class FractalController {
     }
     
     /// Apply new parameters. Create new fractal object if precision is changing between Double and MPFloat
-    func applyNewParameters() {
+    func applyNewParameters() {        
         // Detect rendering strategy and required precision
         let (strategy, precision) = RenderPrecisionStrategy.getRenderStrategy(
             resolution: resolution, size: dimensions.minSize
@@ -275,27 +300,40 @@ class FractalController {
                 initialDimensions = dimensions
             }
         }
+        
+        selection.reset()
     }
     
+    /// Zoom into selected area
+    /// - Returns: true if zoomed in
+    func zoomArea() {
+        guard selection.areaSelected else { return }
+        
+        let dimensionsPrecision = self.dimensions.zoomArea(area: self.selection.selectedArea,
+                                                           resolution: self.resolution)
+        switch dimensionsPrecision {
+        case .double(let dim):
+            self.dimensions = dim.asMPFloat
+        case .mpfloat(let dim):
+            self.dimensions = dim
+        }
+    }
+    
+    /// Handle selection of view area
+    /// - Returns: Drag gesture
     func handleSelection() -> some Gesture {
         return DragGesture(minimumDistance: 0)
             .onChanged { event in
-                self.selection.onChanged(event, CGRect(origin: .zero, size: self.resolution))
+                self.selection.onChanged(event)
+                self.info.selectedArea = self.selection.areaString
             }
             .onEnded{ event in
-                self.selection.onEnded(event, CGRect(origin: .zero, size: self.resolution))
-                let area = self.selection.getArea(flipped: true, height: Int(self.resolution.height))
-                let dimensionsPrecision = self.dimensions.zoomArea(area: area, resolution: self.resolution)
-                
-                switch dimensionsPrecision {
-                case .double(let dim):
-                    self.dimensions = dim.asMPFloat
-                case .mpfloat(let dim):
-                    self.dimensions = dim
+                self.selection.onEnded(event)
+                /*
+                if self.selection.areaSelected {
+                    self.zoomArea()
                 }
-                
-                self.selection.reset()
-                self.zoomImage(area: area)
+                 */
             }
     }
 
@@ -347,36 +385,40 @@ class FractalController {
         let mapper = ColorMapper(colorParameters: fractal.getColorParameters(), limits: limits, histogram: histogram, lightning: lightning)
         
         // Create a graphics device
-        let graphics = ImageGraphics(frameSize: resolution, size: size)
+        let graphics = ImageGraphics(frameSize: resolution, size: size, flip: true)
 
         image = graphics.beginDraw {
             graphics.clear(color: .blue)
             
-            var byteOffset = 0
-            var currentResult = result.grid[0]
-            var color = mapper.mapColor(result: currentResult)
-            //var color = mapper.mapResult(result: currentResult)
-            var pixelCount = 1
+            for y in 0..<result.rows {
+                var currentResult = result[y, 0]
+                graphics.color = mapper.mapColor(result: currentResult)
+                var pixelCount: Int = 1
 
-            for r in result.grid {
-                if r == currentResult {
-                    pixelCount += 1
-                    continue
-                }
-                currentResult = r
-                let newColor = mapper.mapColor(result: r)
-                //let newColor = mapper.mapResult(result: r)
-                if newColor != color {
-                    byteOffset = graphics.setPixels(fromByteOffset: byteOffset, count: pixelCount,
-                                                    color: color, indexSize: graphics.indexSize)
-                    color = newColor
+                graphics.move(to: IPoint(x: 0, y: y))
+
+                for x in 1..<result.cols {
+                    let r = result[y, x]
+                    if r == currentResult {
+                        pixelCount += 1
+                        continue
+                    }
+                    
+                    currentResult = r
+                    
+                    let newColor = mapper.mapColor(result: r)
+                    if newColor == graphics.color {
+                        pixelCount += 1
+                        continue
+                    }
+                    
+                    graphics.drawHLine(count: pixelCount)
+                    graphics.color = newColor
                     pixelCount = 1
                 }
-                else {
-                    pixelCount += 1
-                }
+                
+                graphics.drawHLine(count: pixelCount)
             }
-            _ = graphics.setPixels(fromByteOffset: byteOffset, count: pixelCount, color: color, indexSize: graphics.indexSize)
             
             // Measure drawing time
             let time2: ContinuousClock.Instant = clock.now
@@ -391,99 +433,11 @@ class FractalController {
             return graphics.cgImage
         }
     }
-
-    /// Draw calculation result parallel.
-    /// - Note: This is slower than drawing results sequentially
-    func drawResultSetParallel() async {
-        guard let result = result, let histogram = histogram else {
-            debugPrint("No results to draw")
-            return
-        }
-
-        let time1: ContinuousClock.Instant = .now
-
-        let size = ISize(width: Int(resolution.width) * dimensions.oversampling,
-                          height: Int(resolution.height) * dimensions.oversampling)
-        let limits = fractal.getLimits()
-        let lightning = Lightning(fractal.getLightningParameters())
-        let mapper = ColorMapper(colorParameters: fractal.getColorParameters(),
-                                  limits: limits, histogram: histogram, lightning: lightning)
-        let graphics = ImageGraphics(frameSize: resolution, size: size)
-
-        image = graphics.beginDrawParallel { base, indexSize in
-            graphics.clear(color: .blue)
-
-            let totalCount = result.grid.count
-            let coreCount = ProcessInfo.processInfo.activeProcessorCount
-            let oversubscriptionFactor = 2
-            let targetChunkCount = coreCount * oversubscriptionFactor
-            let chunkSize = max(1, (totalCount + targetChunkCount - 1) / targetChunkCount)
-            let chunkCount = (totalCount + chunkSize - 1) / chunkSize
-            debugPrint("Concurrent iterations (chunked): \(chunkCount)")
-
-            let sendableBase = SendableRawPointer(ptr: base)
-
-            DispatchQueue.concurrentPerform(iterations: chunkCount) { chunkIndex in
-                let start = chunkIndex * chunkSize
-                let end = min(start + chunkSize, totalCount)
-                guard start < end else { return }
-
-                // byteOffset ist NICHT kumulativ über den ganzen Grid-Verlauf,
-                // sondern direkt aus dem Chunk-Start berechenbar -> Chunks sind
-                // vollkommen unabhängig voneinander, keine Cross-Chunk-Dependency.
-                var byteOffset = start * indexSize
-                var currentResult = result.grid[start]
-                //var color = mapper.mapResult(result: currentResult)
-                var color = mapper.mapColor(result: currentResult)
-                var pixelCount = 1
-
-                for i in (start + 1)..<end {
-                    let r = result.grid[i]
-                    if r == currentResult {
-                        pixelCount += 1
-                        continue
-                    }
-                    currentResult = r
-                    //let newColor = mapper.mapResult(result: r)
-                    let newColor = mapper.mapColor(result: r)
-                    if newColor != color {
-                        byteOffset = ImageGraphics.setPixels(base: sendableBase.ptr,
-                                                             fromByteOffset: byteOffset, count: pixelCount,
-                                                             color: color, indexSize: indexSize)
-                        color = newColor
-                        pixelCount = 1
-                    } else {
-                        pixelCount += 1
-                    }
-                }
-                _ = ImageGraphics.setPixels(base: sendableBase.ptr,
-                                        fromByteOffset: byteOffset, count: pixelCount,
-                                        color: color, indexSize: indexSize)
-            }
-        }
-
-        let time2: ContinuousClock.Instant = .now
-        let duration = time2 - time1
-        let strDuration = duration.formatted(
-            .time(pattern: .hourMinuteSecond(padHourToLength: 2, fractionalSecondsLength: 3))
-        )
-        debugPrint("Drawing time \(strDuration)")
-    }
     
     /// Magnify area of current image
     func zoomImage(area: CGRect) {
         zoomedImage = image?.zoomImage(area: area, frameSize: resolution)
         isImageZoomed = true
-    }
-    
-    /// Map drawing canvas point to fractal coordinates. Change orientation of Y-axis (0, 0 in lower left corner)
-    /// - Parameter point: Point within drawing canvas
-    /// - Returns: Tuple of String values: (CanvasX, CanvasY, FractalX, FractalY)
-    func mapPointFormatted(_ point: CGPoint) -> (String, String, String, String) {
-        let posX = Int(point.x)
-        let posY = Int(resolution.height - point.y)
-        let (x, y) = dimensions.mapPoint(point, resolution: resolution, oversampling: 1)
-        return (String(posX), String(posY), x.toString(), y.toString())
     }
     
 }

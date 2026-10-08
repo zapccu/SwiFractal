@@ -10,6 +10,7 @@
 ///
 enum CalculationMethod : String, CaseIterable, Identifiable {
     case sequential
+    case sequentialPerturbation
     case parallel
     case metalcompute
     

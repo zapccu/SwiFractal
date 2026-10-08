@@ -3,7 +3,21 @@
    version = "1.0">
    <ContextStates>
       <ContextState
+         contextName = "static FractalCalculation.calculateLineByLine(P:):FractalCalculation.swift">
+      </ContextState>
+      <ContextState
+         contextName = "FractalController.applyPreset(name:fit:):FractalController+Presets.swift">
+      </ContextState>
+      <ContextState
          contextName = "FractalPreset.header.getter:Presets.swift">
+      </ContextState>
+      <ContextState
+         contextName = "ImageGraphics.init(frameSize:size:):ImageGraphics.swift">
+         <PersistentStrings>
+            <PersistentString
+               value = "image.rowStride">
+            </PersistentString>
+         </PersistentStrings>
       </ContextState>
       <ContextState
          contextName = "closure #1 in ColorPalette.body.getter:ViewElements.swift">
@@ -49,7 +63,16 @@
          </PersistentStrings>
       </ContextState>
       <ContextState
+         contextName = "static FractalCalculation.calculateSequentialPT(P:):FractalCalc.swift">
+      </ContextState>
+      <ContextState
+         contextName = "FractalController.drawResultSet():FractalController.swift">
+      </ContextState>
+      <ContextState
          contextName = "PresetView.availablePresets.getter:PresetView.swift">
+      </ContextState>
+      <ContextState
+         contextName = "static FractalRegistry.importJSON(from:):JSON.swift">
       </ContextState>
       <ContextState
          contextName = "FractalPreset.header.getter:FractalController+Presets.swift">
@@ -63,7 +86,12 @@
          </PersistentStrings>
       </ContextState>
       <ContextState
-         contextName = "static FractalRegistry.importJSON(from:):JSON.swift">
+         contextName = "FractalDimensions.mapDeltaScreenCoordinates(resolution:osSize:aspectRatio:):FractalDimensions.swift">
+         <PersistentStrings>
+            <PersistentString
+               value = "self.refPoint">
+            </PersistentString>
+         </PersistentStrings>
       </ContextState>
       <ContextState
          contextName = "FractalController.setFractal(kind:fit:):FractalController.swift">
@@ -80,9 +108,6 @@
                value = "size.description">
             </PersistentString>
          </PersistentStrings>
-      </ContextState>
-      <ContextState
-         contextName = "FractalController.applyPreset(name:fit:):FractalController+Presets.swift">
       </ContextState>
    </ContextStates>
 </VariablesViewState>

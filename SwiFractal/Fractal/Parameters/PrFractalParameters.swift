@@ -9,22 +9,17 @@ import Foundation
 import SwiftMPx
 
 
-//
-// Protocol for Fractal Data properties
-// Make fractal parameter properties conform to Codable and Equatable
-//
+///
+/// Protocol for Fractal Data properties
+/// Make fractal parameter properties conform to Codable and Equatable
+///
 protocol FractalParameters : Codable, Equatable {
-    
-    //associatedtype MPFloatVersion: FractalParameters = Self
-    
-    // Convert structure conform to FractalParameters to Struct<MPFloat>
-    //func toMPFloat(precision: Int) -> MPFloatVersion
     
 }
 
-//
-// Fractal parameters depending on precision
-//
+///
+/// Protocol for fractal parameters depending on precision
+///
 protocol FractalPrecisionParameters : FractalParameters {
     associatedtype MPFloatVersion: FractalParameters = Self
 

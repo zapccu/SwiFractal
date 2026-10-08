@@ -7,16 +7,19 @@
 
 import Foundation
 
+
 /// Color type consisting of 3 components
-typealias COL3 = SIMD3<Float32>
+typealias COL3 = SIMD3<Float>
 
 
-extension SIMD3<Float32> {
+extension SIMD3<Float> {
     
+    /// Convert COL3 to Float array
     var toFloat: [Float] {
-        [Float(x), Float(y), Float(z)]
+        [x, y, z]
     }
     
+    /// Return COL3 to tuple of 3 Float values
     var tuple3: (Float, Float, Float) {
         (x, y, z)
     }
@@ -32,25 +35,24 @@ extension SIMD3<Float32> {
     init (_ lch: LCH) {
         self.init(lch.lightness, lch.chroma, lch.hue)
     }
+    
 }
 
-//
-// Color model conversion
-//
-
+///
+/// Color model conversion
+///
 struct ColConv {
     
-    //
-    // White codes
-    //
+    /// White codes
     enum LabXYZWhite: Int {
         case D65 = 0
         case D50 = 1
         case CIE = 2
     }
     
-    
     /// Convert OK/LCH to LAB
+    /// - Parameter oklch: Color in OK/LCH color space
+    /// - Returns: Color in LAB color space
     static func oklch2lab(_ oklch: COL3) -> COL3 {
         let (l, c, h) = oklch.tuple3
         let a = c * cos((h * Float.pi) / 180.0)

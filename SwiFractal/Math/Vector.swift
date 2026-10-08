@@ -64,7 +64,7 @@ struct Vector<E> : ExpressibleByArrayLiteral, Sendable where E: Numeric, E: Send
         .init(array.map { Float($0) })
     }
     
-    /// Multiply two vectors
+    /// Multiply two vectors (dot product)
     static func * (_ lhs: Vector<E>, _ rhs: Vector<E>) -> E {
         var s: E = .zero
         assert(lhs.dim == rhs.dim, "Vectors must have same dimension")
@@ -74,6 +74,12 @@ struct Vector<E> : ExpressibleByArrayLiteral, Sendable where E: Numeric, E: Send
         }
         
         return s
+    }
+    
+    /// Multiply vector by scalar
+    static func * (_ lhs: Vector<E>, _ rhs: E) -> Vector<E> {
+        let arr = lhs.array.map { $0 * rhs }
+        return Vector<E>(arr)
     }
     
 }
@@ -87,6 +93,12 @@ extension Vector where E: PreciseFloatingPoint {
     ///   - end: last value
     init(_ dim: Int, start: E, end: E) {
         self.array = E.linspace(start, end, dim)
+    }
+    
+    /// Divide vector by scalar
+    static func / (_ lhs: Vector<E>, _ rhs: E) -> Vector<E> {
+        let arr = lhs.array.map { $0 / rhs }
+        return Vector<E>(arr)
     }
     
 }

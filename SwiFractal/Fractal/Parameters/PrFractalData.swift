@@ -25,6 +25,12 @@ protocol FractalData<RT>: Codable, Sendable, Equatable {
     /// Data structure with default values
     static var defaultData: Self { get }
     
+    /// Initial value mapping
+    var initialMapping: InitialValueMapping<CT> { get }
+    
+    /// Return list of supported calculation methods
+    var supportedCalculationMethods: [CalculationMethod] { get }
+
     /// Name of fractal
     var name: String { get set }
     

@@ -29,7 +29,7 @@ protocol ColorTable : Coloring, FractalParameters {
     var cyclic: Bool { get }
 
     /// Return color table entry or default color
-    subscript (_: Int, _: Float) -> RGBAColor { get }
+    subscript (_: Int) -> RGBAColor { get }
 
     /// Clone color table
     func clone(colorCount: Int) -> Self
@@ -48,15 +48,15 @@ extension ColorTable {
     }
     
     /// Return color table entry at specified Int index.
-    @inline(__always) subscript(_ index: Int, _ brightness: Float = 1.0) -> RGBAColor {
+    @inline(__always) subscript(_ index: Int) -> RGBAColor {
         guard index >= 0, index < colors.count else { return defColor }
-        return colors[index] * brightness
+        return colors[index]
     }
     
     /// Return color table entry for index in range 0-1 mapped to color table
-    @inline(__always) subscript(_ index: Float, _ brightness: Float = 1.0) -> RGBAColor {
+    @inline(__always) subscript(_ index: Float) -> RGBAColor {
         let index = Int(index.clamped * Float(count-1))
-        return self[index, brightness]
+        return colors[index]
     }
     
     /// Linear color mapping based on smooth iteration value

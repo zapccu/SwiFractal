@@ -3,3 +3,4 @@
 - Check code marked as "Obsolete?"
 - Check code marked as "Arbitrary precision!"
 - Check code marked as "TODO:"
+- Change type Vector to SIMD3

@@ -15,7 +15,7 @@ struct ColorMapper : Sendable {
     var colorParameters: FractalColorParameters
     let limits: FractalLimits
     let histogram: Histogram
-    let lightning: Lightning
+    var lightning: Lightning
     
     var coloring: any Coloring { colorParameters.coloring.coloringType }
     
@@ -52,9 +52,9 @@ struct ColorMapper : Sendable {
     ///   - scale: Frequency of color changing
     ///   - offset: Offset to first value in color table
     ///   - sqrtncycle: Square root of ncycle. Defines how many iterations correlate with 1 cycle.
-    ///   Modulo division by sqrtncycle allows to determine after how many (transformed) iteration steps the color repeats,
+    ///   Modulo division by *sqrtncycle* allows to determine after how many (transformed) iteration steps the color repeats,
     ///   regardless of the absolute iteration depth. 1 = Full color cycle every 1 iteration (default).
-    ///   sqrtncycle must be > 0.
+    ///   *sqrtncycle* must be > 0.
     /// - Returns: Smooth iteration counter in range 0...1
     ///
     /// **About scale**
@@ -89,25 +89,27 @@ struct ColorMapper : Sendable {
     ///   - distance: Distance to Mandelbrot set
     ///   - stripeAvg: Stripe average value
     ///   - brightness: Brightness. Either 1.0 or the result of *shading3D()*
-    /// - Returns: Color
-    func shading(cycleIter: Double, distance: Double, stripeAvg: Double, brightness: Float) -> RGBAColor {
-        var bright = Double(brightness)
+    /// - Returns: Tuple (color, brightness)
+    func shading(cycleIter: Double, distance: Double, stripeAvg: Double, brightness: Float) -> (RGBAColor, Float) {
+        let blending: EnumBlendingMode = .hardLight
+        
+        var bright = brightness
         var color = coloring.defColor
         var virtualIndex = cycleIter
 
         // Calculate smooth edge detector. Used to suppress shader effects near the boundary of
         // the Mandelbrot set.
-        var dist = -log(distance) / 12.0
-        dist = 1.0 / (1 + exp(-10 * ((2 * dist - 1) / 2)))
+        let distD = -log(distance) / 12.0
+        let dist = Float(1.0 / (1 + exp(-10 * (distD - 0.5))))
         
         // Shaders: steps and/or stripes
-        var nshader: Double = 0
-        var shader: Double = 0
+        var nshader: Float = 0
+        var shader: Float = 0
         
         // Stripe shading
         if stripeAvg > 0 {
             nshader += 1
-            shader += stripeAvg
+            shader += Float(stripeAvg)
         }
         
         // Step shading
@@ -117,37 +119,34 @@ struct ColorMapper : Sendable {
             virtualIndex = cycleIter - cycleIter % steps2
 
             // Major step: step_s frequency
-            var x: Double = fmod(cycleIter, steps2) / steps2
-            let lightStep1: Double = 6 * (1 - x.pow(5) - (1 - x).pow(100)) / 10
+            var x = Float(fmod(cycleIter, steps2) / steps2)
+            let lightStep1: Float = 6 * (1 - x.pow(5) - (1 - x).pow(100)) / 10
             
             // Minor step: 8 for each major step
             steps2 /= 8
-            x = fmod(cycleIter, steps2) / steps2
-            let lightStep2 = 6 * (1 - x.pow(5) - (1 - x).pow(30)) / 10
+            x = Float(fmod(cycleIter, steps2) / steps2)
+            let lightStep2: Float = 6 * (1 - x.pow(5) - (1 - x).pow(30)) / 10
             
             // Overlay merge between major and minor steps
-            let lightStep = BlendingMode.hardLight.blend(base: lightStep2, top: lightStep1)
+            let lightStep = blending.blend(base: lightStep2, top: lightStep1)
             nshader += 1
             shader += lightStep
         }
         
-        
         // Applying shaders to brightness
         if nshader > 0 {
-            bright = BlendingMode.hardLight.blend(base: bright, top: shader/nshader) * (1.0 - dist) + dist * bright
+            bright = blending.blend(base: Float(bright), top: Float(shader/nshader)) * (1.0 - dist) + dist * bright
         }
         
         color = coloring.getColor(vindex: virtualIndex)
-        color.hardLight(top: Float(bright))
-        
-        return color
+        return (color, Float(bright))
     }
     
     /// 3D shading
     /// - Parameter normal: Last Z / D
-    /// - Returns: Brightness
+    /// - Returns: Brightness value greater than or equal to 0.0
     func shading3D(normal: Cplx) -> Float {
-        var brightness: Double = 1.0
+        var brightness: Float = 1.0
         
         // Normal vector
         let absNormal = normal / normal.length
@@ -160,10 +159,10 @@ struct ColorMapper : Sendable {
         
         // Blinn Phong 3D shading
         else if colorParameters.colorizeOutside == .blinnPhong {
-            brightness = lightning.blinnPhong(vecNormal)
+            brightness = lightning.blinnPhong(vecNormal, blending: lightning.blendingMode)
         }
         
-        return Float(brightness)
+        return brightness
     }
     
     /// Map Mandelbrot iteration result to color
@@ -182,8 +181,21 @@ struct ColorMapper : Sendable {
         if (result.flags.isSubset(of: [.defaultColor, .maxIterations, .error])) {
             return color
         }
+        else if result.flags == .inside {
+            switch colorParameters.colorizeInside.element {
+            case .defaultColor, .distance:
+                color = .black
+            case .fastOrbits:
+                let c = Float(result.smoothIter / 20.0)
+                color = RGBAColor(c, c, c)
+            case .orbits:
+                let c = Float(result.smoothIter / 50.0)
+                color = RGBAColor(c, c, c)
+            }
+            return color
+        }
         
-        // 3D shading, calculate brightness in range 0...1
+        // 3D shading, calculate brightness in range 0...
         if colorParameters.colorizeOutside.isAny(of: [.blinnPhong, .simple3d]) {
             brightness = shading3D(normal: Cplx(result.normalReal, result.normalImag))
         }
@@ -200,7 +212,7 @@ struct ColorMapper : Sendable {
         
         // Shading. Coloring based on stripes and/or steps. colorize mode and palette mode do not matter here
         if colorParameters.colorizeMode.isAny(of: [.steps, .stripes]) {
-            color = shading(cycleIter: cycleIter, distance: result.distance, stripeAvg: result.stripeAvg, brightness: brightness)
+            (color, brightness) = shading(cycleIter: cycleIter, distance: result.distance, stripeAvg: result.stripeAvg, brightness: brightness)
         }
         
         // Color depends on iterations
@@ -211,12 +223,12 @@ struct ColorMapper : Sendable {
             
             // Linear mapping based on color table or calculated colors
             if colorParameters.paletteMode == .linear {
-                color = coloring.getColor(iter: Int(result.smoothIter), maxIter: limits.iterations) * brightness
+                color = coloring.getColor(iter: Int(result.smoothIter), maxIter: limits.iterations)
             }
             
             // Interpolated mapping
             else if colorParameters.paletteMode == .interpolated {
-                color = coloring.getColor(t: cycleIter) * brightness
+                color = coloring.getColor(t: cycleIter)
                 //color = coloring.getColor(smoothIter: compressedIter, scale: colorParameters.scale,
                //                           offset: colorParameters.offset, ncycle: colorParameters.ncycle) * brightness
             }
@@ -239,7 +251,7 @@ struct ColorMapper : Sendable {
             else if colorParameters.paletteMode == .histogram {
                 if let colorTable = coloring as? (any ColorTable) {
                     let h = histogram.normalize(result)
-                    color = colorTable[h, brightness]
+                    color = colorTable[h]
                 }
             }
             
@@ -247,7 +259,7 @@ struct ColorMapper : Sendable {
             else if colorParameters.paletteMode == .inverseHistogram {
                 if let colorTable = coloring as? (any ColorTable) {
                     let h = 1.0 - histogram.normalize(result)
-                    color = colorTable[h, brightness]
+                    color = colorTable[h]
                 }
             }
         }
@@ -255,7 +267,7 @@ struct ColorMapper : Sendable {
         // Color based on distance
         else if colorParameters.colorizeMode == .distance {
             let t = tanh(result.distance)
-            color = coloring.getColor(t: t) * brightness
+            color = coloring.getColor(t: t)
         }
         
         // Color based on potential
@@ -270,7 +282,7 @@ struct ColorMapper : Sendable {
             let cv = vDSP.linearInterpolate(color1.vector3, color2.vector3, using: ic)
             color = RGBAColor(vector: cv) * brightness
              */
-            color = coloring.getColor(t: i) * brightness
+            color = coloring.getColor(t: i)
         }
         
         // Draw filaments
@@ -278,9 +290,9 @@ struct ColorMapper : Sendable {
         if colorParameters.colorizeOutside == .filaments {
             color = RGBAColor.lerpExact(from: color, to: RGBAColor(0.8, 0.9, 1.0), factor: Float(result.filament))
         }
-        
-        // Return color with gamma correction
-        return color.gammaCorrection(lightning.gamma)
+
+        // Blending, tone mapping, gamma correction
+        return color.blend(with: brightness, lightning: lightning)
     }
     
     func mapResult(result: any CalculationResult) -> RGBAColor {

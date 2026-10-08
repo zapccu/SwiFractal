@@ -100,13 +100,13 @@ extension FractalController {
                                         "blue": 0.3137255,
                                         "red": 0.3137255,
                                         "green": 0.3137255
-                                     },
-                                     {
+                                    },
+                                    {
                                         "alpha": 1,
                                         "blue": 1,
                                         "red": 1,
                                         "green": 1
-                                     }
+                                    }
                                 ]
                             }
                         }
@@ -132,7 +132,9 @@ extension FractalController {
                     "diffuse": 0.5,
                     "elevation": 45,
                     "specular": 0.5,
-                    "opacity": 0.75
+                    "opacity": 0.75,
+                    "ev": 0,
+                    "blendingMode": "none"
                 },
                 "limits": {
                     "bailout": 10000000000,
@@ -164,7 +166,7 @@ extension FractalController {
                     "paletteMode": "linear",
                     "scale": 1,
                     "offset": 0,
-                    "compression": 1,
+                    "compression": 2,
                     "coloringName": "Crown-11_02_92-4096",
                     "coloring": {
                         "sine": {
@@ -207,7 +209,9 @@ extension FractalController {
                     "diffuse": 0.5,
                     "elevation": 45,
                     "specular": 0.5,
-                    "opacity": 0.75
+                    "opacity": 0.75,
+                    "ev": 0,
+                    "blendingMode": "overlay"
                 },
                 "limits": {
                     "bailout": 10000000000,
@@ -282,7 +286,9 @@ extension FractalController {
                     "diffuse": 0.5,
                     "elevation": 45,
                     "specular": 0.5,
-                    "opacity": 0.75
+                    "opacity": 0.75,
+                    "ev": 0,
+                    "blendingMode": "overlay"
                 },
                 "limits": {
                     "bailout": 10000000000,
@@ -349,49 +355,51 @@ extension FractalController {
                     }
                 },
                 "dimensions": {
-                     "cornerX": -1.5,
-                     "cornerY": -1.5,
-                     "sizeY": 3,
-                     "sizeX": 3,
-                     "oversampling": 1,
-                     "renderPrecision": "double",
-                     "precision": {
-                         "isDbl": true,
-                         "bits": 53
-                     }
-                 },
-                 "lightParameters": {
-                     "shininess": 20,
-                     "ambient": 0.2,
-                     "angle": 45,
-                     "gamma": 1,
-                     "diffuse": 0.5,
-                     "elevation": 45,
-                     "specular": 0.5,
-                     "opacity": 0.75
-                 },
-                 "limits": {
-                     "bailout": 10000000000,
-                     "iterations": 200,
-                     "orbitDelta1": 1e-15,
-                     "orbitDelta3": 1e-10,
-                     "orbitLength": 20,
-                     "orbitDelta2": 1e-11,
-                     "minIterationCount": 200
-                 }
-             }
+                    "cornerX": -1.5,
+                    "cornerY": -1.5,
+                    "sizeY": 3,
+                    "sizeX": 3,
+                    "oversampling": 1,
+                    "renderPrecision": "double",
+                    "precision": {
+                        "isDbl": true,
+                        "bits": 53
+                    }
+                },
+                "lightParameters": {
+                    "shininess": 20,
+                    "ambient": 0.2,
+                    "angle": 45,
+                    "gamma": 1,
+                    "diffuse": 0.5,
+                    "elevation": 45,
+                    "specular": 0.5,
+                    "opacity": 0.75,
+                    "ev": 0,
+                    "blendingMode": "none"
+                },
+                "limits": {
+                    "bailout": 10000000000,
+                    "iterations": 200,
+                    "orbitDelta1": 1e-15,
+                    "orbitDelta3": 1e-10,
+                    "orbitLength": 20,
+                    "orbitDelta2": 1e-11,
+                    "minIterationCount": 200
+                }
+            }
         }
         """),
         FractalPreset(name: "Blue Julia", json: """
         {
-             "fractalType": "Julia",
-             "dataType": "JuliaParameters<Double>",
-             "precision": "double",
-             "parameters": {
-                 "name": "Blue Julia",
-                 "cPointX": -0.7269,
-                 "cPointY": 0.1889,
-                 "colorParameters": {
+            "fractalType": "Julia",
+            "dataType": "JuliaParameters<Double>",
+            "precision": "double",
+            "parameters": {
+                "name": "Blue Julia",
+                "cPointX": -0.7269,
+                "cPointY": 0.1889,
+                "colorParameters": {
                     "colorizeMode": "iterations",
                     "steps": 0,
                     "stripes": 0,
@@ -405,58 +413,60 @@ extension FractalController {
                     "compression": 1,
                     "coloringName": "BlueJulia-85_0_15-4096",
                     "coloring": {
-                         "sine": {
-                             "sineColorTable": {
-                                 "name": "BlueJulia-85_0_15-4096",
-                                 "count": 4096,
-                                 "defColor": {
-                                     "red": 0,
-                                     "green": 0,
-                                     "blue": 0,
-                                     "alpha": 1
-                                 },
-                                 "fixedSize": false,
-                                 "thetas": [
-                                     0.85,
-                                     0.0,
-                                     0.15
-                                 ]
-                             }
-                         }
-                     }
-                 },
-                 "dimensions": {
-                     "cornerX": -1.5,
-                     "cornerY": -1.5,
-                     "sizeY": 3,
-                     "sizeX": 3,
-                     "oversampling": 1,
-                     "renderPrecision": "double",
-                     "precision": {
-                         "isDbl": true,
-                         "bits": 53
-                     }
-                 },
-                 "lightParameters": {
-                     "shininess": 20,
-                     "ambient": 0.2,
-                     "angle": 45,
-                     "gamma": 1,
-                     "diffuse": 0.5,
-                     "elevation": 45,
-                     "specular": 0.5,
-                     "opacity": 0.75
-                 },
-                 "limits": {
-                     "bailout": 10000000000,
-                     "iterations": 2000,
-                     "orbitDelta1": 1e-15,
-                     "orbitDelta3": 1e-10,
-                     "orbitLength": 20,
-                     "orbitDelta2": 1e-11,
-                     "minIterationCount": 200
-                 }
-             }
+                        "sine": {
+                            "sineColorTable": {
+                                "name": "BlueJulia-85_0_15-4096",
+                                "count": 4096,
+                                "defColor": {
+                                    "red": 0,
+                                    "green": 0,
+                                    "blue": 0,
+                                    "alpha": 1
+                                },
+                                "fixedSize": false,
+                                "thetas": [
+                                    0.85,
+                                    0.0,
+                                    0.15
+                                ]
+                            }
+                        }
+                    }
+                },
+                "dimensions": {
+                    "cornerX": -1.5,
+                    "cornerY": -1.5,
+                    "sizeY": 3,
+                    "sizeX": 3,
+                    "oversampling": 1,
+                    "renderPrecision": "double",
+                    "precision": {
+                        "isDbl": true,
+                        "bits": 53
+                    }
+                },
+                "lightParameters": {
+                    "shininess": 20,
+                    "ambient": 0.2,
+                    "angle": 45,
+                    "gamma": 1,
+                    "diffuse": 0.5,
+                    "elevation": 45,
+                    "specular": 0.5,
+                    "opacity": 0.75,
+                    "ev": 0,
+                    "blendingMode": "none"
+                },
+                "limits": {
+                    "bailout": 10000000000,
+                    "iterations": 2000,
+                    "orbitDelta1": 1e-15,
+                    "orbitDelta3": 1e-10,
+                    "orbitLength": 20,
+                    "orbitDelta2": 1e-11,
+                    "minIterationCount": 200
+                }
+            }
         }
         """)
     ]

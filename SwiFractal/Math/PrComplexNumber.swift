@@ -20,9 +20,6 @@ protocol ComplexNumber : Sendable {
     var real: RT { get }
     var imaginary: RT { get }
     
-    // Return zero
-    static var zero: Self { get }
-    
     // Return squared Euclidean norm: real * real + imaginary * imaginary
     var lengthSquared: RT { get }
     
@@ -40,6 +37,9 @@ protocol ComplexNumber : Sendable {
     
     // Constructor with precision support
     init(_ real: RT, _ imaginary: RT, precision: Int)
+    
+    // Return zero
+    static func zero(precision: Int) -> Self
     
     // Convert to Double precision complex value
     func toCplx() -> Cplx
@@ -78,9 +78,7 @@ extension ComplexNumber {
     var precision: Int {
         return max(real.precision, imaginary.precision)
     }
-    
-    //static var zero: Self { .init(.zero, .zero) }
-    
+        
     /// Return squared magnitude of complex number (squared Euclidean norm)
     var lengthSquared: RT {
         real * real + imaginary * imaginary
@@ -218,6 +216,10 @@ extension MPComplex: ComplexNumber {
     
     typealias RT = MPFloat
     
+    static func zero(precision: Int) -> MPComplex {
+        return MPComplex(0.0, 0.0, precision: precision)
+    }
+    
     /// Convert MPComplex to Cplx (Complex Double)
     func toCplx() -> Cplx {
         return Cplx(real.toDouble(), imaginary.toDouble())
@@ -234,6 +236,10 @@ extension MPComplex: ComplexNumber {
 
 
 extension Complex<Double> {
+    
+    static func zero(precision: Int = 53) -> Complex<Double> {
+        .init(0, 0)
+    }
     
     func toMPComplex(precision: Int) -> MPComplex {
         return MPComplex(MPFloat(real, precision: precision), MPFloat(imaginary, precision: precision))

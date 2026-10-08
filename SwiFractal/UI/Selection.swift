@@ -8,34 +8,107 @@
 import SwiftUI
 
 
-//
-// Class for selecting a point or an area on a canvas
-//
+///
+/// Class for selecting a point or an area on a canvas
+///
 @Observable class Selection {
     
+    /// Selection state
+    /// - noSelection: Nothing selected
+    /// - pointSelected: Point selected
+    /// - areaSelected: Area selected
+    /// - movingSelection: Moving selected area
     enum SelectState: Int {
-        case noSelection = 0    // No selection
-        case pointSelected = 1  // Point selected
-        case areaSelected = 2   // Area selected
+        case noSelection = 0        // No selection
+        case selecting = 1          // Ongoing selection
+        case pointSelected = 2      // Point selected
+        case areaSelected = 3       // Area selected
+        case movingSelection = 4    // Moving selected area
     }
     
-    // Changing these variables will trigger an update
-    // of the selection view
-    var area: CGRect = .zero                            // Selected area
-    var state: SelectState = .noSelection               // Selection state
+    /// Return selected point. Consider flipping of Y-axis
+    var selectedPoint: CGPoint {
+        return flip ? CGPoint(x: area.origin.x, y: resolution.height - area.origin.y) : area.origin
+    }
     
-    // Changes on the following variables are ignored
-    // by the view update process
-    @ObservationIgnored let minAreaSize: CGFloat        // Minimum size of the selected area
-    @ObservationIgnored let fromMidPoint: Bool          // Selected area is growing in all directions from the starting point when dragging
-    @ObservationIgnored let keepAspectRatio: Bool       // Keep aspect ratio of underlying canvas when dragging
-    @ObservationIgnored var drawnRect: CGRect = .zero   // Selection rectangle currently drawn on canvas
+    /// Return selected area. Consider flipping of Y-axis
+    var selectedArea: CGRect {
+        // Assumption: area is standardized
+        if flip {
+            let origin = CGPoint(x: selectedPoint.x, y: selectedPoint.y - area.size.height)
+            return CGRect(origin: origin, size: area.size)
+        }
+        else {
+            return area
+        }
+    }
+    
+    /// Return selected area as String
+    var areaString: String {
+        let rect = IRect(rect: selectedArea)
+        return "X: \(rect.origin.x) Y: \(rect.origin.y) W: \(rect.width) H: \(rect.height)"
+    }
+    
+    /// Return true if point is selected
+    var pointSelected: Bool {
+        state == .pointSelected
+    }
+    
+    /// Return true if area is selected and size is greater than zero and size is smaller then resolution
+    var areaSelected: Bool {
+        state == .areaSelected && selectedArea.size != .zero && selectedArea.size != resolution
+    }
+    
+    /// Return true if either point or area is selected
+    var anySelected: Bool {
+        pointSelected || areaSelected
+    }
+    
+    /// Selection state
+    var state: SelectState = .noSelection
+    
+    /// Current standardized area without flipping
+    private var area: CGRect = .zero
+    
+    /// Resolution of frame
+    @ObservationIgnored let resolution: CGSize
+    
+    /// Clipping rectangle
+    @ObservationIgnored var clipRect: CGRect
+    
+    /// Minimum size of the selected area. If size of current selection is smaller
+    /// the selection is treated as a point selection
+    @ObservationIgnored let minAreaSize: CGFloat
+    
+    /// Selected area is growing in all directions from the starting point when dragging
+    @ObservationIgnored let fromMidPoint: Bool
+    
+    /// Keep aspect ratio of underlying canvas when dragging
+    @ObservationIgnored let keepAspectRatio: Bool
+    
+    /// Clip to resolution
+    @ObservationIgnored let clip: Bool
+    
+    /// Flip Y coordinates
+    @ObservationIgnored let flip: Bool
+    
+    /// Selection rectangle currently drawn on canvas
+    @ObservationIgnored var drawnRect: CGRect = .zero
+    
+    /// Difference between mouse moint and area.origin when moving selected area
+    @ObservationIgnored var deltaX: CGFloat = 0.0
+    @ObservationIgnored var deltaY: CGFloat = 0.0
 
     /// Init selection
-    init(minAreaSize: CGFloat = 2.0, fromMidPoint: Bool = false, keepAspectRatio: Bool = false) {
+    init(resolution: CGSize, minAreaSize: CGFloat = 2.0, fromMidPoint: Bool = false,
+         keepAspectRatio: Bool = true, clip: Bool = true, flip: Bool = true) {
+        self.resolution      = resolution
+        self.clipRect        = CGRect(origin: .zero, size: resolution)
         self.minAreaSize     = minAreaSize
         self.fromMidPoint    = fromMidPoint
         self.keepAspectRatio = keepAspectRatio
+        self.clip            = clip
+        self.flip            = flip
     }
     
     /// Reset selection
@@ -44,22 +117,8 @@ import SwiftUI
         state = .noSelection
     }
     
-    /// Return selected point
-    func getPoint(flipped: Bool = false, height: Int = 0) -> CGPoint {
-        return flipped && height > 0 ? CGPoint(x: area.minX, y: CGFloat(height) - area.minY - 1) : area.origin
-    }
-    
-    /// Return selected area
-    func getArea(flipped: Bool = false, height: Int = 0) -> CGRect {
-        if flipped && height >= Int(area.height) {
-            return CGRect(x: area.minX, y: CGFloat(height) - area.maxY, width: area.width, height: area.height)
-        }
-        else {
-            return area
-        }
-    }
-    
     /// Draw rectangle marking the selected area
+    /// - Parameter graphics: Canvas graphics
     func draw(_ graphics: CanvasGraphics) {
         // Clear existing rectangle
         if drawnRect != .zero {
@@ -94,19 +153,35 @@ import SwiftUI
     }
 
     /// Mouse button pressed and/or mouse dragged
-    func onChanged(_ event: DragGesture.Value, _ clipRect: CGRect = .zero) {
-        guard clipRect.contains(event.location) else { return }
-        
+    /// - Parameter event: Mouse event
+    func onChanged(_ event: DragGesture.Value) {
+        guard !clip || clipRect.contains(event.location) else { return }
+
         if area == .zero {
             // Start new selection
-            print("New selection started at: \(event)")
+            debugPrint("New selection started at: \(event)")
             area = CGRect(origin: event.location, size: .zero)
+            state = .selecting
         }
-        else if state == .pointSelected || (state == .areaSelected && !area.contains(event.location)) {
-            // Reset selection
-            print("Resetting selection")
-            area = .zero
-            state = .noSelection
+        else if state == .movingSelection {
+            // Move selected area
+            let x = min(max(0, event.location.x - deltaX) + area.width, resolution.width) - area.width
+            let y = min(max(0, event.location.y - deltaY) + area.height, resolution.height) - area.height
+            let newArea = CGRect(x: x, y: y, width: area.width, height: area.height)
+            area = newArea.standardized
+        }
+        else if state == .areaSelected {
+            if area.contains(event.location) {
+                // Click inside current selection. Start moving selection
+                state = .movingSelection
+                self.deltaX = event.location.x - area.origin.x
+                self.deltaY = event.location.y - area.origin.y
+            }
+            else {
+                // Click outside current selection. Reset current selection
+                debugPrint("Resetting selection")
+                reset()
+            }
         }
         else {
             // Mouse dragged, update selected area
@@ -124,25 +199,28 @@ import SwiftUI
                 newArea.size = CGSize(width: event.location.x - area.origin.x, height: event.location.y - area.origin.y)
             }
             
-            area = clipRect.intersection(newArea)
+            // Clip and standardize selected area
+            area = clip ? clipRect.intersection(newArea.standardized) : newArea.standardized
         }
     }
     
-    /// Dragging ended, mouse button released
-    func onEnded(_ event: DragGesture.Value, _ clipRect: CGRect = .zero) {
-        if area != .zero {
-            if area.width > minAreaSize && area.height > minAreaSize {
-                state = .areaSelected
-                area = clipRect.intersection(area.standardized)
-                print("Area selected: \(area)")
-            }
-            else {
-                state = .pointSelected
-                print("Point selected: \(area.origin)")
-            }
+    /// Dragging ended and/or mouse button released
+    /// - Parameter event: Mouse event
+    func onEnded(_ event: DragGesture.Value) {
+        guard area != .zero else {
+            state = .noSelection
+            return
+        }
+        
+        if area.width > minAreaSize && area.height > minAreaSize {
+            state = .areaSelected
+            area = clip ? clipRect.intersection(area.standardized) : area.standardized
+            debugPrint("Area \(area)")
+            debugPrint("Area selected \(selectedArea)")
         }
         else {
-            state = .noSelection
+            state = .pointSelected
+            debugPrint("Point selected: \(area.origin) \(selectedPoint)")
         }
     }
     

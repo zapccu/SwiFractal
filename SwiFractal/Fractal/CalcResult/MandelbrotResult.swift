@@ -25,17 +25,20 @@ extension Bitmaskable {
 
 ///
 /// Mandelbrot result flags
+/// Any change on these flags must be synchronized with flags defined in Metal/mandelbrot.h
 ///
 struct MandelbrotResultFlags: OptionSet, Bitmaskable, Sendable {
 
     let rawValue: Int
 
-    static let defaultColor  = MandelbrotResultFlags(rawValue: 1)
-    static let maxIterations = MandelbrotResultFlags(rawValue: 2)
-    static let bailout       = MandelbrotResultFlags(rawValue: 4)
-    static let inside        = MandelbrotResultFlags(rawValue: 8)
-    static let error         = MandelbrotResultFlags(rawValue: 16)
+    static let calculate     = MandelbrotResultFlags(rawValue: 1)   // Not yet calculated
+    static let defaultColor  = MandelbrotResultFlags(rawValue: 2)   // Assign default color
+    static let maxIterations = MandelbrotResultFlags(rawValue: 4)   // Maximum number of iterations reached
+    static let bailout       = MandelbrotResultFlags(rawValue: 8)   // Bailout
+    static let inside        = MandelbrotResultFlags(rawValue: 16)  // Inside Mandelbrot set
+    static let error         = MandelbrotResultFlags(rawValue: 32)  // Error during calculation
 
+    // Bitmask for all cases except .calculate
     static let allCases: [MandelbrotResultFlags] = [.defaultColor, .maxIterations, .bailout, .inside, .error]
 
 }
@@ -56,7 +59,7 @@ struct MandelbrotResult : CalculationResult {
     var stripeAvg: Double = 0.0         // Stripe average
     var filament: Double = 0.0          // Filament strength
     
-    var flags: MandelbrotResultFlags = .defaultColor
+    var flags: MandelbrotResultFlags = .calculate
     
     /// Convert MandelbrotResult to MandelbrotResultMtl
     var mandelbrotResultMtl: MandelbrotResultMtl {
@@ -80,7 +83,8 @@ struct MandelbrotResult : CalculationResult {
     var hasValidHistValue: Bool { flags == .bailout }
     
     static let zero: MandelbrotResult = MandelbrotResult()
-    static let defaultValue: MandelbrotResult = MandelbrotResult()
+    static let initialValue: MandelbrotResult = MandelbrotResult()
+    static let defaultValue: MandelbrotResult = MandelbrotResult(flags: .defaultColor)
     
 }
 

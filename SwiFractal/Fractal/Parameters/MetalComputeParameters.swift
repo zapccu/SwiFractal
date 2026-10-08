@@ -19,7 +19,6 @@ struct MetalComputeParameters: MetalData {
     var div_2_logBailout: Float2
     var stripes: Float2
     var stripeSig: Float2
-    var steps: Float2
     var diag: Float2
     var distThreshold: Float2
 }

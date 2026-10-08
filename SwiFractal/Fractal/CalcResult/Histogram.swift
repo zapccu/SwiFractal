@@ -5,6 +5,9 @@
 //  Created by Dirk Braner on 04.07.26.
 //
 
+import Foundation
+
+
 ///
 /// Histogram of calculation result matrix
 ///
@@ -62,7 +65,7 @@ struct Histogram {
         self.cumulative = cumulativeCounts.map { Double($0) / Double(escapedCount) }
     }
 
-    /// Normalized color value in range 0...1 for a given result value (i.e. smoothIter for Mandelbrot results)
+    /// Normalized histogram value in range 0...1 for a given result value (i.e. smoothIter for Mandelbrot results)
     /// with linear interpolation between surrounding iteration steps for smooth coloring.
     /// - Parameter result: Calculation result
     /// - Returns: Normalized color value in range 0...1.
@@ -72,8 +75,10 @@ struct Histogram {
         let upper = min(lower + 1, maxHistValue)
         let fraction = clamped - Double(lower)
 
-        // TODO: Call lerp()
-        return Float(cumulative[lower] + (cumulative[upper] - cumulative[lower]) * fraction)
+        // Interpolate between histogram values
+        let histValue = Double.lerp(a: cumulative[lower], b: cumulative[upper], t: fraction)
+        
+        return Float(histValue)
     }
     
 }

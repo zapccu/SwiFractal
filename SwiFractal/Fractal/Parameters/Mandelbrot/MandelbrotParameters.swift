@@ -13,30 +13,21 @@ import Foundation
 import SwiftMPx
 
 
-//
-// Mandelbrot calculation limits
-//
-struct FractalLimits: FractalParameters {
-    var minIterationCount: Int = 200                // Minimum iteration count
-    var iterations: Int = 200                       // Maximum number of iterations. default = 200
-    var bailout: Double = 1e10                      // Bailout radius. default = 1e10
-    var orbitDelta1: Double = 1e-15                 // Orbit detection: 1st delta = 1e-15
-    var orbitDelta2: Double = 1e-11                 // Orbit detection: 2nd delta = 1e-11
-    var orbitDelta3: Double = 1e-10                 // Orbit detection: delta for fast detection = 1e-10
-    var orbitLength: Int = 20                       // Limit for fast orbit detection = 20
-}
-
 ///
 /// Static Mandelbrot calculation parameters
 ///
-nonisolated struct MandelbrotParameters<RT: PreciseFloatingPoint> : IterationData {
+nonisolated struct MandelbrotParameters<RT: PreciseFloatingPoint> : FractalData {
     
     /// Return default parameters
     static var defaultData: MandelbrotParameters<RT> {
         let defaultDimensions = FractalDimensions<RT>(cornerX: -2.25, cornerY: -1.5, sizeX: 3.0, sizeY: 3.0)
         return MandelbrotParameters<RT>(dimensions: defaultDimensions)
     }
-
+    
+    var initialMapping: InitialValueMapping<CT> {
+        .init(kind: .mandelbrot, constant: CT.zero(precision: dimensions.precision.bits))
+    }
+    
     /// Name of fractal
     var name: String = "MandelbrotSet"
 
@@ -54,7 +45,7 @@ nonisolated struct MandelbrotParameters<RT: PreciseFloatingPoint> : IterationDat
     
     /// Return calculation methods supported by Mandelbrot fractal type
     var supportedCalculationMethods: [CalculationMethod] {
-        [.sequential, .parallel, .metalcompute ]
+        [ .sequential, .sequentialPerturbation, .parallel, .metalcompute ]
     }
     
     /// Initialize Mandelbrot parameters
@@ -65,7 +56,7 @@ nonisolated struct MandelbrotParameters<RT: PreciseFloatingPoint> : IterationDat
     
     /// Return initial values for Z and C
     @inline(__always) func initialValues(v: CT) -> (z0: CT, c: CT) {
-        return (z0: CT.zero, c: v)
+        return (z0: CT.zero(precision: dimensions.precision.bits), c: v)
     }
     
     /// Convert dimensions of current MandelbrotParameters struct to Double

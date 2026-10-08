@@ -18,8 +18,8 @@ import ParSetKit
 protocol FractalProtocol: AnyObject {
     
     // Type of fractal parameters
-    associatedtype DataType: IterationData
-    
+    associatedtype DataType: FractalData
+
     // Type of calculation results
     associatedtype ResultType: CalculationResult
     
@@ -96,7 +96,7 @@ protocol FractalProtocol: AnyObject {
     func mapPointFormatted(_ location: CGPoint, resolution: CGSize) -> (String, String)
     
     // Draw calculation result
-    func drawResultSet(result: Matrix<ResultType>, resolution: CGSize, size: ISize, mapper: ColorMapper) -> CGImage?
+    //func drawResultSet(result: Matrix<ResultType>, resolution: CGSize, size: ISize, mapper: ColorMapper) -> CGImage?
     
     // Zoom into fractal.
     // Return new fractal with different precision

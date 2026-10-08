@@ -42,8 +42,9 @@ typealias ColorizeOutside = Options<EnumColorizeOutside>
 /// Inside colorization of a fractal
 ///
 enum EnumColorizeInside: Int, CaseIterable {
-    case simple             // Inside of Mandelbrot set is set to default color
-    case orbits             // Colorize orbits inside Mandelbrot set, implies full orbit detection
+    case defaultColor       // Inside of Mandelbrot set is set to default color
+    case fastOrbits         // Colorize orbits inside Mandelbrot using fast orbit detection
+    case orbits             // Colorize orbits inside Mandelbrot using full orbit detection
     case distance           // Colorize distance inside Mandelbrot set, implies distance calculation
 }
 typealias ColorizeInside = Options<EnumColorizeInside>
@@ -86,20 +87,20 @@ struct FractalColorParameters: FractalParameters {
     /// `.simple`: No shading\
     /// `.simple3D`: Simple 3D shading (fast)\
     /// `.blinnPhong`: Blinn-Phong 3D shading
-    var colorizeOutside = ColorizeOutside(.simple)  // Colorize outside: simple, simple3D, blinnPhong
-    var colorizeInside = ColorizeInside(.simple)    // Colorize inside: simple, orbits, distance
-    var paletteMode = PaletteMode(.linear)          // Palette assignment mode: linear, modulo, hue, huedyn, lchdyn
-    var stripes: Int = 0                            // Stripe density, frequency for stripe average coloring
-                                                    // Range 0-32, 0 = No stripes, default = 0
-    var stripeSig: Double = 0.9                     // Memory parameter for stripe average coloring
-                                                    // Range 0-1, 0 = No stripes, default = 0.9
-    var steps: Int = 0                              // Step density, frequency for step coloring
-                                                    // Range 0-100, 0 = No steps, default = 0
-    var ncycle: Double = 1.0                        // Color cycling, must be > 0
-    var scale: Double = 1.0                         // Color changing frequency
+    var colorizeOutside = ColorizeOutside(.simple)      // Colorize outside: simple, simple3D, blinnPhong
+    var colorizeInside = ColorizeInside(.defaultColor)  // Colorize inside: defaultColor, fastOrbits, orbits, distance
+    var paletteMode = PaletteMode(.linear)              // Palette assignment mode: linear, modulo, hue, huedyn, lchdyn
+    var stripes: Int = 0                                // Stripe density, frequency for stripe average coloring
+                                                        // Range 0-32, 0 = No stripes, default = 0
+    var stripeSig: Double = 0.9                         // Memory parameter for stripe average coloring
+                                                        // Range 0-1, 0 = No stripes, default = 0.9
+    var steps: Int = 0                                  // Step density, frequency for step coloring
+                                                        // Range 0-100, 0 = No steps, default = 0
+    var ncycle: Double = 1.0                            // Color cycling, must be > 0
+    var scale: Double = 1.0                             // Color changing frequency
     
-    var offset: Double = 0.0                        // Offset to first color
-    var compression: Int = 1                        // Color palette compression. nth root of iteration count, must be > 0
+    var offset: Double = 0.0                            // Offset to first color
+    var compression: Int = 1                            // Color palette compression. nth root of iteration count, must be > 0
 
 }
 

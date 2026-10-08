@@ -11,22 +11,51 @@ import SwiftMPx
 
 struct ControlView: View {
 
-    @Bindable var controller: FractalController
+    let controller: FractalController
 
-    // Bindings from parent view
-    //@Binding var selection: Selection
-    @Binding var info: Info
-    
     @State var linkResolution: Bool = true
     @State var method: CalculationMethod = .sequential
 
+    /// Binding for FractalController
+    var bController: Bindable<FractalController> {
+        Bindable(controller)
+    }
+    
+    // Only UI changes of width will change the controller resolution
+    private var width: Binding<CGFloat> {
+        Binding(
+            get: { controller.resolution.width },
+            set: { newValue in
+                let delta = newValue - controller.resolution.width
+                controller.resolution.width = newValue
+                if linkResolution {
+                    controller.resolution.height += delta
+                }
+            }
+        )
+    }
+   
+    // Only UI changes of height will change the controller resolution
+    private var height: Binding<CGFloat> {
+        Binding(
+            get: { controller.resolution.height },
+            set: { newValue in
+                let delta = newValue - controller.resolution.height
+                controller.resolution.height = newValue
+                if linkResolution {
+                    controller.resolution.self.width += delta
+                }
+            }
+        )
+    }
+    
     var body: some View {
         ScrollView([.vertical]) {
             VStack(alignment: .leading) {
                 //
                 // Buttons
                 //
-                ControlButtonView(controller: controller, method: method, info: $info)
+                ControlButtonView(controller: controller, method: method)
                 
                 //
                 // Resolution
@@ -34,21 +63,16 @@ struct ControlView: View {
                 GroupBox(label: Text("Resolution").foregroundStyle(.blue).font(.headline)) {
                     Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
                         GridRow {
-                            LinearStepper(value: Bindable(controller).resolution.width, unit: " px", range: 100...4096, step: 50, format: "%.0f")
-                                .onChange(of: controller.resolution.width) { _, newValue in
-                                    if linkResolution { controller.resolution.height = newValue }
-                                }
-                            LinearStepper(value: Bindable(controller).resolution.height, unit: " px", range: 100...4096, step: 50, format: "%.0f")
-                                .onChange(of: controller.resolution.height) { _, newValue in
-                                    if linkResolution { controller.resolution.width = newValue }
-                                }
+                            LinearStepper(value: width, unit: " px", range: 100...4096, step: 50, format: "%.0f")
+                            LinearStepper(value: height, unit: " px", range: 100...4096, step: 50, format: "%.0f")
                             Spacer()
                         }
                         GridRow {
-                            Toggle(isOn: $linkResolution) { Text("Aspect ratio") }
+                            Toggle(isOn: $linkResolution) { Text("Link width and height") }
+                                .gridCellColumns(2)
                         }
                         GridRow {
-                            Toggle("Spherical", isOn: $controller.isSphericalDisplay)
+                            Toggle("Spherical", isOn: bController.isSphericalDisplay)
                         }
                         GridRow {
                             Text("Method")
@@ -72,4 +96,3 @@ struct ControlView: View {
         }
     }
 }
-

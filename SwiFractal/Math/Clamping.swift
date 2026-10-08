@@ -12,6 +12,7 @@ extension BinaryInteger {
     /// Map value to boundaries
     /// - Parameter range: Closed range
     /// - Returns: Mapped value
+    @inline(__always)
     public func clamped(to range: ClosedRange<Self>) -> Self {
         return Swift.max(range.lowerBound, Swift.min(range.upperBound, self))
     }
@@ -38,7 +39,7 @@ extension BinaryFloatingPoint {
 extension SIMD3 where Scalar: BinaryFloatingPoint {
     
     /// Return value clamped to range 0...1
-    var clamped: Self {
+    public var clamped: Self {
         return self.clamped(to: 0.0...1.0)
     }
     
@@ -52,7 +53,7 @@ extension SIMD3 where Scalar: BinaryFloatingPoint {
 extension SIMD4 where Scalar: BinaryFloatingPoint {
     
     /// Return value clamped to range 0...1
-    var clamped: Self {
+    public var clamped: Self {
         return self.clamped(to: 0.0...1.0)
     }
 

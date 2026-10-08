@@ -32,12 +32,9 @@ import Foundation
 ///
 
 struct Options<Element>: RawRepresentable, Codable, Equatable
-where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int {
-    
-    // ----------------------------------------------------------------------
-    //  Implementation of Options
-    // ----------------------------------------------------------------------
+where Element: RawRepresentable, Element: CaseIterable, Element: Equatable, Element.RawValue == Int {
 
+    /// The raw value
 	var rawValue: Int
     
     /// Return name of option as String
@@ -49,9 +46,10 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
     /// Return rawValue of last option
     var maxValue: Int = Array(Element.allCases).last?.rawValue ?? 0
     
-    // Return the enum element for rawValue
-    var element: Element? {
-        Element(rawValue: rawValue)
+    /// Provide direct access to enum element
+    var element: Element {
+        get { Element(rawValue: rawValue)! }
+        set { if Element.allCases.contains(newValue) { rawValue = newValue.rawValue } }
     }
     
     /// Default initializer
@@ -110,11 +108,8 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
         return lhs.rawValue != rhs.rawValue
     }
     
-    // ----------------------------------------------------------------------
-    //  JSON encoding / decoding
-    // ----------------------------------------------------------------------
-
     /// Put option name as String into JSON instead of rawValue
+    /// - Parameter encoder: Encoder
     func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
         try container.encode(name)
@@ -122,6 +117,7 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
     
     /// Decode from JSON string
     /// This function is called for keyless JSON strings like " \"case1\" "
+    /// - Parameter decoder: Decoder
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         self.rawValue = 0
@@ -132,8 +128,9 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
     }
     
     /// Convert JSON string to Option
-    /// Returns true on success, false on error
-    mutating func fromJSON(_ jsonString: String, allowNew: Bool = false) -> Bool {
+    /// - Parameter jsonString: JSON string
+    /// - Returns: true on success, false on error
+    mutating func fromJSON(_ jsonString: String) -> Bool {
         guard let data = jsonString.data(using: .utf8) else { return false }
         do {
             let newOptions = try JSONDecoder().decode(Options.self, from: data)
@@ -147,6 +144,8 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
     
     /// Convert Option to (optionally) formatted JSON string
     /// Returns JSON string or empty string on error
+    /// - Parameter prettyPrinted: If true JSON string is formatted
+    /// - Returns: JSON string or empty string on error
     func toJSON(prettyPrinted: Bool = true) -> String {
         do {
             let encoder = JSONEncoder()

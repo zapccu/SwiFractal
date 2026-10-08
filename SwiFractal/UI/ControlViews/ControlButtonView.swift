@@ -18,8 +18,6 @@ struct ControlButtonView: View {
     let controller: FractalController   // Fractal controller
     let method: CalculationMethod       // Calculation method
     
-    @Binding var info: Info
-    
     @State private var calculationTask: Task<Void, Never>? = nil
     
     @State private var isExporting = false
@@ -34,16 +32,30 @@ struct ControlButtonView: View {
                 HStack(spacing: 5) {
                     // Button "Apply"
                     Button(action: {
+                        if controller.selection.areaSelected {
+                            // Zoom into selected area
+                            controller.zoomArea()
+                        }
+                        else if controller.selection.pointSelected {
+                            // Create Juliaset
+                        }
                         controller.applyNewParameters()
                     }) {
                         Image(systemName: "app.badge.checkmark").font(.title)
                     }
-                    .disabled(!controller.parametersChanged)
+                    .disabled(!controller.parametersChanged || !controller.selection.anySelected)
                     .help("Apply current dimensions")
                     
                     // Button "Undo"
                     Button(action: {
-                        controller.undo()
+                        if controller.selection.anySelected {
+                            // Reset selection
+                            controller.selection.reset()
+                        }
+                        else {
+                            // Undo last parameter change
+                            controller.undo()
+                        }
                     }) {
                         Image(systemName: "arrow.uturn.backward").font(.title)
                     }
@@ -61,7 +73,7 @@ struct ControlButtonView: View {
                     
                     // Draw
                     Button(action: {
-                        info.setState(currentAction: "Drawing ...")
+                        controller.info.currentAction = "Drawing ..."
 
                         calculationTask = Task {
                             // Render fractal
@@ -69,30 +81,14 @@ struct ControlButtonView: View {
                             let st = await controller.calculate(method: method)
                             guard !Task.isCancelled else {
                                 controller.endCalculation(.cancelled("Cancelled."))
-                                info.setState(currentAction: "Cancelled.")
+                                controller.info.currentAction = "Cancelled."
                                 return
                             }
                             controller.endCalculation(st)
-                            if settings.drawParallel {
-                                debugPrint("Drawing parallel")
-                                await controller.drawResultSetParallel()
-                            }
-                            else {
-                                debugPrint("Drawing sequential")
-                                await controller.drawResultSet()
-                            }
-/*
-                            let (st, image) = await controller.fractal.render(method: method, resolution: controller.resolution)
-                            guard !Task.isCancelled else {
-                                controller.endCalculation(.cancelled("Cancelled."))
-                                info.setState(currentAction: "Cancelled.")
-                                return
-                            }
-                            
-                            controller.image = image
-                            controller.endCalculation(st)
- */
-                            info.setState(currentAction: st.message, statusMessage: "Calculation time: \(controller.formattedCalculationTime)")
+                            await controller.drawResultSet()
+
+                            controller.info.setState(currentAction: st.message,
+                                                     statusMessage: "Calculation time: \(controller.fmtCalculationTime)")
                         }
 
                         controller.selection.reset()

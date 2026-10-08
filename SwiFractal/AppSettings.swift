@@ -12,10 +12,13 @@ import SwiftUI
 ///
 enum SettingsKeys {
     static let cpuCount = "settings.cpuCount"
+    static let oversubscription = "settings.oversubscription"
     static let drawParallel = "settings.drawParallel"
     static let resolution = "settings.resolution"
     static let usePerturbation = "settings.usePerturbation"
     static let useSeriesApproximation = "settings.useSeriesApproximation"
+    static let perturbationPasses = "settings.perturbationPasses"
+    static let fixGlitches = "settings.fixGlitches"
 }
 
 ///
@@ -23,10 +26,13 @@ enum SettingsKeys {
 ///
 struct SettingsSnapshot: Sendable {
     let cpuCount: Int
+    let oversubscription: Int
     let drawParallel: Bool
     let resolution: CGSize
     let usePerturbation: Bool
     let useSeriesApproximation: Bool
+    let perturbationPasses: Int
+    let fixGlitches: Bool
 }
 
 ///
@@ -70,6 +76,11 @@ final class AppSettings {
     var cpuCount: Int {
         didSet { defaults.set(cpuCount, forKey: SettingsKeys.cpuCount) }
     }
+    
+    /// CPU oversubscription factor
+    var oversubscription: Int {
+        didSet { defaults.set(oversubscription, forKey: SettingsKeys.oversubscription) }
+    }
 
     /// Draw calculation result parallel or sequential
     var drawParallel: Bool {
@@ -90,21 +101,36 @@ final class AppSettings {
     var useSeriesApproximation: Bool {
         didSet { defaults.set(useSeriesApproximation, forKey: SettingsKeys.useSeriesApproximation) }
     }
+    
+    /// Number of perturbation passes
+    var perturbationPasses: Int {
+        didSet { defaults.set(perturbationPasses, forKey: SettingsKeys.perturbationPasses) }
+    }
+    
+    /// Fix remaining glitches after perturbation passes completed
+    var fixGlitches: Bool {
+        didSet { defaults.set(fixGlitches, forKey: SettingsKeys.fixGlitches) }
+    }
 
     /// Initialize settings with current or default values
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         self.cpuCount = defaults.object(forKey: SettingsKeys.cpuCount) as? Int ?? ProcessInfo.processInfo.activeProcessorCount
+        self.oversubscription = defaults.object(forKey: SettingsKeys.oversubscription) as? Int ?? 2
         self.drawParallel = defaults.object(forKey: SettingsKeys.drawParallel) as? Bool ?? false
         self.resolution = defaults.object(forKey: SettingsKeys.resolution) as? CGSize ?? CGSize(width: 800, height: 800)
         self.usePerturbation = defaults.object(forKey: SettingsKeys.usePerturbation) as? Bool ?? false
         self.useSeriesApproximation = defaults.object(forKey: SettingsKeys.useSeriesApproximation) as? Bool ?? false
+        self.perturbationPasses = defaults.object(forKey: SettingsKeys.perturbationPasses) as? Int ?? 5
+        self.fixGlitches = defaults.object(forKey: SettingsKeys.fixGlitches) as? Bool ?? false
     }
     
     /// Return snapshot of current settings
     func snapshot() -> SettingsSnapshot {
-        SettingsSnapshot(cpuCount: cpuCount, drawParallel: drawParallel, resolution: resolution,
-                         usePerturbation: usePerturbation, useSeriesApproximation: useSeriesApproximation)
+        SettingsSnapshot(cpuCount: cpuCount, oversubscription: oversubscription, drawParallel: drawParallel,
+                         resolution: resolution,
+                         usePerturbation: usePerturbation, useSeriesApproximation: useSeriesApproximation,
+                         perturbationPasses: perturbationPasses, fixGlitches: fixGlitches)
     }
     
 }

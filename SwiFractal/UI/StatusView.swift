@@ -7,26 +7,33 @@
 
 import SwiftUI
 
-//
-// Status view
-//
-// Used for showing status information on bottom of window
-//
+///
+/// Status view
+///
+/// Used for showing status information on bottom of window
+///
 struct StatusView: View {
-    @Binding var info: Info
+    var controller: FractalController
     
     var body: some View {
         HStack(spacing: 0) {
-            Text(info.currentAction)
+            Text(controller.info.currentAction)
                 .padding([.leading, .trailing], 10)
-                .background(Color(red: 0.9, green: 0.9, blue: 0.9))
-            Text(info.statusMessage)
+            Divider()
+            Text(controller.info.statusMessage)
                 .padding([.leading, .trailing], 10)
-                .background(Color(red: 0.9, green: 0.9, blue: 0.9))
-            Text(info.mousePosition)
-                .padding([.leading, .trailing], 10)
-                .background(Color(red: 0.9, green: 0.9, blue: 0.9))
+
+            if controller.selection.state == .selecting || controller.selection.areaSelected {
+                Divider()
+                Text(controller.selection.areaString)
+                    .padding([.leading, .trailing], 10)
+            }
+            else if !controller.info.mousePosition.isEmpty {
+                Divider()
+                Text(controller.info.mousePosition)
+                    .padding([.leading, .trailing], 10)
+            }
             Spacer()
-        }
+        }.background(Color.yellow.opacity(0.5))
     }
 }

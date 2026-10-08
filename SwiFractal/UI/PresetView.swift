@@ -56,12 +56,16 @@ struct PresetView: View {
             }
             .padding(.trailing, 5)
 
+            // Picker for aspect ratio handling
             Picker(selection: $fit, label: Text("Fit to:")) {
                 Text("Image").tag(AspectRatioMode.fitToImageSize)
                 Text("Fractal").tag(AspectRatioMode.fitToFractalSize)
             }
             .pickerStyle(.radioGroup)
             .horizontalRadioGroupLayout()
+            .onChange(of: fit) { _, newValue in
+                controller.applyPreset(name: selectedPresetName, fit: newValue)
+            }
         }
     }
 

@@ -146,6 +146,24 @@ struct Matrix<E: Sendable> : Sendable {
         }
     }
     
+    /// Return column of matrix using fast direct buffer access without bounds checking
+    /// - Parameter x: column
+    /// - Returns: Array containing matrix column
+    func getColumn(_ x: Int) -> [E] {
+        guard x >= 0 && x < dim.1 else { return [] }
+        
+        return grid.withUnsafeBufferPointer { buffer in
+            var col = [E]()
+            col.reserveCapacity(dim.0)
+            
+            for y in 0..<dim.0 {
+                col.append(buffer[y * dim.1 + x])
+            }
+            
+            return col
+        }
+    }
+    
     /// Reset array to default value
     @inline(__always) mutating func reset() {
         for i in grid.indices {

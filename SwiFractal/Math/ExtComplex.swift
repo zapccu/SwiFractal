@@ -55,7 +55,7 @@ extension Complex<Double>: ComplexNumber, @retroactive LosslessStringConvertible
         return "\(real)+\(imaginary)i"
     }
     
-    /// Return real * real + imaginary * imaginary
+    /// Return `real * real + imaginary * imaginary`
     var norm: Double {
         return lengthSquared
     }
@@ -65,7 +65,7 @@ extension Complex<Double>: ComplexNumber, @retroactive LosslessStringConvertible
         return atan2(imaginary, real)
     }
     
-    /// Return sqrt(real * real + imaginary * imaginary)
+    /// Return `sqrt(real * real + imaginary * imaginary)`
     var abs: Double {
         return length
     }

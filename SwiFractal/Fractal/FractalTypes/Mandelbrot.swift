@@ -68,28 +68,4 @@ class Mandelbrot<RT: PreciseFloatingPoint> : FractalProtocol {
         }
     }
 
-    /// Iterate an array of complex points
-    /// - Parameters:
-    ///   - P: Dynamic calculation parameters
-    ///   - inRow: Array of complex points
-    ///   - outRow: Array of calculation results
-    /*
-    nonisolated static func calculateLine(P: DynamicParameters<DataType>,
-                                          inRow: UnsafeBufferPointer<CT>,
-                                          outRow: UnsafeMutableBufferPointer<ResultType>) {
-        for i in inRow.indices {
-            outRow[i] = calculatePointZ2(CP: inRow[i], P: P)
-        }
-    }
-     
-
-    nonisolated static func calculateLineFast(P: DynamicParameters<DataType>,
-                                              inRow: UnsafeBufferPointer<CT>,
-                                              outRow: UnsafeMutableBufferPointer<ResultType>) {
-        for i in stride(from: inRow.startIndex, to: inRow.endIndex, by: 2) {
-            outRow[i] = calculatePointZ2(CP: inRow[i], P: P)
-            outRow[i + 1] = outRow[i]
-        }
-    }
-     */
 }

@@ -6,9 +6,10 @@
 //  Created by Dirk Braner on 19.11.24.
 //
 
-import Cocoa
+import Foundation
 import SwiftUI
-import SwiftMPx
+import simd
+
 
 /// Type for SIMD3``<Float>``
 typealias SIMD3f = SIMD3<Float>
@@ -29,67 +30,19 @@ typealias HSL = (hue: Float, saturation: Float, lightness: Float)
 typealias LCH = (lightness: Float, chroma: Float, hue: Float)
 
 
-extension SIMD3: @retroactive ExpressibleByFloatLiteral where Scalar: ExpressibleByFloatLiteral {
-    public init(floatLiteral value: Scalar.FloatLiteralType) {
-        self.init(repeating: Scalar(floatLiteral: value))
-    }
-}
-
-extension SIMD4 {
-    
-    /// Access elements x,y,z as SIMD3
-    var xyz: SIMD3<Scalar> {
-        get { SIMD3(x, y, z) }
-        set {
-            self.x = newValue.x
-            self.y = newValue.y
-            self.z = newValue.z
-        }
-    }
-    
-    /// Initialize SIMD4 value with SIMD3 and scalar value
-    init(xyz: SIMD3<Scalar>, w: Scalar) {
-        self.init(xyz.x, xyz.y, xyz.z, w)
-    }
-    
-}
-
-// Extension for RGBA type
-extension SIMD4 where Scalar: BinaryFloatingPoint {
-    
-    // Floating point components
-    var red: Scalar   { x }
-    var green: Scalar { y }
-    var blue: Scalar  { z }
-    var alpha: Scalar { w }
-    
-    /// Return red component as UInt8
-    var redi: UInt8   { UInt8(x * 255.0) }
-    
-    /// Return green component as UInt8
-    var greeni: UInt8 { UInt8(y * 255.0) }
-    
-    /// Return blue component as UInt8
-    var bluei: UInt8  { UInt8(z * 255.0) }
-    
-    /// Return alpha component as UInt8
-    var alphai: UInt8 { UInt8(w * 255.0) }
-    
-    public init(_ x: UInt8, _ y: UInt8, _ z: UInt8, _ w: UInt8) {
-        self.init(Scalar(x) / 255.0, Scalar(y) / 255.0, Scalar(z) / 255.0, Scalar(w) / 255.0)
-    }
-    
-    public init(_ v: SIMD4<UInt8>) {
-        self.init(v.x, v.y, v.z, v.w)
-    }
-
-}
 
 ///
-/// Fractal color type. A RGBAColor has 4 channels: red green, blue, alpha.
+/// Fractal color type.
+/// A RGBAColor has 4 channels: red green, blue, alpha.
 /// Each channel is in range 0..1. Channels are stored internally as SIMD4``<Float>``
 ///
 struct RGBAColor: FractalParameters {
+    
+    /// Maximum number of colors
+    static let maxColors = 4096
+    
+    /// Lookup table for conversion between linear and RGB
+    static let linearToRGB = LinearToRGB()
     
     // Predefined colors
     static let black  = RGBAColor(0.0, 0.0, 0.0, 1.0)
@@ -169,14 +122,22 @@ struct RGBAColor: FractalParameters {
         return Color(red: Double(red), green: Double(green), blue: Double(blue), opacity: Double(alpha))
     }
     
-    /// Return all channels as vector / Double array
-    var vector: Vector<Double> {
-        return Vector<Double>([Double(red), Double(green), Double(blue), Double(alpha)])
+    /// Return color as linear color
+    var asLinear: SIMD3<Float> {
+        let c = colorValue.xyz
+        let low  = c / 12.92
+        let high = pow((c + 0.055) / 1.055, SIMD3<Float>(repeating: 2.4))
+        return low.replacing(with: high, where: c .> 0.04045)
+    }
+    
+    /// Return all channels as Float vector
+    var vector: Vector<Float> {
+        return Vector<Float>([red, green, blue, alpha])
     }
 
     /// Return color channels as vector / Double array
-    var vector3: [Double] {
-        return [Double(red), Double(green), Double(blue)]
+    var vector3: [Float] {
+        return [red, green, blue]
     }
 
     /// Return color channels as pixel / UInt8 array
@@ -219,11 +180,6 @@ struct RGBAColor: FractalParameters {
         
         self.colorValue = SIMD4<Float>(red, green, blue, alpha)
     }
-
-    /// Init with SIMD4 value
-    init(colorValue: SIMD4<Float>) {
-        self.colorValue = colorValue
-    }
     
     /// Default initializer (black)
     init() {
@@ -245,12 +201,12 @@ struct RGBAColor: FractalParameters {
         self.init(Float(red)/255.0, Float(green)/255.0, Float(blue)/255.0, Float(alpha)/255.0)
     }
     
-    /// Init color with RGB Value
+    /// Init color with RGB / SIMD3 Value
     init(rgb: RGB, _ alpha: Float = 1.0) {
         self.colorValue = RGBA(rgb, alpha).clamped
     }
     
-    /// Init color with RGBA value
+    /// Init color with RGBA / SIMD4 value
     init(rgba: RGBA) {
         self.colorValue = rgba.clamped
     }
@@ -280,7 +236,7 @@ struct RGBAColor: FractalParameters {
         self.init(vector: vector.map { Float($0) })
     }
     
-    /// Init color with COL3 value
+    /// Init color with COL3 value (SIMD3 Float)
     init (col3: COL3) {
         self.init(col3.x, col3.y, col3.z, 1.0)
     }
@@ -304,18 +260,35 @@ struct RGBAColor: FractalParameters {
     /// - Parameter gamma: Gamma value
     /// - Returns: Corrected color
     @inline(__always)
-    func gammaCorrection(_ gamma: Double) -> RGBAColor {
+    func gammaCorrection(_ gamma: Float) -> RGBAColor {
         guard gamma != 1.0 else { return self }
-        let rcp = Float(1.0/gamma)
+        let rcp: Float = 1.0 / gamma
         return RGBAColor(pow(red, rcp), pow(green, rcp), pow(blue, rcp), alpha)
     }
     
-    /// Overlay, alpha channel is not touched
-    @inline(__always)
-    mutating func hardLight(top: Float) {
-        colorValue.x = BlendingMode.hardLight.blend(base: colorValue.x, top: top)
-        colorValue.y = BlendingMode.hardLight.blend(base: colorValue.y, top: top)
-        colorValue.z = BlendingMode.hardLight.blend(base: colorValue.z, top: top)
+    /// Blend color with a value using specified blending mode, alpha channel is not touched.
+    /// Gamma correction is applied if gamma is not 1.0.
+    /// - Parameters:
+    ///   - value: Blending value (top). Base is current color value (bottom)
+    ///   - lightning: Lightning parameters
+    /// - Returns: Blended color
+    func blend(with value: Float, lightning: Lightning) -> RGBAColor {
+        let mode = lightning.blendingMode.element
+        guard mode != .none else { return self }
+        
+        if mode == .multiply {
+            // Blending in linear color space
+            let colorLinear = mode.blend(base: self.asLinear, top: value, correction: lightning.exposure)
+            let color = RGBAColor.linearToRGB(colorLinear)
+            return color.gammaCorrection(lightning.gamma)
+        }
+        else if mode == .overlay {
+            return RGBAColor(col3: mode.blend(base: self.colorValue.xyz, top: value, correction: lightning.gamma))
+        }
+        else {
+            let color = RGBAColor(col3: mode.blend(base: self.colorValue.xyz, top: value))
+            return color.gammaCorrection(lightning.gamma)
+        }
     }
     
     /// Exact linear interpolation between two colors based on a weight factor
@@ -350,15 +323,13 @@ struct RGBAColor: FractalParameters {
     static func cosineInterpolate(from: RGBAColor, to: RGBAColor, factor: Float) -> RGBAColor {
         RGBAColor(rgba: SIMD4.cosineInterpolate(a: from.colorValue, b: to.colorValue, t: factor))
     }
-    
-    //
-    //  Compare colors
-    //
 
+    /// Compare colors
     static func == (lhs: RGBAColor, rhs: RGBAColor) -> Bool {
         return lhs.colorValue == rhs.colorValue
     }
     
+    /// Compare colors
     static func != (lhs: RGBAColor, rhs: RGBAColor) -> Bool {
         return !(lhs == rhs)
     }

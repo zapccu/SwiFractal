@@ -9,31 +9,13 @@ import SwiftUI
 import SwiftMPx
 
 
-//
-// Information displayed in StatusView
-//
-struct Info {
-    var currentAction: String = "Idle"
-    var statusMessage: String = "Ready."
-    var mousePosition: String = "X: 0, Y: 0, R: 0, I: 0"
-    
-    mutating func setState(currentAction: String, statusMessage: String = "") {
-        self.currentAction = currentAction
-        self.statusMessage = statusMessage
-    }
-}
-
-//
-// Content view
-//
-// Container for preset view, drawing view, status view and control view
-//
+///
+/// Content view
+///
+/// Container for preset view, drawing view, status view and control view
+///
 struct ContentView: View {
-    //@Environment(AppSettings.self) private var settings
 
-    @State private var info: Info = Info()
-    //@State private var selection = Selection(fromMidPoint: false, keepAspectRatio: true)
-    
     /// The fractal controller object
     @State private var controller: FractalController
     
@@ -51,41 +33,33 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 // Picker for fractal type and fractal parameter preset
                 PresetView(controller: controller)
-                    .frame(height: 30, alignment: .init(horizontal: .center, vertical: .center))
-                
+                    .frame(maxWidth: .infinity, minHeight: 40,alignment: .init(horizontal: .center, vertical: .center))
+                    .background(Color.yellow.opacity(0.5)).clipped()
+
                 // Make drawing view scrollable
                 ScrollView([.horizontal, .vertical], showsIndicators: true) {
-                    ZStack {
-                        // The drawing view
-                        DrawingView(controller: controller)
-                        
-                        // Selection view on top of the drawing view
-                        // SelectionView(controller: controller, selection: $selection)
-                        SelectionView(controller: controller)
-                            .onContinuousHover { phase in
-                                // Update the cursor position
-                                switch phase {
-                                case .active(let location):
-                                    let (posX, posY, strFrcX, strFrcY) = controller.mapPointFormatted(location)
-                                    info.mousePosition = "X: \(posX), Y: \(posY), R: \(strFrcX), I: \(strFrcY)"
-                                case .ended:
-                                    info.mousePosition = "X: 0, Y: 0, R: 0, I: 0"
-                                    break
+                    // The drawing view
+                    DrawingView(controller: controller)
+                        .overlay(
+                            // Selection view on top of the drawing view
+                            // SelectionView(controller: controller, selection: $selection)
+                            SelectionView(controller: controller)
+                                .onContinuousHover { phase in
+                                    controller.cursorLocation.onHover(phase: phase)
+                                    controller.info.mousePosition = controller.fmtScreenLocation + " " + controller.fmtComplexLocation
                                 }
-                            }
-                    }
+                        )
                 }
                 .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
                 .background(Color(CGColor(red: 0.4, green: 0.4, blue: 0.4, alpha: 1.0)))
                 
                 // The status view
-                StatusView(info: $info)
+                StatusView(controller: controller)
                     .frame(height: 25)
                     .frame(maxWidth: .infinity)
             }
             
-            //ControlView(controller: controller, selection: $selection, info: $info)
-            ControlView(controller: controller, info: $info)
+            ControlView(controller: controller)
                 .frame(width: FractalAppData.controlViewWidth)
         }
     }

@@ -35,6 +35,19 @@ struct SACoefficients {
     static let initial = SACoefficients(
         a: Cplx(1.0, 0.0), b: Cplx.zero, c: Cplx.zero, skipIndex: 0
     )
+    
+    /// Calculate new ΔC
+    /// - Parameter deltaC: ΔC of current point
+    /// - Returns: New ΔC if skipIndex greater than 0. Otherwise deltaC.
+    func getDeltaC(deltaC: Cplx) -> Cplx {
+        guard skipIndex > 0 else { return deltaC }
+        
+        let aDc  = a * deltaC
+        let bDc2 = b * deltaC.squared
+        let cDc3 = c * deltaC.squared * deltaC
+
+        return aDc + bDc2 + cDc3
+    }
 }
 
 //
@@ -42,13 +55,19 @@ struct SACoefficients {
 //
 extension FractalCalculation {
     
-    func isGlitch(delta: Cplx, Z: Cplx) -> Bool {
+    /// Check for perturbation glitch (ref. Pauldelbrot)
+    /// - Parameters:
+    ///   - delta: <#delta description#>
+    ///   - Z: <#Z description#>
+    /// - Returns: <#description#>
+    @inline(__always)
+    nonisolated static func isGlitch(delta: Cplx, Z: Cplx) -> Bool {
         let magDelta = delta.magnitude
         let magZ = Z.magnitude
         
-        // Wenn delta im Vergleich zu Z winzig ist,
-        // verlieren wir die Präzision in der Addition (Floating Point Cancellation)
-        return magDelta > 0 && magDelta < magZ * 1e-15 
+        // If delta is very small compared to Z, we loose precision
+        // in addition (floating point cancellation)
+        return magDelta > 0 && magDelta < magZ * 1e-15
     }
     
     /// Generate reference orbit for perturbation algorithm.
@@ -56,21 +75,21 @@ extension FractalCalculation {
     /// - Parameters:
     ///   - refPoint: Reference point
     ///   - limits: Calculation limits
-    /// - Returns: Array of type Cplx with reference orbit
-    static func generateReferenceOrbit(refPoint: MPComplex, limits: FractalLimits) -> [Cplx] {
-        let apBailout: MPFloat = MPFloat(limits.bailout, precision: refPoint.precision)
-        var Z = MPComplex(0.0, 0.0, precision: refPoint.precision)
+    /// - Returns: Array of complex values with reference orbit
+    nonisolated static func generateReferenceOrbit(refPoint: CT, limits: FractalLimits) -> [Cplx] {
+        let bailout: RT = RT(limits.bailout, precision: refPoint.precision)
+        var Z: CT = CT(0.0, 0.0, precision: refPoint.precision)
         
         var refOrbit: [Cplx] = []
         refOrbit.reserveCapacity(limits.iterations + 1)
         
         for _ in 0...limits.iterations {
-            refOrbit.append(Z.asCplx)
+            refOrbit.append(Z.toCplx())
             
             Z = Z.squared + refPoint
             
-            if Z.lengthSquared > apBailout {
-                refOrbit.append(Z.asCplx)
+            if Z.lengthSquared > bailout {
+                refOrbit.append(Z.toCplx())
                 break
             }
         }
@@ -84,7 +103,7 @@ extension FractalCalculation {
     ///   - refPoint: Reference point
     ///   - limits: Calculation limits
     /// - Returns: Array of type Float2 with reference orbit
-    static func generateReferenceOrbit(refPoint: Cplx, limits: FractalLimits) -> [Float2] {
+    nonisolated static func generateReferenceOrbit(refPoint: Cplx, limits: FractalLimits) -> [Float2] {
         var Z = Cplx.zero
         
         var refOrbit: [Float2] = []
@@ -118,8 +137,7 @@ extension FractalCalculation {
     ///   - refOrbit: Reference orbit
     ///   - dC: |Δc| of the pixel = min(size.real, size.imaginary) / max(width, height)
     /// - Returns: SA coefficients + skipIndex (0 if SA makes no sense)
-    func computeSACoefficients(refOrbit: [Cplx], dC: Double) -> SACoefficients {
-        
+    nonisolated static func computeSACoefficients(refOrbit: [Cplx], dC: Double) -> SACoefficients {
         guard refOrbit.count > 1 else { return SACoefficients.initial }
         
         let tolerance: Double = 1e-6    // relative error threshold
@@ -141,14 +159,15 @@ extension FractalCalculation {
             // C_{n+1} = 2·Z_n·C_n + 2·A_n·B_n
             let newC: Cplx = z2 * c + a * b * 2.0
 
-            // Beitrag der Terme für typisches |Δc|:
+            // Contribution of terms for typical |Δc|:
             // |A·Δc| vs |B·Δc²| vs |C·Δc³|
             let aContrib = newA.length * dC
             let bContrib = newB.length * dC2
             let cContrib = newC.length * dC3
-
-            // SA collapses if higher terms getting relatively big
-            if bContrib > tolerance * aContrib || cContrib > tolerance * aContrib {
+            
+            // SA collapses if higher terms are getting big
+            let aContribTolerance = tolerance * aContrib
+            if bContrib > aContribTolerance || cContrib > aContribTolerance {
                 // n is the last valid skip index
                 return SACoefficients(a: a, b: b, c: c, skipIndex: n)
             }
@@ -180,43 +199,41 @@ extension FractalCalculation {
         var stripeAvg: Double = 0.0         // Stripe average value
         var stripet: Double = 0.0           // Current stripe value
         
-        var dC = deltaC
-        var Z = Cplx(0.0)                   // Start of iteration: Z = 0
-        var dZ = Cplx(0.0)
+        var Z: Cplx = .zero                 // Start of iteration: Z = 0
+        var dZ: Cplx = .zero
         var ndZ: Double = 0.0
         var nZ: Double = 0.0                // Norm of Z: Z.imaginary * Z.imaginary + Z.real * Z.real
         var nZ1: Double = 10.0              // Old value of nZ for fast orbit detection
         var absZ: Double = 0.0              // abs(Z) = sqrt(nZ)
         
         var period: Int = 0                 // Period counter for fast orbit detection
-        var D = Cplx(0.0, 0.0)              // 1st derivation of Z
+        var D: Cplx = .zero                 // 1st derivation of Z
         var smoothIter: Double = 0          // Smooth iteration counter
        
-        let prec = P.fp.dimensions.precision.bits
-
-        var orbits = Array<Cplx>(repeating: Cplx(0.0), count: P.fp.limits.iterations + 1)
+        var orbits = Array<Cplx>(repeating: .zero, count: P.limits.iterations + 1)
         
-        if sa.skipIndex > 0 {
-            let aDc  = sa.a * deltaC
-            let bDc2 = sa.b * deltaC.squared
-            let cDc3 = sa.c * deltaC.squared * deltaC
-
-            dC = aDc + bDc2 + cDc3
-        }
+        let dC = sa.getDeltaC(deltaC: deltaC)
         
-        for i in sa.skipIndex...P.fp.limits.iterations {
+        for i in sa.skipIndex...P.limits.iterations {
             
             dZ = 2.0 * refOrbit[refIndex] * dZ + dZ * dZ + dC
             refIndex += 1
             Z = refOrbit[refIndex] + dZ
             
+            // Check for glitch
+            if isGlitch(delta: dZ, Z: Z) {
+                result.smoothIter = Double(i)
+                result.flags = .error       // recalculate this point
+                break
+            }
+            
             if P.bStripes {
-                stripet = (sin(Double(P.fp.colorParameters.stripes) * Z.arg) + 1.0) * 0.5
+                stripet = (sin(Double(P.stripes) * Z.arg) + 1.0) * 0.5
             }
             
             nZ = Z.lengthSquared
             
-            if nZ > P.fp.limits.bailout {
+            if nZ > P.limits.bailout {
                 absZ = sqrt(nZ)           // aZ = abs(Z)
                 let logAbsZ = log(absZ)
                 
@@ -229,15 +246,14 @@ extension FractalCalculation {
                 // Calculate smooth iteration value for smooth coloring
                 // This value must be added to the iteration count.
                 // smoothIter = 1.0 - log(logRatio) * _NC.RLOG2
-                smoothIter = -log(log(absZ)/P.logBailout) * _NC.RLOG2
-
+                smoothIter = -log(log(absZ)/P.limits.logBailout) * _NC.RLOG2
 
                 // Calculate exterior distance to Mandelbrot set
                 //
                 // Dist = ((aZ * log(aZ)) / abs(D)) * 2.0
                 //
-                let rtAbsZ: RT = RT(absZ, precision: prec)
-                let rtLogAbsZ: RT = RT(logAbsZ, precision: prec)
+                let rtAbsZ: RT = RT(absZ, precision: P.precision)
+                let rtLogAbsZ: RT = RT(logAbsZ, precision: P.precision)
                 let rtDistance = ((rtAbsZ * rtLogAbsZ) / D.length) * 2.0
                 distance = (rtDistance * P.diag).toDouble()
                 
@@ -250,8 +266,8 @@ extension FractalCalculation {
                 
                 // Calculate stripes
                 if P.bStripes {
-                    stripeAvg = expMovAvg(previousAvg: stripeAvg, smooth: P.fp.colorParameters.stripeSig, newValue: stripet, smoothIter: smoothIter)
-                    stripeAvg = biasCorrect(previousAvg: stripeAvg, smooth: P.fp.colorParameters.stripeSig, iter: i, smoothIter: smoothIter)
+                    stripeAvg = expMovAvg(previousAvg: stripeAvg, smooth: P.stripeSig, newValue: stripet, smoothIter: smoothIter)
+                    stripeAvg = biasCorrect(previousAvg: stripeAvg, smooth: P.stripeSig, iter: i, smoothIter: smoothIter)
                 }
                 
                 // Prepare result values
@@ -273,12 +289,12 @@ extension FractalCalculation {
             }
             
             // Calculate orbits
-            if P.bOrbits {
+            if P.colorizeInside == .orbits {
                 // Search for orbits (full periodicity check)
                 var idx: Int = -1
                 let end: Int = max(-1, i - 100)
                 
-                for t in [P.fp.limits.orbitDelta1, P.fp.limits.orbitDelta2] {
+                for t in [P.limits.orbitDelta1, P.limits.orbitDelta2] {
                     for n in stride(from: i-1, to: end, by: -1) {
                         let d = Z - orbits[n]
                         if d.lengthSquared < t {
@@ -290,7 +306,7 @@ extension FractalCalculation {
                 
                 if idx > -1 {
                     // Found orbit, colorize point inside mandelbrot set
-                    result.flags = [.inside]
+                    result.flags = [ .inside ]
                     result.smoothIter = Double(idx)
                     return result
                 }
@@ -298,12 +314,16 @@ extension FractalCalculation {
             }
             else {
                 // Simplified periodicity check, no orbit colorization
-                if abs(nZ - nZ1) < P.fp.limits.orbitDelta3 {
-                    break
+                if abs(nZ - nZ1) < P.limits.orbitDelta3 {
+                    if P.colorizeInside == .fastOrbits {
+                        result.flags = .inside
+                        result.smoothIter = Double(i)
+                    }
+                    return result
                 }
                 else {
                     period += 1
-                    if period > P.fp.limits.orbitLength {
+                    if period > P.limits.orbitLength {
                         period = 0
                         nZ1 = nZ
                     }
@@ -312,12 +332,12 @@ extension FractalCalculation {
             
             if P.bStripes {
                 // Calculate exponential moving average of stripe value
-                stripeAvg = expMovAvg(previousAvg: stripeAvg, smooth: P.fp.colorParameters.stripeSig, newValue: stripet)
+                stripeAvg = expMovAvg(previousAvg: stripeAvg, smooth: P.stripeSig, newValue: stripet)
             }
             
             // If the delta is larger than the reference, or if the reference orbit has already escaped,
             // reset back to the beginning of the SAME reference orbit!
-            ndZ = dZ.length
+            ndZ = dZ.lengthSquared
             if nZ < ndZ || refIndex == maxRefIter {
                 dZ = Z
                 refIndex = 0

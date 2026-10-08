@@ -13,6 +13,7 @@ import Accelerate
 /// Class for linear buffer
 ///
 final class LinearBuffer<Element: Sendable>: @unchecked Sendable {
+    
     let pointer: UnsafeMutableBufferPointer<Element>
     let width: Int
     let height: Int
@@ -38,14 +39,13 @@ final class LinearBuffer<Element: Sendable>: @unchecked Sendable {
     /// Return line index
     /// - Parameter y: Row
     /// - Returns: Offset of start of row in buffer
-    @inline(__always)
-    func idx(_ y: Int) -> Int { y * width }
+    @inline(__always) func idx(_ y: Int) -> Int { y * width }
     
     /// Return index of point
     /// - Parameters:
     ///   - x: Column
     ///   - y: Row
     /// - Returns: Offset of point in buffer
-    @inline(__always)
-    func idx(_ x: Int, _ y: Int) -> Int { y * width + x }
+    @inline(__always) func idx(_ x: Int, _ y: Int) -> Int { y * width + x }
+    
 }

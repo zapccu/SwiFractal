@@ -12,12 +12,16 @@ import SwiftMPx
 //
 // Static Julia calculation parameters
 //
-nonisolated struct JuliaParameters<RT: PreciseFloatingPoint> : IterationData {
+nonisolated struct JuliaParameters<RT: PreciseFloatingPoint> : FractalData {
     
     /// Return default parameters
     static var defaultData: JuliaParameters<RT> {
         let defaultDimensions = FractalDimensions<RT>(cornerX: -1.5, cornerY: -1.5, sizeX: 3.0, sizeY: 3.0)
         return JuliaParameters<RT>(dimensions: defaultDimensions)
+    }
+    
+    var initialMapping: InitialValueMapping<CT> {
+        .init(kind: .julia, constant: CT(cPointX, cPointY))
     }
     
     /// Name of fractal
