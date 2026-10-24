@@ -27,11 +27,13 @@ f64 interpolateCubic(f64 edge0, f64 edge1, f64 x) {
 MandelbrotResult iterate(c64 C, device const MetalComputeParameters *MP, device const float2 *Potentials) {
     
     f64 distance = 0.0;      // Distance of current point to Mandelbrot set
+    f64 logPixelDist = 0.0;  // Logarithm of distance
     f64 potential = 0.0;     // Potential of current point
     f64 stripeAvg = 0.0;     // Stripe average value
     f64 stripet = 0.0;       // Current stripe value
 
-    f64 diag = f64(MP->diag);
+    f64 logPixel = f64(MP->logPixel);
+    f64 logBailout = f64(MP->logBailout);
     f64 stripes = f64(MP->stripes);
     f64 stripeSig = f64(MP->stripeSig);
 
@@ -40,14 +42,13 @@ MandelbrotResult iterate(c64 C, device const MetalComputeParameters *MP, device 
     f64 nZ1 = 10.0;          // Old value of nZ for fast orbit detection
     f64 absZ = 0.0;          // abs(Z) = sqrt(nZ)
     f64 logAbsZ = 0.0;
-    f64 logRatio = 0.0;
     f64 logZn;
     c64 normal;
 
     int period = 0;          // Period counter for fast orbit detection
     c64 D = 0.0;             // 1st derivation of Z: D = 0
     f64 smoothIter = 0.0;    // Smooth iteration counter
-    f64 distThreshold = f64(MP->distThreshold);
+    f64 invDistThreshold = f64(MP->invDistThreshold);
     f64 filament = 0.0;
     int i;
 
@@ -63,30 +64,34 @@ MandelbrotResult iterate(c64 C, device const MetalComputeParameters *MP, device 
         nZ = norm(Z);
         
         if (nZ.v.x > MP->bailout) {
-            // Distance calculation
             absZ = sqrt(nZ);
             logAbsZ = log(absZ);
+            
+            // Calculate smoothiter
+            smoothIter = -log(logAbsZ / logBailout) * F64_1_LOG2;
+            
+            // Distance calculation
+            distance = absZ * logAbsZ * 2.0 / norm(D);
+            logPixelDist = log(distance) - logPixel;
+            
+            // Filament calculation
+            f64 ratio = distance * invDistThreshold;
+            f64 t = min(max(1.5 - ratio, 0.0), 1.0);     // 1 for ratio <= 0.5, 0 for ratio >= 1.5
+            f64 filamentStrength = t * t * (3.0 - 2.0 * t);
+            
+            // Potential calculation
+            potential = logAbsZ * f64(Potentials[i]);
 
-            logRatio = logAbsZ * f64(MP->div_2_logBailout);
-            
-            smoothIter = 1.0 - log(logRatio) * F64_1_LOG2;
-            
-            distance = ((absZ * logAbsZ) / norm(D)) * 2.0;
-            distance = distance * diag;
-            
             if (MP->bStripes) {
                 // Stripes calculation
                 stripeAvg = (stripeAvg * (1.0 + smoothIter * (stripeSig-1.0)) + stripet * smoothIter * (1.0 - stripeSig));
                 stripeAvg = stripeAvg / (1.0 - pow(stripeSig, f64(i)) * (1.0 + smoothIter * (stripeSig - 1.0)));
             }
             
-            potential = logAbsZ * f64(Potentials[i]);
 
             smoothIter += i;
             normal = Z / D;
             
-            filament = interpolateCubic(distThreshold * 1.5, distThreshold * 0.5, distance);
-
             return {
                 smoothIter.v,
                 nZ.v,
@@ -94,7 +99,7 @@ MandelbrotResult iterate(c64 C, device const MetalComputeParameters *MP, device 
                 distance.v,
                 potential.v,
                 stripeAvg.v,
-                filament.v,
+                filamentStrength.v,
                 R_BAILOUT
             };
         }

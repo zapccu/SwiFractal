@@ -1,6 +1,24 @@
 {
-  "originHash" : "e62fc324b9bb506a2f34dc3aeabdb5a67a15edbc49d024ee322cb1badff56d20",
+  "originHash" : "30c98fcc2ab275aaf42ec189a4e4e036425f6c6213da6d516c56a7f5ee29fa7c",
   "pins" : [
+    {
+      "identity" : "metal64",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/zapccu/Metal64",
+      "state" : {
+        "revision" : "c2c0e09c568ecd59cddb5d54ca8cda0bebbfc932",
+        "version" : "1.0.8"
+      }
+    },
+    {
+      "identity" : "metalcompute",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/zapccu/MetalCompute",
+      "state" : {
+        "revision" : "a88e8c168845bfe8b804458534f927acc66570e0",
+        "version" : "2.0.1"
+      }
+    },
     {
       "identity" : "swift-numerics",
       "kind" : "remoteSourceControl",

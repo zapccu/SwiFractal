@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		430A15D1308BC24C00207CB1 /* MetalCompute in Frameworks */ = {isa = PBXBuildFile; productRef = 430A15D0308BC24C00207CB1 /* MetalCompute */; };
 		4339B6C32F84E3030035AFC7 /* SwiftMPx in Frameworks */ = {isa = PBXBuildFile; productRef = 4339B6C22F84E3030035AFC7 /* SwiftMPx */; };
 		43828CCA2CE8A0DF00B8099C /* ComplexModule in Frameworks */ = {isa = PBXBuildFile; productRef = 43828CC92CE8A0DF00B8099C /* ComplexModule */; };
 		43828CCC2CE8A0DF00B8099C /* Numerics in Frameworks */ = {isa = PBXBuildFile; productRef = 43828CCB2CE8A0DF00B8099C /* Numerics */; };
@@ -38,6 +39,7 @@
 				43828CCA2CE8A0DF00B8099C /* ComplexModule in Frameworks */,
 				43828CCE2CE8A0DF00B8099C /* RealModule in Frameworks */,
 				43AC43912F6C6D7800531AB1 /* ParSetKit in Frameworks */,
+				430A15D1308BC24C00207CB1 /* MetalCompute in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -86,6 +88,7 @@
 				43AC43902F6C6D7800531AB1 /* ParSetKit */,
 				4339B6C22F84E3030035AFC7 /* SwiftMPx */,
 				4399FE7830289721006DF279 /* Metal64 */,
+				430A15D0308BC24C00207CB1 /* MetalCompute */,
 			);
 			productName = SwiFractal;
 			productReference = 43828CA42CE7CD3A00B8099C /* SwiFractal.app */;
@@ -119,7 +122,8 @@
 				43828CC82CE8A0DF00B8099C /* XCRemoteSwiftPackageReference "swift-numerics" */,
 				43AC438F2F6C6D7800531AB1 /* XCLocalSwiftPackageReference "../ParSetKit" */,
 				4339B6C12F84E3030035AFC7 /* XCLocalSwiftPackageReference "../SwiftMPx" */,
-				4399FE7730289721006DF279 /* XCLocalSwiftPackageReference "../Metal64" */,
+				430A15CF308BC24C00207CB1 /* XCRemoteSwiftPackageReference "MetalCompute" */,
+				4375AD18308BC31E00B6063B /* XCRemoteSwiftPackageReference "Metal64" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 43828CA52CE7CD3A00B8099C /* Products */;
@@ -390,10 +394,6 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../SwiftMPx;
 		};
-		4399FE7730289721006DF279 /* XCLocalSwiftPackageReference "../Metal64" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../Metal64;
-		};
 		43AC438F2F6C6D7800531AB1 /* XCLocalSwiftPackageReference "../ParSetKit" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../ParSetKit;
@@ -401,6 +401,22 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		430A15CF308BC24C00207CB1 /* XCRemoteSwiftPackageReference "MetalCompute" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/zapccu/MetalCompute";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.1;
+			};
+		};
+		4375AD18308BC31E00B6063B /* XCRemoteSwiftPackageReference "Metal64" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/zapccu/Metal64";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.6;
+			};
+		};
 		43828CC82CE8A0DF00B8099C /* XCRemoteSwiftPackageReference "swift-numerics" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apple/swift-numerics.git";
@@ -412,6 +428,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		430A15D0308BC24C00207CB1 /* MetalCompute */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 430A15CF308BC24C00207CB1 /* XCRemoteSwiftPackageReference "MetalCompute" */;
+			productName = MetalCompute;
+		};
 		4339B6C22F84E3030035AFC7 /* SwiftMPx */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SwiftMPx;

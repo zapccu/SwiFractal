@@ -32,6 +32,7 @@ struct SACoefficients {
     var c: Cplx         // Coefficient for Δc³
     let skipIndex: Int  // First valid iteration for SA (0 = SA makes not sense)
 
+    /// Initial SA coefficients
     static let initial = SACoefficients(
         a: Cplx(1.0, 0.0), b: Cplx.zero, c: Cplx.zero, skipIndex: 0
     )
@@ -57,9 +58,9 @@ extension FractalCalculation {
     
     /// Check for perturbation glitch (ref. Pauldelbrot)
     /// - Parameters:
-    ///   - delta: <#delta description#>
-    ///   - Z: <#Z description#>
-    /// - Returns: <#description#>
+    ///   - delta: Complex delta
+    ///   - Z: Current Z
+    /// - Returns: True if glitch detected
     @inline(__always)
     nonisolated static func isGlitch(delta: Cplx, Z: Cplx) -> Bool {
         let magDelta = delta.magnitude
@@ -127,9 +128,9 @@ extension FractalCalculation {
     ///  
     /// Recursion (Taylor development of perturbation formula):
     ///  
-    ///   A{n+1} = 2·Z_n·A_n + 1
-    ///   B{n+1} = 2·Z_n·B_n + A_n²
-    ///   C{n+1} = 2·Z_n·C_n + 2·A_n·B_n
+    ///   A{n+1} = 2·Zn·An + 1\
+    ///   B{n+1} = 2·Zn·Bn + An²\
+    ///   C{n+1} = 2·Zn·Cn + 2·An·Bn
     ///  
     /// Stop recursion when higher terms dominate the error (SA collapses).
     /// 
@@ -188,14 +189,12 @@ extension FractalCalculation {
     ///   - sa: Series approximation coefficients
     ///   - P: Dynamic calculation parameters
     /// - Returns: Mandelbrot result
-    static func calculatePointZ2PT(deltaC: Cplx, refOrbit: [Cplx], sa: SACoefficients, P: DynamicParameters<PT>) -> MandelbrotResult {
-        var result: MandelbrotResult = .defaultValue
-        
+    static func calculatePointZ2PT(deltaC: Cplx, refOrbit: [Cplx],
+                                   sa: SACoefficients, P: DynamicParameters<PT>) -> MandelbrotResult
+    {
         let maxRefIter = refOrbit.count - 1 // Length of reference orbit
         var refIndex: Int = 0               // Index to reference orbit
         
-        var distance: Double = 0.0          // Distance of current point to Mandelbrot set
-        var potential: Double = 0.0         // Potential of current point
         var stripeAvg: Double = 0.0         // Stripe average value
         var stripet: Double = 0.0           // Current stripe value
         
@@ -208,13 +207,20 @@ extension FractalCalculation {
         
         var period: Int = 0                 // Period counter for fast orbit detection
         var D: Cplx = .zero                 // 1st derivation of Z
-        var smoothIter: Double = 0          // Smooth iteration counter
        
+        // Tolerance values for orbit detection
+        let t1 = P.limits.orbitDelta1
+        let t2 = P.limits.orbitDelta1 * P.limits.orbitDeltaF
+        let t3 = P.limits.orbitDelta3
+
         var orbits = Array<Cplx>(repeating: .zero, count: P.limits.iterations + 1)
         
         let dC = sa.getDeltaC(deltaC: deltaC)
         
         for i in sa.skipIndex...P.limits.iterations {
+            // Derivation D of Z
+            // D = D * 2.0 * Z + 1.0
+            D = (Z + Z) * D + 1.0
             
             dZ = 2.0 * refOrbit[refIndex] * dZ + dZ * dZ + dC
             refIndex += 1
@@ -222,9 +228,7 @@ extension FractalCalculation {
             
             // Check for glitch
             if isGlitch(delta: dZ, Z: Z) {
-                result.smoothIter = Double(i)
-                result.flags = .error       // recalculate this point
-                break
+                return MandelbrotResult(smoothIter: Double(i), flags: .error)
             }
             
             if P.bStripes {
@@ -236,33 +240,35 @@ extension FractalCalculation {
             if nZ > P.limits.bailout {
                 absZ = sqrt(nZ)           // aZ = abs(Z)
                 let logAbsZ = log(absZ)
-                
-                // logRatio = 2 * log(aZ) / log(bailout)
-                // Using precalculated values
-                // logBailout2 = 2 * log(bailout)
-                // let logRatio = logaZ * MP.log2Bailout
-                // let logRatio = logAbsZ * P.div_2_logBailout
 
                 // Calculate smooth iteration value for smooth coloring
                 // This value must be added to the iteration count.
                 // smoothIter = 1.0 - log(logRatio) * _NC.RLOG2
-                smoothIter = -log(log(absZ)/P.limits.logBailout) * _NC.RLOG2
+                let smoothIter = -log(logAbsZ / P.limits.logBailout) * _NC.RLOG2
 
-                // Calculate exterior distance to Mandelbrot set
+                // Exterior distance estimation
                 //
-                // Dist = ((aZ * log(aZ)) / abs(D)) * 2.0
+                // distance = (absZ * logAbsZ * 2) / D.length
+                // The numerator (absZ * logAbsZ * 2) is a Double value .
+                // The denominator D.length must be a RT value.
+                // Division is done in RT to prevent overflow and underflow.
+                let rtDistance: RT = RT(absZ * logAbsZ * 2.0, precision: P.precision) / D.length
+                let logPixelDist: Double = RT.log(rtDistance).toDouble() - P.logPixel
+                
+                // Calculate filament
                 //
-                let rtAbsZ: RT = RT(absZ, precision: P.precision)
-                let rtLogAbsZ: RT = RT(logAbsZ, precision: P.precision)
-                let rtDistance = ((rtAbsZ * rtLogAbsZ) / D.length) * 2.0
-                distance = (rtDistance * P.diag).toDouble()
+                // Dimensionless ratio is calculated in RT,
+                // everything else can be calculated with Double precision
+                let ratio: Double = (rtDistance * P.invDistThreshold).toDouble()
+                let t = min(max(1.5 - ratio, 0.0), 1.0)      // 1 for ratio <= 0.5, 0 for ratio >= 1.5
+                let filamentStrength = t * t * (3.0 - 2.0 * t)
                 
                 // Calculate potential
                 //
                 // Potential = log(abs(Z)) / 2^N
                 // P.potential[N] already contains 1/2^N
                 //
-                potential = logAbsZ * P.potential[i]
+                let potential = logAbsZ * P.potential[i]
                 
                 // Calculate stripes
                 if P.bStripes {
@@ -270,20 +276,18 @@ extension FractalCalculation {
                     stripeAvg = biasCorrect(previousAvg: stripeAvg, smooth: P.stripeSig, iter: i, smoothIter: smoothIter)
                 }
                 
-                // Prepare result values
-                smoothIter += Double(i)
+                // Calculate normal
                 let normal = Z/D
-                let normalReal = normal.real.toDouble()
-                let normalImag = normal.imaginary.toDouble()
-                let filamentStrength = RT.interpolateCubic(edge0: P.distThreshold * 1.5, edge1: P.distThreshold * 0.5, x: rtDistance)
                 
                 // Return iteration result. Double values only
                 return MandelbrotResult(
-                    smoothIter: smoothIter, nZ: nZ,
-                    normalReal: normalReal, normalImag: normalImag,
-                    distance: distance, potential: potential,
+                    smoothIter: smoothIter + Double(i),
+                    nZ: nZ,
+                    normalReal: normal.real.toDouble(), normalImag: normal.imaginary.toDouble(),
+                    distance: logPixelDist,
+                    potential: potential,
                     stripeAvg: stripeAvg,
-                    filament: max(min(filamentStrength.toDouble(), 1.0), 0.0),
+                    filament: filamentStrength,
                     flags: .bailout
                 )
             }
@@ -294,7 +298,7 @@ extension FractalCalculation {
                 var idx: Int = -1
                 let end: Int = max(-1, i - 100)
                 
-                for t in [P.limits.orbitDelta1, P.limits.orbitDelta2] {
+                for t in [t1, t2] {
                     for n in stride(from: i-1, to: end, by: -1) {
                         let d = Z - orbits[n]
                         if d.lengthSquared < t {
@@ -306,20 +310,14 @@ extension FractalCalculation {
                 
                 if idx > -1 {
                     // Found orbit, colorize point inside mandelbrot set
-                    result.flags = [ .inside ]
-                    result.smoothIter = Double(idx)
-                    return result
+                    return MandelbrotResult(smoothIter: Double(i), distance: Double(i - idx), flags: .inside)
                 }
                 orbits[i] = Z
             }
-            else {
+            else if P.colorizeInside == .fastOrbits {
                 // Simplified periodicity check, no orbit colorization
-                if abs(nZ - nZ1) < P.limits.orbitDelta3 {
-                    if P.colorizeInside == .fastOrbits {
-                        result.flags = .inside
-                        result.smoothIter = Double(i)
-                    }
-                    return result
+                if abs(nZ - nZ1) < t3 {
+                    return MandelbrotResult(smoothIter: Double(i), distance: Double(i - period), flags: .inside)
                 }
                 else {
                     period += 1
@@ -342,13 +340,9 @@ extension FractalCalculation {
                 dZ = Z
                 refIndex = 0
             }
-                                                                
-            // Derivation D of Z
-            // D = D * 2.0 * Z + 1.0
-            D = (Z + Z) * D + 1.0
         }
         
-        return result
+        return .defaultValue
     }
     
     

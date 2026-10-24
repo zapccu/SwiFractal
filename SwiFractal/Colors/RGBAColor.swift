@@ -266,14 +266,27 @@ struct RGBAColor: FractalParameters {
         return RGBAColor(pow(red, rcp), pow(green, rcp), pow(blue, rcp), alpha)
     }
     
-    /// Blend color with a value using specified blending mode, alpha channel is not touched.
+    /// Blend color with value using specified blending mode, alpha channel is not touched
+    /// - Parameters:
+    ///   - value: Blending value (top). Base is current color value (bottom)
+    ///   - mode: Blending mode
+    ///   - correction: Correction factor. Default = 1.0: no correction
+    /// - Returns: Blended color
+    @inline(__always)
+    func blend(with value: Float, mode: EnumBlendingMode, correction: Float = 1.0) -> RGBAColor {
+        guard mode != .none else { return self }
+        let col3 = mode.blend(base: self.colorValue.xyz, top: value, correction: correction)
+        return RGBAColor(col3: col3)
+    }
+    
+    /// Blend color with a value using specified lightning parameters, alpha channel is not touched.
     /// Gamma correction is applied if gamma is not 1.0.
     /// - Parameters:
     ///   - value: Blending value (top). Base is current color value (bottom)
     ///   - lightning: Lightning parameters
     /// - Returns: Blended color
     func blend(with value: Float, lightning: Lightning) -> RGBAColor {
-        let mode = lightning.blendingMode.element
+        let mode = lightning.blendingMode()
         guard mode != .none else { return self }
         
         if mode == .multiply {
@@ -283,10 +296,12 @@ struct RGBAColor: FractalParameters {
             return color.gammaCorrection(lightning.gamma)
         }
         else if mode == .overlay {
-            return RGBAColor(col3: mode.blend(base: self.colorValue.xyz, top: value, correction: lightning.gamma))
+            let col3 = mode.blend(base: self.colorValue.xyz, top: value, correction: lightning.gamma)
+            return RGBAColor(col3: col3)
         }
         else {
-            let color = RGBAColor(col3: mode.blend(base: self.colorValue.xyz, top: value))
+            let col3 = mode.blend(base: self.colorValue.xyz, top: value)
+            let color = RGBAColor(col3: col3)
             return color.gammaCorrection(lightning.gamma)
         }
     }

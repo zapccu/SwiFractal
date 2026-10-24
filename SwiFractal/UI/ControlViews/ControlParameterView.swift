@@ -25,7 +25,7 @@ struct ControlParameterView<T: FractalProtocol & Observable>: View {
     var bFractal: Bindable<T> {
         Bindable(fractal)
     }
-    
+
     // Flags for expanding control groups
     @State private var isLightExpanded = false
     @State private var isShadingExpanded = false
@@ -97,7 +97,7 @@ struct ControlParameterView<T: FractalProtocol & Observable>: View {
             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
                 GridRow {
                     //Text("Colors")
-                    Picker(selection: bFractal.FP.colorParameters.coloringName, label: Text("")) {
+                    Picker(selection: bFractal.coloringName, label: Text("")) {
                         ForEach(FractalAppData.colorings.keys.sorted(), id: \.self) { key in
                             ColoringView(
                                 coloring: FractalAppData.colorings[key]!,
@@ -108,13 +108,12 @@ struct ControlParameterView<T: FractalProtocol & Observable>: View {
                         }
                     }.onAppear {
                         // Add Coloring to FractalAppData.colorings
-                        if FractalAppData.colorings.index(forKey: fractal.FP.colorParameters.coloringName) == nil {
-                            let name = fractal.FP.colorParameters.coloringName
-                            FractalAppData.addColoring(coloring: fractal.FP.colorParameters.coloring, name: name)
+                        if FractalAppData.colorings.index(forKey: fractal.coloringName) == nil {
+                            FractalAppData.addColoring(coloring: fractal.coloring, name: fractal.coloringName)
                         }
-                    }.onChange(of: fractal.FP.colorParameters.coloringName) { _, newValue in
+                    }.onChange(of: fractal.coloringName) { _, newValue in
                         if let coloring = FractalAppData.colorings[newValue] {
-                            fractal.FP.colorParameters.coloring = coloring
+                            fractal.coloring = coloring
                             Task { await controller.drawResultSet() }
                         }
                         else {
@@ -126,31 +125,43 @@ struct ControlParameterView<T: FractalProtocol & Observable>: View {
                 }
                 GridRow {
                     Text("Mode")
-                    OptionsPicker(options: bFractal.FP.colorParameters.colorizeMode, width: 140)
-                        .onChange(of: fractal.FP.colorParameters.colorizeMode) { _, newValue in
-                            if newValue == .stripes && fractal.FP.colorParameters.stripes == 0 { fractal.FP.colorParameters.stripes = 1 }
-                            if newValue == .steps && fractal.FP.colorParameters.steps == 0 { fractal.FP.colorParameters.steps = 1 }
+                    OptionsPicker(options: bFractal.colorizeMode, width: 140)
+                        .onChange(of: fractal.colorizeMode) { _, newValue in
+                            if newValue == .stripes && fractal.stripes == 0 { fractal.stripes = 1 }
+                            if newValue == .steps && fractal.steps == 0 { fractal.steps = 1 }
                         }
                 }
                 GridRow {
                     Text("Inside")
-                    OptionsPicker(options: bFractal.FP.colorParameters.colorizeInside, width: 140)
-                        .onChange(of: fractal.FP.colorParameters.colorizeInside) {
+                    OptionsPicker(options: bFractal.colorizeInside, width: 140)
+                        .onChange(of: fractal.colorizeInside) {
+                            if fractal.colorizeInside == .orbits {
+                                ToastCenter.shared.show("Image must be recalculated", systemImage: "checkmark.circle.fill")
+                            }
                             Task { await controller.drawResultSet() }
                         }
                 }
                 GridRow {
+                    Text("Orbitlength")
+                    LinearStepper(value: bFractal.orbitLength, range: 10...100, step: 10)
+                        .disabled(fractal.colorizeInside == .defaultColor || fractal.colorizeInside == .distance)
+                }
+                GridRow {
                     Text("Outside")
-                    OptionsPicker(options: bFractal.FP.colorParameters.colorizeOutside, width: 140)
-                        .onChange(of: fractal.FP.colorParameters.colorizeOutside) {
+                    OptionsPicker(options: bFractal.colorizeOutside, width: 140)
+                        .onChange(of: fractal.colorizeOutside) {
+                            debugPrint("Changed outside")
+                            if fractal.colorizeOutside != .simple && fractal.blendingMode == .none {
+                                fractal.blendingMode(.multiply)
+                            }
                             Task { await controller.drawResultSet() }
                         }
                 }
-                if fractal.FP.colorParameters.colorizeMode.element == .iterations {
+                if fractal.colorizeMode == .iterations {
                     GridRow {
                         Text("Mapping")
-                        OptionsPicker(options: bFractal.FP.colorParameters.paletteMode, width: 140)
-                            .onChange(of: fractal.FP.colorParameters.paletteMode) {
+                        OptionsPicker(options: bFractal.paletteMode, width: 140)
+                            .onChange(of: fractal.paletteMode) {
                                 Task { await controller.drawResultSet() }
                             }
                     }
@@ -168,16 +179,16 @@ struct ControlParameterView<T: FractalProtocol & Observable>: View {
                         Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
                             GridRow {
                                 Text("Angle")
-                                LinearStepper(value: bFractal.FP.lightParameters.angle, unit: "°", range: 0...360, step: 5)
-                                    .onChange(of: fractal.FP.lightParameters.angle) {
+                                LinearStepper(value: bFractal.angle, unit: "°", range: 0...360, step: 5)
+                                    .onChange(of: fractal.angle) {
                                         Task { await controller.drawResultSet() }
                                     }
                                 Spacer()
                             }
                             GridRow {
                                 Text("Elevation")
-                                LinearStepper(value: bFractal.FP.lightParameters.elevation, unit: "°", range: 0...90, step: 5)
-                                    .onChange(of: fractal.FP.lightParameters.elevation) {
+                                LinearStepper(value: bFractal.elevation, unit: "°", range: 0...90, step: 5)
+                                    .onChange(of: fractal.elevation) {
                                         Task { await controller.drawResultSet() }
                                     }
                                 Spacer()
@@ -190,53 +201,55 @@ struct ControlParameterView<T: FractalProtocol & Observable>: View {
                         Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
                             GridRow {
                                 Text("Opacity")
-                                LinearSlider(value: bFractal.FP.lightParameters.opacity, range: 0.0...1.0, step: 0.1, format: "%.1f", width: 120)
-                                    .onChange(of: fractal.FP.lightParameters.opacity) {
+                                LinearSlider(value: bFractal.opacity, range: 0.0...1.0, step: 0.1, format: "%.1f", width: 120)
+                                    .onChange(of: fractal.opacity) {
                                         Task { await controller.drawResultSet() }
                                     }
                             }
                             GridRow {
                                 Text("Ambient")
-                                LinearSlider(value: bFractal.FP.lightParameters.ambient, range: 0.0...1.0, step: 0.05, format: "%.2f", width: 120, debounce: 0, action: controller.drawResultSet)
+                                LinearSlider(value: bFractal.ambient, range: 0.0...1.0, step: 0.05, format: "%.2f", width: 120, debounce: 0, action: controller.drawResultSet)
                             }
                             GridRow {
                                 Text("Diffuse")
-                                LinearSlider(value: bFractal.FP.lightParameters.diffuse, range: 0.0...1.0, step: 0.05, format: "%.2f", width: 120)
+                                LinearSlider(value: bFractal.diffuse, range: 0.0...1.0, step: 0.05, format: "%.2f", width: 120)
                             }
                             GridRow {
                                 Text("Specular")
-                                LinearSlider(value: bFractal.FP.lightParameters.specular, range: 0.0...1.0, step: 0.05, format: "%.2f", width: 120)
-                                    .onChange(of: fractal.FP.lightParameters.specular) {
+                                LinearSlider(value: bFractal.specular, range: 0.0...1.0, step: 0.05, format: "%.2f", width: 120)
+                                    .onChange(of: fractal.specular) {
                                         Task { await controller.drawResultSet() }
                                     }
                             }
                             GridRow {
                                 Text("Shininess")
-                                LinearSlider(value: bFractal.FP.lightParameters.shininess, range: 1.0...30.0, format: "%2.0f", width: 120)
-                                    .onChange(of: fractal.FP.lightParameters.shininess) {
+                                LinearSlider(value: bFractal.shininess, range: 1.0...30.0, format: "%2.0f", width: 120)
+                                    .onChange(of: fractal.shininess) {
                                         Task { await controller.drawResultSet() }
                                     }
                             }
                             GridRow {
                                 Text("Gamma")
-                                LinearSlider(value: bFractal.FP.lightParameters.gamma, range: 0.1...9.9, step: 0.1, format: "%.1f", width: 120)
-                                    .onChange(of: fractal.FP.lightParameters.gamma) {
+                                LinearSlider(value: bFractal.gamma, range: 0.1...9.9, step: 0.1, format: "%.1f", width: 120)
+                                    .onChange(of: fractal.gamma) {
                                         Task { await controller.drawResultSet() }
                                     }
                             }
                             GridRow {
                                 Text("Exposure")
-                                LinearStepper(value: bFractal.FP.lightParameters.ev, unit: "Stops", range: -3...3, step: 1)
-                                    .onChange(of: fractal.FP.lightParameters.ev) {
+                                LinearStepper(value: bFractal.ev, unit: "Stops", range: -3...3, step: 1)
+                                    .onChange(of: fractal.ev) {
                                         Task { await controller.drawResultSet() }
                                     }
                             }
                             GridRow {
                                 Text("Blending")
-                                OptionsPicker(options: bFractal.FP.lightParameters.blendingMode, width: 140)
-                                    .onChange(of: fractal.FP.lightParameters.blendingMode) {
+                                OptionsPicker(options: bFractal.blendingMode, width: 140)
+                                    .onChange(of: fractal.blendingMode) {
+                                        debugPrint("Changed blending")
                                         Task { await controller.drawResultSet() }
-                            }                            }
+                                    }
+                            }
                         }.padding([.top, .bottom, .horizontal], 5)
                     }
                 }
@@ -251,31 +264,32 @@ struct ControlParameterView<T: FractalProtocol & Observable>: View {
                 Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
                     GridRow {
                         Text("Stripes")
-                        LinearStepper(value: bFractal.FP.colorParameters.stripes, range: 0...32)
-                            .onChange(of: fractal.FP.colorParameters.stripes) { oldValue, newValue in
+                        LinearStepper(value: bFractal.stripes, range: 0...32)
+                            .onChange(of: fractal.stripes) { oldValue, newValue in
                                 if oldValue == 0 && newValue > 0 {
-                                    fractal.FP.colorParameters.colorizeMode.element = .stripes
-                                    fractal.FP.colorParameters.colorizeOutside.element = .blinnPhong
+                                    fractal.colorizeMode(.stripes)
+                                    fractal.colorizeOutside(.blinnPhong)
                                 }
                                 if oldValue > 0 && newValue == 0 {
-                                    fractal.FP.colorParameters.colorizeMode.element = .iterations
-                                    fractal.FP.colorParameters.colorizeOutside.element = .simple
+                                    fractal.colorizeMode(.iterations)
+                                    fractal.colorizeOutside(.simple)
                                 }
                             }
                         Spacer()
                     }
                     GridRow {
                         Text("Steps")
-                        LinearStepper(value: bFractal.FP.colorParameters.steps, range: 0...100)
-                            .onChange(of: fractal.FP.colorParameters.steps) { oldValue, newValue in
+                        LinearStepper(value: bFractal.steps, range: 0...100)
+                            .onChange(of: fractal.steps) { oldValue, newValue in
                                 if oldValue == 0 && newValue > 0 {
-                                    fractal.FP.colorParameters.colorizeMode.element = .steps
-                                    fractal.FP.colorParameters.colorizeOutside.element = .blinnPhong
+                                    fractal.colorizeMode(.steps)
+                                    fractal.colorizeOutside(.blinnPhong)
                                 }
                                 if oldValue > 0 && newValue == 0 {
-                                    fractal.FP.colorParameters.colorizeMode.element = .iterations
-                                    fractal.FP.colorParameters.colorizeOutside.element = .simple
+                                    fractal.colorizeMode(.iterations)
+                                    fractal.colorizeOutside(.simple)
                                 }
+                                Task { await controller.drawResultSet() }
                             }
                         Spacer()
                     }
@@ -285,33 +299,33 @@ struct ControlParameterView<T: FractalProtocol & Observable>: View {
                 Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
                     GridRow {
                         Text("Compression")
-                        LinearStepper(value: bFractal.FP.colorParameters.compression, range: 1...4)
-                            .onChange(of: fractal.FP.colorParameters.compression) {
+                        LinearStepper(value: bFractal.compression, range: 1...4)
+                            .onChange(of: fractal.compression) {
                                 Task { await controller.drawResultSet() }
                             }
                     }
                     GridRow {
                         Text("Cycles")
-                        LinearStepper(value: bFractal.FP.colorParameters.ncycle, range: 1...200)
-                            .onChange(of: fractal.FP.colorParameters.ncycle) {
+                        LinearStepper(value: bFractal.ncycle, range: 1...200)
+                            .onChange(of: fractal.ncycle) {
                                 Task { await controller.drawResultSet() }
                             }
                     }
                     GridRow {
                         Text("Scale")
-                        NonLinearSlider(value: bFractal.FP.colorParameters.scale, strides: [
+                        NonLinearSlider(value: bFractal.scale, strides: [
                             stride(from: 0.0, through: 0.9, by: 0.1),
                             stride(from: 1.0, through: 9.0, by: 0.5),
                             stride(from: 10.0, through: 50.0, by: 1.0)
                         ], format: "%.1f", width: 120)
-                        .onChange(of: fractal.FP.colorParameters.scale) {
+                        .onChange(of: fractal.scale) {
                             Task { await controller.drawResultSet() }
                         }
                     }
                     GridRow {
                         Text("Offset")
-                        LinearSlider(value: bFractal.FP.colorParameters.offset, range: 0...10, format: "%.0f", width: 120)
-                            .onChange(of: fractal.FP.colorParameters.offset) {
+                        LinearSlider(value: bFractal.offset, range: 0...10, format: "%.0f", width: 120)
+                            .onChange(of: fractal.offset) {
                                 Task { await controller.drawResultSet() }
                             }
                     }

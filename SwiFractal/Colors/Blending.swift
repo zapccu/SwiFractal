@@ -16,6 +16,7 @@ enum EnumBlendingMode: Int, CaseIterable, Equatable {
     case hardLight
     case softLight
     case multiply
+    case toneMapping
     case overlay
     
     /// Blending
@@ -43,6 +44,9 @@ enum EnumBlendingMode: Int, CaseIterable, Equatable {
                 : base + (2 * top - 1) * (g - base)
 
         case .multiply:
+            return base * top * correction
+            
+        case .toneMapping:
             let lit = base * top * correction
             return lit / (1.0 + lit)        // Tonemapping. Simple Reinhard method
 
@@ -53,6 +57,7 @@ enum EnumBlendingMode: Int, CaseIterable, Equatable {
                 : 1 - 2 * (1 - base) * (1 - top)
             return hardLightResult * correction + base * (1 - correction)
         }
+
     }
     
     /// Blending

@@ -7,6 +7,7 @@
 
 import Foundation
 import Metal64
+import MetalCompute
 
 
 protocol Bitmaskable : CaseIterable {
@@ -21,6 +22,8 @@ extension Bitmaskable {
     var allBits: Int { (1 << (Self.allCases.count)) - 1 }
     var highBit: Int { Self.allCases.count - 1 }
     
+    var name: String { String(describing: self) }
+    
 }
 
 ///
@@ -31,14 +34,25 @@ struct MandelbrotResultFlags: OptionSet, Bitmaskable, Sendable {
 
     let rawValue: Int
 
-    static let calculate     = MandelbrotResultFlags(rawValue: 1)   // Not yet calculated
-    static let defaultColor  = MandelbrotResultFlags(rawValue: 2)   // Assign default color
-    static let maxIterations = MandelbrotResultFlags(rawValue: 4)   // Maximum number of iterations reached
-    static let bailout       = MandelbrotResultFlags(rawValue: 8)   // Bailout
-    static let inside        = MandelbrotResultFlags(rawValue: 16)  // Inside Mandelbrot set
-    static let error         = MandelbrotResultFlags(rawValue: 32)  // Error during calculation
+    /// Not yet calculated
+    static let calculate = MandelbrotResultFlags(rawValue: 1)
+    
+    /// Assign default color
+    static let defaultColor = MandelbrotResultFlags(rawValue: 2)
+    
+    /// Maximum number of iterations reached
+    static let maxIterations = MandelbrotResultFlags(rawValue: 4)
+    
+    /// Bailout exceeded
+    static let bailout = MandelbrotResultFlags(rawValue: 8)
+    
+    /// Inside Mandelbrot set
+    static let inside = MandelbrotResultFlags(rawValue: 16)
+    
+    /// Error during calculation
+    static let error = MandelbrotResultFlags(rawValue: 32)
 
-    // Bitmask for all cases except .calculate
+    /// Bitmask for all cases except .calculate
     static let allCases: [MandelbrotResultFlags] = [.defaultColor, .maxIterations, .bailout, .inside, .error]
 
 }
@@ -47,21 +61,39 @@ struct MandelbrotResultFlags: OptionSet, Bitmaskable, Sendable {
 ///
 /// Mandelbrot calculation result
 ///
-struct MandelbrotResult : CalculationResult {
+struct MandelbrotResult : CalculationResult, MetalDecodable {
 
-    // Result values
-    var smoothIter: Double = 0.0        // Smooth iteration counter
-    var nZ: Double = 0.0
-    var normalReal: Double = 0.0
-    var normalImag: Double = 0.0
-    var distance: Double = 0.0          // Distance to Mandelbrot set
-    var potential: Double = 0.0         // Potential
-    var stripeAvg: Double = 0.0         // Stripe average
-    var filament: Double = 0.0          // Filament strength
+    /// Smooth iteration counter
+    var smoothIter: Double = 0.0
     
+    /// Last value of Z.lengthSquared
+    var nZ: Double = 0.0
+    
+    /// Real part of Z/D
+    var normalReal: Double = 0.0
+    
+    /// Imaginary part of Z/D
+    var normalImag: Double = 0.0
+    
+    /// Distance to Mandelbrot set.
+    /// Contains log(Distance) for points outside of Mandelbrot set.
+    /// Contains orbit period for points inside of Mandelbrot set.
+    var distance: Double = 0.0
+    
+    /// Potential
+    var potential: Double = 0.0
+    
+    /// Stripe average
+    var stripeAvg: Double = 0.0
+    
+    /// Filament strength
+    var filament: Double = 0.0
+    
+    /// Flags: .calculate, .defaultColor, .maxIterations, .bailout, .inside, .error
     var flags: MandelbrotResultFlags = .calculate
     
     /// Convert MandelbrotResult to MandelbrotResultMtl
+    /*
     var mandelbrotResultMtl: MandelbrotResultMtl {
         MandelbrotResultMtl(
             smoothIter: Float2(smoothIter),
@@ -75,6 +107,7 @@ struct MandelbrotResult : CalculationResult {
             flags: Int32(flags.rawValue)
         )
     }
+     */
 
     /// Return smoothIter as histogram value
     var histValue: Double { smoothIter }
@@ -82,9 +115,41 @@ struct MandelbrotResult : CalculationResult {
     /// Return true, if result contains valid histogram value (flags == .bailout)
     var hasValidHistValue: Bool { flags == .bailout }
     
+    /// Zero result. flags = .calculate
     static let zero: MandelbrotResult = MandelbrotResult()
+    
+    /// Initial result. flags = .calculate
     static let initialValue: MandelbrotResult = MandelbrotResult()
+    
+    /// Default result. flags = .defaultColor
     static let defaultValue: MandelbrotResult = MandelbrotResult(flags: .defaultColor)
+    
+    init(smoothIter: Double = 0.0, nZ: Double = 0.0, normalReal: Double = 0.0, normalImag: Double = 0.0, distance: Double = 0.0, potential: Double = 0.0, stripeAvg: Double = 0.0, filament: Double = 0.0, flags: MandelbrotResultFlags = .defaultColor) {
+        self.smoothIter = smoothIter
+        self.nZ = nZ
+        self.normalReal = normalReal
+        self.normalImag = normalImag
+        self.distance = distance
+        self.potential = potential
+        self.stripeAvg = stripeAvg
+        self.filament = filament
+        self.flags = flags
+    }
+    
+    /// Convert MandelbrotResultMtl to MandelbrotResult
+    init(fromMetal m: MandelbrotResultMtl) {
+        self.init(
+            smoothIter: Double(fromMetal: m.smoothIter),
+            nZ: Double(fromMetal: m.nZ),
+            normalReal: Double(fromMetal: m.normalReal),
+            normalImag: Double(fromMetal: m.normalImag),
+            distance: Double(fromMetal: m.distance),
+            potential: Double(fromMetal: m.potential),
+            stripeAvg: Double(fromMetal: m.stripeAvg),
+            filament: Double(fromMetal: m.filament),
+            flags: MandelbrotResultFlags(rawValue: Int(m.flags))
+        )
+    }
     
 }
 
@@ -105,6 +170,7 @@ struct MandelbrotResultMtl {
     var flags: Int32
     
     /// Convert MandelbrotResultMtl to MandelbrotResult
+    /*
     var mandelbrotResult: MandelbrotResult {
         MandelbrotResult(
             smoothIter: Double(smoothIter),
@@ -118,6 +184,7 @@ struct MandelbrotResultMtl {
             flags: MandelbrotResultFlags(rawValue: Int(flags))
         )
     }
+     */
     
 }
 

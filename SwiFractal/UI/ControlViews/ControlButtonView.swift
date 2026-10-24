@@ -9,9 +9,13 @@ import SwiftUI
 import SwiftMPx
 
 
-//
-// View containing the control buttons
-//
+///
+/// View containing the control buttons
+///
+/// - Parameters:
+///   - controller: FractalController
+///   - method: CalculationMethod
+///
 struct ControlButtonView: View {
     @Environment(AppSettings.self) private var settings
 
@@ -43,7 +47,7 @@ struct ControlButtonView: View {
                     }) {
                         Image(systemName: "app.badge.checkmark").font(.title)
                     }
-                    .disabled(!controller.parametersChanged || !controller.selection.anySelected)
+                    .disabled(!controller.parametersChanged && !controller.selection.anySelected)
                     .help("Apply current dimensions")
                     
                     // Button "Undo"
@@ -78,16 +82,11 @@ struct ControlButtonView: View {
                         calculationTask = Task {
                             // Render fractal
                             controller.beginCalculation()
-                            let st = await controller.calculate(method: method)
-                            guard !Task.isCancelled else {
-                                controller.endCalculation(.cancelled("Cancelled."))
-                                controller.info.currentAction = "Cancelled."
-                                return
-                            }
-                            controller.endCalculation(st)
+                            await controller.calculate(method: method)
+                            controller.endCalculation()
                             await controller.drawResultSet()
 
-                            controller.info.setState(currentAction: st.message,
+                            controller.info.setState(currentAction: controller.calcInfo.message,
                                                      statusMessage: "Calculation time: \(controller.fmtCalculationTime)")
                         }
 

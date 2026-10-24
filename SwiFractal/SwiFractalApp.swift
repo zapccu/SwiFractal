@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftMPx
 
 
 ///
@@ -104,11 +105,16 @@ struct SwiFractalApp: App {
     let settings = AppSettings.shared
     var appData = FractalAppData()
 
+    init() {
+        MPFloat.setPrecisions(defaultPrecision: 128, resultPrecision: .maxOfOperands)
+    }
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .frame(minWidth: FractalAppData.windowSize.width, minHeight: FractalAppData.windowSize.height)
                 .environment(settings)
+                .toastHost()
         }
         .windowResizability(.contentSize)
 

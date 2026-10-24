@@ -25,13 +25,29 @@ enum SettingsKeys {
 /// Snapshot of settings. Passed to nonisolated functions via dynamic parameters
 ///
 struct SettingsSnapshot: Sendable {
+    
+    /// Number of CPUs / cores
     let cpuCount: Int
+    
+    /// Oversubscription factor. 1 = no oversubscription
     let oversubscription: Int
+    
+    /// Deprecated. Parallel drawing of calculation results
     let drawParallel: Bool
+    
+    /// Default resolution of fractal images
     let resolution: CGSize
+    
+    /// Deprecated. Always use perturbation algorithm
     let usePerturbation: Bool
+    
+    /// Use series approximation in perturbation algorithm
     let useSeriesApproximation: Bool
+    
+    /// Number of perturbation passes for fixing of glitches
     let perturbationPasses: Int
+    
+    /// Fix glitches in perturbation results
     let fixGlitches: Bool
 }
 

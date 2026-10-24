@@ -35,9 +35,6 @@ protocol PreciseFloatingPoint: BasicCalculations & RealFunctions & Codable & Sen
     
     // Check for not a number
     var isNaN: Bool { get }
-    
-    // Zero
-    static var zero: Self { get }
 
     // Not a number
     static var nan: Self { get }

@@ -12,13 +12,31 @@ import Foundation
 /// Fractal calculation limits
 ///
 struct FractalLimits: FractalParameters {
-    var minIterationCount: Int = 200                // Minimum iteration count
-    var iterations: Int = 200                       // Maximum number of iterations. default = 200
-    var bailout: Double = 1e10                      // Bailout radius. default = 1e10
-    var orbitDelta1: Double = 1e-15                 // Orbit detection: 1st delta = 1e-15
-    var orbitDelta2: Double = 1e-11                 // Orbit detection: 2nd delta = 1e-11
-    var orbitDelta3: Double = 1e-10                 // Orbit detection: delta for fast detection = 1e-10
-    var orbitLength: Int = 20                       // Limit for fast orbit detection = 20
+    
+    /// Minimum iteration count. Default = 200
+    var minIterationCount: Int = 200
+    
+    /// Maximum number of iterations. Default = 200
+    var iterations: Int = 200
+    
+    /// Bailout radius. Default = 1e10
+    var bailout: Double = 1e10
+    
+    /// Orbit detection: 1st delta. Default = 1e-15
+    var orbitDelta1: Double = 1e-15
+    
+    /// Orbit detection: Delta factor for 2nd pass. Default = 1e4
+    var orbitDeltaF: Double = 1e4
+    
+    /// Orbit detection: delta for fast detection = 1e-10
+    var orbitDelta3: Double = 1e-10
+    
+    /// Limit for fast orbit detection = 20
+    var orbitLength: Int = 20
+    
+    /// Tolerance value for interior distance estimation
+    var interiorTolerance: Double = 1e-13
+    
 }
 
 ///

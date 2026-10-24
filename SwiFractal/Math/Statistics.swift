@@ -52,9 +52,11 @@ func expMovAvg(previousAvg: Double, smooth: Double, newValue: Double, smoothIter
 /// t = Timestep (= iteration count)\
 /// s = Timestep (= smooth iteration count)
 ///
-/// We are using the enhanced formula because the last step t is incomplete.
+/// We are using the enhanced formula because the last step *t* is incomplete.
 /// `(1 + s * (b - 1))` is the part of the weight contributed by the last step.
 @inline(__always)
 func biasCorrect(previousAvg: Double, smooth: Double, iter: Int, smoothIter: Double) -> Double {
-    return previousAvg / (1.0 - smooth.pow(iter) * (1.0 + smoothIter * (smooth - 1.0)))
+    let denom = (1.0 - smooth.pow(iter) * (1.0 + smoothIter * (smooth - 1.0)))
+    guard denom > 1e-12 else { return previousAvg }
+    return previousAvg / denom
 }

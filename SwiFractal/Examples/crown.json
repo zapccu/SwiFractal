@@ -18,7 +18,7 @@
 		"stripes": 2
 	},
 	"iterations": 5000,
-	"orbitDelta2": 1e-11,
+	"orbitDeltaF": 1e4,
 	"orbitLength": 20,
 	"orbitDelta3": 1e-10,
 	"common": {

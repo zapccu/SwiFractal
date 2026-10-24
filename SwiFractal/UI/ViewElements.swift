@@ -25,9 +25,8 @@ struct ControlLabel : View {
     }
 }
 
-//
-// Picker with label
-//
+///
+/// Enum picker with label
 struct CasePicker<T: Hashable>: View where T: RawRepresentable, T: CaseIterable, T: Identifiable {
     @Binding var selection: T
     
@@ -64,9 +63,9 @@ struct OptionsPicker<T>: View where T: RawRepresentable, T: CaseIterable, T: Equ
     }
 }
 
-//
-// Input field with text label supporting numeric input datatypes
-//
+///
+/// Input field with text label supporting numeric input datatypes
+///
 struct LabeledInputField : View {
     @State private var numberFormatter: NumberFormatter = {
         let numberFormatter = NumberFormatter()
@@ -237,7 +236,7 @@ struct LinearStepper<T: Strideable> : View where T.Stride == T {
         if let fmt = format, let arg = value as? CVarArg {
             return String(format: fmt, arg) + unit
         }
-        return "\(value)\(unit)"
+        return "\(value) \(unit)"
     }
     
     var body: some View {

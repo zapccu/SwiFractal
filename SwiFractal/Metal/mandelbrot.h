@@ -21,8 +21,8 @@ struct MetalComputeParameters {
     float2 div_2_logBailout;
     float2 stripes;
     float2 stripeSig;
-    float2 diag;
-    float2 distThreshold;
+    float2 logPixel;
+    float2 invDistThreshold;
 };
 
 /// Result flags

@@ -9,15 +9,25 @@ import Foundation
 import SwiftUI
 import SwiftMPx
 import Metal64
+import MetalCompute
 
 
+///
+/// Sendable read-only buffer
+///
 struct SendableRow<T>: @unchecked Sendable {
     let buffer: UnsafeBufferPointer<T>
 }
 
+///
+/// Sendable read/write buffer
+///
 struct SendableMutableRow<T>: @unchecked Sendable {
     let buffer: UnsafeMutableBufferPointer<T>
 }
+
+/// Combined calculation result
+typealias CombinedResult = (result: Matrix<MandelbrotResult>?, info: CalculationInfo)
 
 ///
 /// Wrapper for fractal calculations
@@ -26,8 +36,9 @@ enum FractalCalculation<PT: FractalData> {
     
     typealias RT = PT.RT
     typealias CT = RT.CT
-    
-    typealias CalculationFunction = @Sendable (DynamicParameters<PT>) async -> Matrix<MandelbrotResult>
+        
+    /// Calculation function
+    typealias CalculationFunction = @Sendable (DynamicParameters<PT>) async -> CombinedResult
     
     /// Dictionary with calculation functions for calculation methods
     nonisolated static var calculationFunctions: [CalculationMethod: CalculationFunction] {
@@ -45,10 +56,8 @@ enum FractalCalculation<PT: FractalData> {
     ///   - P: Fractal parameters
     /// - Returns: Calculation function or nil if method is not supported
     static func getFunction(method: CalculationMethod, P: PT) -> CalculationFunction? {
-        if P.supportedCalculationMethods.contains(method) {
-            return calculationFunctions[method]
-        }
-        return nil
+        guard P.supportedCalculationMethods.contains(method) else { return nil }
+        return calculationFunctions[method]
     }
     
     /// Iterate an array of complex points
@@ -65,8 +74,10 @@ enum FractalCalculation<PT: FractalData> {
         for i in inRow.indices {
             guard outRow[i].flags == .calculate else { continue }
             
+            // Initial values of iteration
             let (z0, c) = mapping.values(for: inRow[i])
-            //let (z0, c) = P.fp.initialValues(v: inRow[i])
+            
+            // Calculate point
             outRow[i] = calculatePointZ2(Z0: z0, C: c, P: P)
         }
     }
@@ -79,14 +90,15 @@ enum FractalCalculation<PT: FractalData> {
     ///   - inRow: Array of delta values to reference point
     ///   - outRow: Array of calculated results
     /// - Returns: Tuple (new reference point, number of glitches)
-    nonisolated static func calculateLinePT(P: DynamicParameters<PT>, refOrbit: [Cplx], sa: SACoefficients,
+    nonisolated static func calculateChunkPT(P: DynamicParameters<PT>, refOrbit: [Cplx], sa: SACoefficients,
                                             inRow: UnsafeBufferPointer<CT>,
                                             outRow: UnsafeMutableBufferPointer<MandelbrotResult>) -> (CT, Int)
     {
         let refPoint = P.dimensions.refPoint
         var newRefPoint: CT = .zero(precision: P.dimensions.precision.bits)
-        var glitches: Int = 0
         var maxGlitchIterationCount: Double = 0
+
+        var glitchCount: Int = 0
 
         for i in inRow.indices {
             if outRow[i].flags == .calculate {
@@ -94,7 +106,7 @@ enum FractalCalculation<PT: FractalData> {
                 if outRow[i].flags == .error {
                     // Point must be recalculated
                     outRow[i].flags = .calculate
-                    glitches += 1
+                    glitchCount += 1
                     
                     if outRow[i].smoothIter > maxGlitchIterationCount {
                         newRefPoint = refPoint + inRow[i]
@@ -104,16 +116,16 @@ enum FractalCalculation<PT: FractalData> {
             }
         }
         
-        return (newRefPoint, glitches)
+        return (newRefPoint, glitchCount)
     }
 
-    /// Iterate an array of complex points. Only every second point is calculated
+    /// Iterate an array of complex points. Skip specified number of points.
     /// - Parameters:
     ///   - P: Dynamic calculation parameters
     ///   - inRow: Array of complex points
     ///   - outRow: Array of calculation results
     ///   - skip: Number of points to skip. Default = 1
-    nonisolated static func calculateLineFast(P: DynamicParameters<PT>,
+    nonisolated static func calculateChunkFast(P: DynamicParameters<PT>,
                                               inRow: UnsafeBufferPointer<CT>,
                                               outRow: UnsafeMutableBufferPointer<MandelbrotResult>,
                                               skip: Int = 1)
@@ -124,6 +136,7 @@ enum FractalCalculation<PT: FractalData> {
         for i in stride(from: 0, to: inRow.count, by: skip + 1) {
             let (z0, c) = mapper.values(for: inRow[i])
             outRow[i] = calculatePointZ2(Z0: z0, C: c, P: P)
+            
             for j in 1...skip {
                 let n = i + j
                 if n < inRow.count {
@@ -136,8 +149,8 @@ enum FractalCalculation<PT: FractalData> {
     /// Sequential calculation of Mandelbrot set line by line
     /// - Parameters:
     ///   - P: Calculation parameters
-    /// - Returns: Matrix of calculation results in dimensions (height, width)
-    nonisolated static func calculateSequential(P: DynamicParameters<PT>, ) async -> Matrix<MandelbrotResult> {
+    /// - Returns: Combined calculation result
+    nonisolated static func calculateSequential(P: DynamicParameters<PT>) async -> CombinedResult {
         // Map screen coordinates to absolute complex coordinates
         let inBuffer = P.dimensions.mapScreenCoordinates(resolution: P.resolution, osSize: P.osSize)
         
@@ -154,25 +167,37 @@ enum FractalCalculation<PT: FractalData> {
         // Initial value mapper
         let mapper = P.initial
         
-        // Split the calculation into lines to make the process interruptable
+        var errorCount: Int = 0
+        
+        // Calculate points one by one
         for i in 0..<totalCount {
             guard outChunk.buffer[i].flags == .calculate else { continue }
             
             let (z0, c) = mapper.values(for: inChunk.buffer[i])
-            outChunk.buffer[i] = calculatePointZ2(Z0: z0, C: c, P: P)
+            let result = calculatePointZ2(Z0: z0, C: c, P: P)
+            if result.flags == .error {
+                errorCount += 1
+            }
+
+            outChunk.buffer[i] = result
 
             // Stop the calculation if user pressed the cancel button
-            if Task.isCancelled { break }
+            if Task.isCancelled {
+                return CombinedResult(nil, CalculationInfo(state: .cancelled))
+            }
         }
 
-        return Matrix<MandelbrotResult>((P.osImageHeight, P.osImageWidth), grid: Array(outBuffer.pointer))
+        return CombinedResult(
+            Matrix<MandelbrotResult>((P.osImageHeight, P.osImageWidth), grid: Array(outBuffer.pointer)),
+            CalculationInfo(state: .completed, errorCount: errorCount)
+        )
     }
 
     /// Sequential calculation of Mandelbrot set using perturbation algorithm
     /// - Parameters:
     ///   - P: Calculation parameters
-    /// - Returns: Matrix of calculation results in dimensions (height, width)
-    nonisolated static func calculateSequentialPT(P: DynamicParameters<PT>) async -> Matrix<MandelbrotResult> {
+    /// - Returns: Combined calculation result
+    nonisolated static func calculateSequentialPT(P: DynamicParameters<PT>) async -> CombinedResult {
         var refPoint: CT = P.dimensions.refPoint
                 
         // Create result buffer
@@ -181,20 +206,20 @@ enum FractalCalculation<PT: FractalData> {
         // Total number of points to be calculated
         let totalCount = outBuffer.pointer.count   // = osImageWidth * osImageHeight
         
-        var glitches: Int = 0  // Total number of glitches in current pass
+        // Counter for glitches in Perturbation iteration pass
+        var glitchCount: Int = 0
         
         // Perturbation passes
         for p in 0..<P.settings.perturbationPasses {
             var sa: SACoefficients = .initial           // Series approximation coefficients
             var maxGlitchIterationCount: Double = 0     // Take the point with the highest iteration count as new refPoint
             var newRefPoint: CT = refPoint              // New reference point
-            var bCancelled: Bool = false                // Calculation cancelled by user
             
-            glitches = 0
+            glitchCount = 0
 
             // Map screen coordinates to relative complex coordinates (array of ΔC values)
             let inBuffer = P.dimensions.mapDeltaScreenCoordinates(refPoint: refPoint, resolution: P.resolution,
-                                                                     osSize: P.osSize)
+                                                                  osSize: P.osSize)
 
             // Compute reference orbit
             let refOrbit = generateReferenceOrbit(refPoint: refPoint, limits: P.limits.parameters)
@@ -216,7 +241,7 @@ enum FractalCalculation<PT: FractalData> {
                 if result.flags == .error {
                     // Point must be recalculated
                     result.flags = .calculate
-                    glitches += 1
+                    glitchCount += 1
                     
                     if result.smoothIter > maxGlitchIterationCount {
                         newRefPoint = refPoint + inChunk.buffer[i]
@@ -227,22 +252,21 @@ enum FractalCalculation<PT: FractalData> {
                 outChunk.buffer[i] = result
                 
                 if Task.isCancelled {
-                    bCancelled = true
-                    break
+                    return (nil, CalculationInfo(state: .cancelled))
                 }
             }
 
-            debugPrint("Perturbation pass \(p): Number of glitches = \(glitches)")
+            debugPrint("Perturbation pass \(p): Number of glitches = \(glitchCount)")
 
-            // Stop the calculation if user pressed the cancel button or number of glitches is 0
-            if glitches == 0 || bCancelled { break }
+            // Stop the calculation if number of glitches is 0
+            if glitchCount == 0 { break }
             
             // Use new reference point for next perturbation pass
             refPoint = newRefPoint
         }
         
         // Fix remaining glitches
-        if glitches > 0 && P.settings.fixGlitches {
+        if glitchCount > 0 && P.settings.fixGlitches {
             // Map screen coordinates to absolute complex coordinates
             let inBuffer = P.dimensions.mapScreenCoordinates(resolution: P.resolution, osSize: P.osSize)
 
@@ -251,16 +275,20 @@ enum FractalCalculation<PT: FractalData> {
             let outChunk = SendableMutableRow(buffer: UnsafeMutableBufferPointer(rebasing: outBuffer.pointer[0..<totalCount]))
 
             calculateChunk(P: P, inRow: inChunk.buffer, outRow: outChunk.buffer)
+            glitchCount = 0
         }
-        
-        return Matrix<MandelbrotResult>((P.osImageHeight, P.osImageWidth), grid: Array(outBuffer.pointer))
+                
+        return CombinedResult(
+            Matrix<MandelbrotResult>((P.osImageHeight, P.osImageWidth), grid: Array(outBuffer.pointer)),
+            CalculationInfo(state: .completed, errorCount: glitchCount)
+        )
     }
 
     /// Parallel calculation of Mandelbrot set
     /// - Parameters:
     ///   - P: Calculation parameters
     /// - Returns: Matrix of calculation results in dimensions (height, width)
-    nonisolated static func calculateParallel(P: DynamicParameters<PT>) async -> Matrix<MandelbrotResult> {
+    nonisolated static func calculateParallel(P: DynamicParameters<PT>) async -> CombinedResult {
         // Create input and output buffers
         let inBuffer: LinearBuffer<CT> = P.dimensions.mapScreenCoordinates(resolution: P.resolution, osSize: P.osSize)
         let outBuffer = LinearBuffer<MandelbrotResult>(width: P.osImageWidth, height: P.osImageHeight, initialValue: .initialValue)
@@ -295,37 +323,39 @@ enum FractalCalculation<PT: FractalData> {
             }
         }
 
-        return Matrix<MandelbrotResult>((P.osImageHeight, P.osImageWidth), grid: Array(outBuffer.pointer))
+        return CombinedResult(
+            Matrix<MandelbrotResult>((P.osImageHeight, P.osImageWidth), grid: Array(outBuffer.pointer)),
+            CalculationInfo(state: .completed)
+        )
     }
     
     /// Metal / GPU calculation of Mandelbrot set
     /// - Parameters:
     ///   - P: Calculation parameters
     /// - Returns: Matrix of calculation results in dimensions (height, width)
-    nonisolated static func calculateMetal(P: DynamicParameters<PT>) async -> Matrix<MandelbrotResult> {
+    nonisolated static func calculateMetal(P: DynamicParameters<PT>) async -> CombinedResult {
         // Create the input buffer
-        let cplx2Grid: LinearBuffer<Complex2> = P.dimensions.asDouble.mapScreenCoordinates(resolution: P.resolution, osSize: P.osSize)
+        let cplx2Grid: LinearBuffer<Complex2> = P.dimensions.asDouble.mapScreenCoordinates(
+            resolution: P.resolution, osSize: P.osSize)
 
         do {
-            let metalCompute = try MetalCompute("mandelbrot", cplx2Grid.size)
+            let metal = try MetalCompute()
+            let kernel = try metal.kernel("mandelbrot")
             
-            try metalCompute.prepareComputeEncoder()
+            // Compute the Mandelbrot set
+            let result: [MandelbrotResult] = try await kernel.run(cplx2Grid.pointer, P, P.potential, count: cplx2Grid.size)
             
-            try metalCompute.addBuffer(cplx2Grid.pointer, .inputBuffer)
-            try metalCompute.addStruct(P.computeParameters)
-            try metalCompute.addValue(P.potential)
-            
-            // Compute the Mandelbrot set.
-            // Result is an array of type MandelbrotResultMtl. It must be converted to an array of type MandelbrotResult
-            // before the result matrix is created.
-            if let result = metalCompute.compute(MandelbrotResult.initialValue.mandelbrotResultMtl) {
-                return Matrix<MandelbrotResult>((P.osImageHeight, P.osImageWidth), grid: result.map { $0.mandelbrotResult } )
-            }
+            return CombinedResult(
+                Matrix<MandelbrotResult>((P.osImageHeight, P.osImageWidth), grid: result),
+                CalculationInfo(state: .completed)
+            )
         }
         catch {
-            print(error)
+            debugPrint(error)
+            return CombinedResult(nil, CalculationInfo(state: .error, message: error.localizedDescription))
         }
         
-        return Matrix<MandelbrotResult>((P.osImageHeight, P.osImageWidth), defaultValue: .defaultValue)
+        return CombinedResult(nil, CalculationInfo(state: .error, message: "No results"))
     }
+    
 }

@@ -15,6 +15,7 @@ import ParSetKit
 // Protocol for fractals
 //
 @MainActor
+@dynamicMemberLookup
 protocol FractalProtocol: AnyObject {
     
     // Type of fractal parameters
@@ -23,17 +24,10 @@ protocol FractalProtocol: AnyObject {
     // Type of calculation results
     associatedtype ResultType: CalculationResult
     
-    // Type of dynamic parameters
-    // associatedtype DynParType: PrDynamicParameters
-    
     associatedtype RT: PreciseFloatingPoint
     
     associatedtype CT: ComplexNumber
-    
-    //typealias CalculationFunction = @Sendable (DynParType) async -> Matrix<ResultType>
-    
-    //nonisolated static var calculationFunctions: [CalculationMethod: CalculationFunction] { get }
-    
+        
     // Return default dimensions of fractal type
     static var defaultDimensions: FractalDimensions<Double> { get }
     
@@ -48,7 +42,7 @@ protocol FractalProtocol: AnyObject {
     
     // Check if current parameter set version has been modified
     var hasChanges: Bool { get }
-        
+    
     //
     // Parameterset operations
     //
@@ -84,7 +78,7 @@ protocol FractalProtocol: AnyObject {
     func beginCalculation(resolution: CGSize) -> DynamicParameters<DataType>?
 
     // Calculate fractal
-    func calculate(method: CalculationMethod, resolution: CGSize) async -> (CalculationState, Matrix<MandelbrotResult>?)
+    func calculate(method: CalculationMethod, resolution: CGSize) async -> CombinedResult
     
     // Mark end of calculation.
     // Define this function in a fractal class if anything must be
@@ -105,6 +99,24 @@ protocol FractalProtocol: AnyObject {
 }
 
 extension FractalProtocol {
+    
+    /// Subscript for colorParameters
+    subscript<T>(dynamicMember keyPath: WritableKeyPath<FractalColorParameters, T>) -> T {
+        get { FP.colorParameters[keyPath: keyPath] }
+        set { FP.colorParameters[keyPath: keyPath] = newValue }
+    }
+
+    /// Subscript for lightParameters
+    subscript<T>(dynamicMember keyPath: WritableKeyPath<LightningParameters, T>) -> T {
+        get { FP.lightParameters[keyPath: keyPath] }
+        set { FP.lightParameters[keyPath: keyPath] = newValue }
+    }
+    
+    /// Subscript for limits
+    subscript<T>(dynamicMember keyPath: WritableKeyPath<FractalLimits, T>) -> T {
+        get { FP.limits[keyPath: keyPath] }
+        set { FP.limits[keyPath: keyPath] = newValue }
+    }
     
     /// Switch back to previous parameter set
     func undo() { FP.undo() }

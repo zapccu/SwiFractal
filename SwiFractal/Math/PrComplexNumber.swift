@@ -67,10 +67,11 @@ protocol ComplexNumber : Sendable {
     static func / (lhs: Self, rhs: RT) -> Self
     static func / (lhs: RT, rhs: Self) -> Self
     
-    // Comparison operators
+    // Comparison operators and functions
     static func == (lhs: Self, rhs: Self) -> Bool
     static func != (lhs: Self, rhs: Self) -> Bool
-
+    func almostEqual(to other: Self, tolerance: RT) -> Bool
+    
 }
 
 extension ComplexNumber {
@@ -102,11 +103,7 @@ extension ComplexNumber {
     //
     // Addition
     //
-    /*
-    static func + (lhs: Self, rhs: Self) -> Self {
-        .init(lhs.real + rhs.real, lhs.imaginary + rhs.imaginary)
-    }
-    */
+
     static func + (lhs: Self, rhs: RT) -> Self {
         .init(lhs.real + rhs, lhs.imaginary)
     }
@@ -118,11 +115,7 @@ extension ComplexNumber {
     //
     // Subtraction
     //
-    /*
-    static func - (lhs: Self, rhs: Self) -> Self {
-        .init(lhs.real - rhs.real, lhs.imaginary - rhs.imaginary)
-    }
-    */
+
     static func - (lhs: Self, rhs: RT) -> Self {
         .init(lhs.real - rhs, lhs.imaginary)
     }
@@ -134,12 +127,7 @@ extension ComplexNumber {
     //
     // Multiplication
     //
-    /*
-    static func * (lhs: Self, rhs: Self) -> Self {
-        .init(lhs.real * rhs.real - lhs.imaginary * rhs.imaginary,
-              lhs.real * rhs.imaginary + lhs.imaginary * rhs.real)
-    }
-    */
+
     static func * (lhs: Self, rhs: RT) -> Self {
         .init(lhs.real * rhs, lhs.imaginary * rhs)
     }
@@ -151,27 +139,7 @@ extension ComplexNumber {
     //
     // Division
     //
-    /*
-    static func / (lhs: Self, rhs: Self) -> Self {
-        // Hilfsvariablen zur besseren Lesbarkeit (entspricht der Formel oben)
-        let a = lhs.real
-        let b = lhs.imaginary
-        let c = rhs.real
-        let d = rhs.imaginary
-        
-        let n = (c * c) + (d * d)
 
-        guard n != RT.zero else {
-            return .init(RT.nan, RT.nan)
-        }
-        
-        // Berechnung nach der mathematischen Formel
-        let nr = ((a * c) + (b * d)) / n
-        let ni = ((b * c) - (a * d)) / n
-        
-        return .init(nr, ni)
-    }
-    */
     static func / (lhs: Self, rhs: RT) -> Self {
         guard rhs != RT.zero else {
             return .init(RT.nan, RT.nan)
@@ -199,16 +167,18 @@ extension ComplexNumber {
     }
     
     //
-    // Comparison operators
+    // Comparison functions
     //
-    /*
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.real == rhs.real && lhs.imaginary == rhs.imaginary
+    
+    ///
+    /// - Parameters:
+    ///   - other: 2nd value
+    ///   - tolerance: Tolerance.
+    /// - Returns: true if values are almost equal
+    func almostEqual(to other: Self, tolerance: RT) -> Bool {
+        let diff = self - other
+        return diff.lengthSquared < tolerance
     }
-    static func != (lhs: Self, rhs: Self) -> Bool {
-        lhs.real != rhs.real || lhs.imaginary != rhs.imaginary
-    }
-     */
 
 }
 

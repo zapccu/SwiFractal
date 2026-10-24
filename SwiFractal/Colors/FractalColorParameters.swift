@@ -42,10 +42,10 @@ typealias ColorizeOutside = Options<EnumColorizeOutside>
 /// Inside colorization of a fractal
 ///
 enum EnumColorizeInside: Int, CaseIterable {
-    case defaultColor       // Inside of Mandelbrot set is set to default color
-    case fastOrbits         // Colorize orbits inside Mandelbrot using fast orbit detection
-    case orbits             // Colorize orbits inside Mandelbrot using full orbit detection
-    case distance           // Colorize distance inside Mandelbrot set, implies distance calculation
+    case defaultColor   // Inside of Mandelbrot set is set to default color
+    case orbits         // Colorize orbits inside Mandelbrot set using full orbit detection
+    case fastOrbits     // Use fast orbit detection without coloring the interior of Mandelbrot set
+    case distance       // Colorize distance inside Mandelbrot set, implies distance calculation
 }
 typealias ColorizeInside = Options<EnumColorizeInside>
 
@@ -88,7 +88,7 @@ struct FractalColorParameters: FractalParameters {
     /// `.simple3D`: Simple 3D shading (fast)\
     /// `.blinnPhong`: Blinn-Phong 3D shading
     var colorizeOutside = ColorizeOutside(.simple)      // Colorize outside: simple, simple3D, blinnPhong
-    var colorizeInside = ColorizeInside(.defaultColor)  // Colorize inside: defaultColor, fastOrbits, orbits, distance
+    var colorizeInside = ColorizeInside(.defaultColor)  // Colorize inside: defaultColor, orbits, distance
     var paletteMode = PaletteMode(.linear)              // Palette assignment mode: linear, modulo, hue, huedyn, lchdyn
     var stripes: Int = 0                                // Stripe density, frequency for stripe average coloring
                                                         // Range 0-32, 0 = No stripes, default = 0

@@ -18,23 +18,29 @@ extension FractalProtocol { // where DynParType == DynamicParameters<DataType> {
     ///   - method: Calculation method
     ///   - resolution: Image resolution
     /// - Returns: Tuple of calculation state and result
-    func calculate(method: CalculationMethod, resolution: CGSize) async -> (CalculationState, Matrix<MandelbrotResult>?) {
+    func calculate(method: CalculationMethod, resolution: CGSize) async -> CombinedResult {
         // Get calculation function for specified method
         guard let function = FractalCalculation<DataType>.getFunction(method: method, P: FP.current)  else {
-            return (.error("Calculation method not supported"), nil)
+            return (
+                nil,
+                CalculationInfo(state: .error, message: "Calculation method not supported")
+            )
         }
         
         // Setup calculation, create dynamic calculation parameters
         guard let DP = beginCalculation(resolution: resolution) else {
-            return (.error("Setup of calculation environment failed"), nil)
+            return (
+                nil,
+                CalculationInfo(state: .error, message: "Setup of calculation environment failed")
+            )
         }
         
         // Calculate the fractal
-        let result = await function(DP)
+        let combinedResult = await function(DP)
         
         endCalculation()
         
-        return (.completed(), result)
+        return combinedResult
     }
 
 }

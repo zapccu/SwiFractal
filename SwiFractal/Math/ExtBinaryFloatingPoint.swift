@@ -54,4 +54,14 @@ extension BinaryFloatingPoint {
         return result
     }
     
+    /// Check if absolute difference between two values is less or equal a tolerance value
+    /// - Parameters:
+    ///   - other: 2nd value
+    ///   - tolerance: Tolerance. Default = 0: Identical with ==
+    /// - Returns: true if values are almost equal
+    @inline(__always)
+    public func almostEqual(to other: Self, tolerance: Self) -> Bool {
+        abs(self - other) < tolerance
+    }
+    
 }

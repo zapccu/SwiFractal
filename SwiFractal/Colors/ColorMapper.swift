@@ -12,15 +12,29 @@ import Accelerate
 /// Colormapper
 struct ColorMapper : Sendable {
     
-    var colorParameters: FractalColorParameters
-    let limits: FractalLimits
-    let histogram: Histogram
-    var lightning: Lightning
+    /// Static color table for coloring the interior of the Mandelbrot set based on orbit length
+    let category10 = ColorTableStatic("Category10",
+        colors: [0x1f77b4, 0xff7f0e, 0x2ca02c, 0xd62728, 0x9467bd, 0x8c564b, 0xe377c2, 0x7f7f7f, 0xbcbd22, 0x17becf],
+        defColor: .black
+    )
     
+    /// Copy of fractal color parameters
+    let colorParameters: FractalColorParameters
+    
+    /// Copy of fractal calculation limits
+    let limits: FractalLimits
+    
+    /// Copy of histogram of current image
+    let histogram: Histogram
+    
+    /// Copy of precalculated fractal lightning parameters
+    let lightning: Lightning
+    
+    /// Coloring type
     var coloring: any Coloring { colorParameters.coloring.coloringType }
     
     /// Square root of ncycle. Defines how many iterations correlate with 1 cycle.
-    var sqrtncycle: Double
+    let sqrtncycle: Double
     
     /// Initialize colormapper
     init(colorParameters: FractalColorParameters, limits: FractalLimits, histogram: Histogram, lightning: Lightning) {
@@ -51,7 +65,6 @@ struct ColorMapper : Sendable {
     ///   - smoothIter: Smooth iteration value in range 1...MaxIter. Usually result of *compress()*
     ///   - scale: Frequency of color changing
     ///   - offset: Offset to first value in color table
-    ///   - sqrtncycle: Square root of ncycle. Defines how many iterations correlate with 1 cycle.
     ///   Modulo division by *sqrtncycle* allows to determine after how many (transformed) iteration steps the color repeats,
     ///   regardless of the absolute iteration depth. 1 = Full color cycle every 1 iteration (default).
     ///   *sqrtncycle* must be > 0.
@@ -79,18 +92,18 @@ struct ColorMapper : Sendable {
     /// Scale = 20.0 - 50.0:\
     /// Moire effects. 3D looks.
     @inline(__always)
-    func cycle(smoothIter: Double, sqrtncycle: Double, scale: Double = 1.0, offset: Double = 0.0) -> Double {
+    func cycle(smoothIter: Double, scale: Double = 1.0, offset: Double = 0.0) -> Double {
         return (fmod(smoothIter * scale + offset, sqrtncycle) / sqrtncycle)
     }
 
     /// Shading
     /// - Parameters:
     ///   - cycleIter: Smooth iteration value in range 0...1. Usually result of *cycle()*
-    ///   - distance: Distance to Mandelbrot set
+    ///   - logPixelDistance: Logarithm of distance to Mandelbrot set
     ///   - stripeAvg: Stripe average value
     ///   - brightness: Brightness. Either 1.0 or the result of *shading3D()*
     /// - Returns: Tuple (color, brightness)
-    func shading(cycleIter: Double, distance: Double, stripeAvg: Double, brightness: Float) -> (RGBAColor, Float) {
+    func shading(cycleIter: Double, logPixelDist: Double, stripeAvg: Double, brightness: Float) -> (RGBAColor, Float) {
         let blending: EnumBlendingMode = .hardLight
         
         var bright = brightness
@@ -99,8 +112,10 @@ struct ColorMapper : Sendable {
 
         // Calculate smooth edge detector. Used to suppress shader effects near the boundary of
         // the Mandelbrot set.
-        let distD = -log(distance) / 12.0
-        let dist = Float(1.0 / (1 + exp(-10 * (distD - 0.5))))
+        //let distD = -logDistance / 12.0
+        //let dist = Float(1.0 / (1 + exp(-10 * (distD - 0.5))))
+        let midPixels = 3.0                       // ab dieser Distanz in Pixeln wird ausgeblendet
+        let dist = Float(1.0 / (1 + exp(10.0 / 12.0 * (logPixelDist - log(midPixels)))))
         
         // Shaders: steps and/or stripes
         var nshader: Float = 0
@@ -165,35 +180,45 @@ struct ColorMapper : Sendable {
         return brightness
     }
     
+    /// Map color based on result flags
+    /// - Parameter result: Mandelbrot result
+    /// - Returns: Color or nil
+    func mapFlags(result: MandelbrotResult) -> RGBAColor? {
+        if result.flags.isSubset(of: [.defaultColor, .maxIterations, .error, .calculate]) {
+            return coloring.defColor
+        }
+        else if result.flags == .inside {
+            switch colorParameters.colorizeInside() {
+            case .defaultColor, .fastOrbits:
+                return coloring.defColor
+            case .distance:
+                return coloring.getColor(t: result.distance)
+            case .orbits:
+                let index = Int(result.distance) % category10.count
+                let color = category10[index]
+                let brightness = Float(pow(0.7, result.smoothIter / 100.0))
+                return color.blend(with: brightness, mode: .multiply)
+            }
+        }
+        
+        return nil
+    }
+    
     /// Map Mandelbrot iteration result to color
     /// - Parameters:
     ///   - result: Mandelbrot iteration result
     ///   - P: Mandelbrot dynamic calculation parameters
     /// - Returns: Color
     func mapColor(result: MandelbrotResult) -> RGBAColor {
-        // The brightness 0-1
+        // The brightness 0...1
         var brightness: Float = 1.0
         
         // The resulting color, initialized with default color
-        var color = coloring.defColor
+        if let interiorColor = mapFlags(result: result) {
+            return interiorColor
+        }
         
-        // Check condition for default color
-        if (result.flags.isSubset(of: [.defaultColor, .maxIterations, .error])) {
-            return color
-        }
-        else if result.flags == .inside {
-            switch colorParameters.colorizeInside.element {
-            case .defaultColor, .distance:
-                color = .black
-            case .fastOrbits:
-                let c = Float(result.smoothIter / 20.0)
-                color = RGBAColor(c, c, c)
-            case .orbits:
-                let c = Float(result.smoothIter / 50.0)
-                color = RGBAColor(c, c, c)
-            }
-            return color
-        }
+        var color: RGBAColor = coloring.defColor
         
         // 3D shading, calculate brightness in range 0...
         if colorParameters.colorizeOutside.isAny(of: [.blinnPhong, .simple3d]) {
@@ -204,7 +229,7 @@ struct ColorMapper : Sendable {
         let compressedIter = compress(smoothIter: result.smoothIter)
         
         // Cycle colors
-        let cycleIter = cycle(smoothIter: compressedIter, sqrtncycle: sqrtncycle, scale: colorParameters.scale, offset: colorParameters.offset)
+        let cycleIter = cycle(smoothIter: compressedIter, scale: colorParameters.scale, offset: colorParameters.offset)
 
         //
         // Calculate color based on colorize mode
@@ -212,7 +237,7 @@ struct ColorMapper : Sendable {
         
         // Shading. Coloring based on stripes and/or steps. colorize mode and palette mode do not matter here
         if colorParameters.colorizeMode.isAny(of: [.steps, .stripes]) {
-            (color, brightness) = shading(cycleIter: cycleIter, distance: result.distance, stripeAvg: result.stripeAvg, brightness: brightness)
+            (color, brightness) = shading(cycleIter: cycleIter, logPixelDist: result.distance, stripeAvg: result.stripeAvg, brightness: brightness)
         }
         
         // Color depends on iterations
@@ -294,7 +319,7 @@ struct ColorMapper : Sendable {
         // Blending, tone mapping, gamma correction
         return color.blend(with: brightness, lightning: lightning)
     }
-    
+
     func mapResult(result: any CalculationResult) -> RGBAColor {
         if let result = result as? MandelbrotResult {
             return mapColor(result: result)

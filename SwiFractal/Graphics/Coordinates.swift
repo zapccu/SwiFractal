@@ -103,6 +103,7 @@ struct IRect {
     var width: Int
     var height: Int
     
+    /// Return point at lower right corner of rectangle
     var destination: IPoint {
         IPoint(x: origin.x + width, y: origin.y + height)
     }

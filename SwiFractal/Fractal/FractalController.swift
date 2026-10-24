@@ -25,6 +25,7 @@ private struct SendableRawPointer: @unchecked Sendable {
 /// - error: Calculation failed with an error
 /// - Parameters:
 ///   - msg: Optional message to display
+/*
 enum CalculationState {
     case idle(String = "Idle")
     case completed(String = "Completed")
@@ -39,6 +40,7 @@ enum CalculationState {
         }
     }
 }
+ */
 
 ///
 /// Enum for fractal kind ID
@@ -125,7 +127,7 @@ class FractalController {
     @ObservationIgnored var isCalculating: Bool = false
     
     /// Calculation state
-    @ObservationIgnored var calcState: CalculationState = .idle()
+    @ObservationIgnored var calcInfo: CalculationInfo = CalculationInfo(state: .idle)
 
     /// Clock for time measurement
     @ObservationIgnored let clock: ContinuousClock = ContinuousClock()
@@ -182,6 +184,7 @@ class FractalController {
     func clearResults() {
         image = nil
         result = nil
+        calcInfo = CalculationInfo(state: .idle)
         histogram = nil
     }
     
@@ -329,11 +332,12 @@ class FractalController {
             }
             .onEnded{ event in
                 self.selection.onEnded(event)
-                /*
                 if self.selection.areaSelected {
-                    self.zoomArea()
+                    ToastCenter.shared.show("Area selected", systemImage: "checkmark.circle.fill", actionTitle: "Apply") {
+                        self.zoomArea()
+                        self.applyNewParameters()
+                    }
                 }
-                 */
             }
     }
 
@@ -342,31 +346,44 @@ class FractalController {
         startTime = clock.now
         isCalculating = true
         isImageZoomed = false
-        calcState = .inProgress()
+        calcInfo = CalculationInfo(state: .inProgress)
     }
     
     /// End of calculation. Measure calculation time
-    /// - Parameter state: Calculation state
-    func endCalculation(_ state: CalculationState) {
+    func endCalculation() {
         isCalculating = false
         endTime = clock.now
         calculationTime = endTime - startTime
-        calcState = state
     }
     
     /// Calculate fractal
     /// - Parameter method: Calculation method
     /// - Returns: Calculation state
-    func calculate(method: CalculationMethod) async -> CalculationState {
-        let (st, result) = await fractal.calculate(method: method, resolution: resolution)
-        if result != nil {
-            self.result = result!
-            self.histogram = Histogram(result: result!, maxValue: fractal.getLimits().iterations)
+    func calculate(method: CalculationMethod) async {
+        let combinedResult = await fractal.calculate(method: method, resolution: resolution)
+        if combinedResult.info.state == .completed && combinedResult.result != nil {
+            self.result = combinedResult.result!
+            self.calcInfo = combinedResult.info
+            self.histogram = Histogram(result: combinedResult.result!, maxValue: fractal.getLimits().iterations)
         }
-        return st
     }
     
- 
+    /// Return statistical information for calculation result
+    /// - Returns: Tuple (number of points inside Mandelbrot set, number of calculation errors)
+    func getCalculationStats() -> (inside: Int, errors: Int) {
+        guard let result else { return (-1, -1) }
+        
+        var inside: Int = 0
+        var errors: Int = 0
+
+        for r in result.grid {
+            if r.flags == .inside { inside += 1 }
+            if r.flags == .error { errors += 1 }
+        }
+        
+        return (inside, errors)
+    }
+    
     /// Draw results into graphics
     func drawResultSet() async {
         guard let result = result, let histogram = histogram else {

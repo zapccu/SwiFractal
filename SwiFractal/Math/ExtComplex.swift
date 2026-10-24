@@ -9,22 +9,66 @@ import Foundation
 import Numerics
 import SwiftMPx
 
-// ------------------------------------
-//  Complex<Double>
-// ------------------------------------
 
 /// Shortcut for Complex type for Double values
 public typealias Cplx = Complex<Double>
 
-
+//
+// Extend Complex<Double>
+//
 extension Complex<Double>: ComplexNumber, @retroactive LosslessStringConvertible {
     
     typealias PrecisionType = Double
     
-    public init(_ real: Double, _ imaginary: Double, precision: Int = 64) {
+    private func parseComplexNumber(_ input: String) -> (real: Double, imag: Double)? {
+        guard !input.isEmpty else {
+            return (0, 0)
+        }
+        let iPattern = /^(?<iSign>[+-])?i$/
+        if let iMatch = input.wholeMatch(of: iPattern) {
+            if let iSign = iMatch.output.iSign {
+                return (0, iSign == "-" ? -1 : 1)
+            }
+            else {
+                return (0, 1)
+            }
+        }
+        
+        // Regex-Muster mit benannten Gruppen für Realteil, Vorzeichen und Imaginärteil
+        let pattern = /^(?<real>[+-]?\d+(?:\.\d+)?)(?<sign>[+-])?(?<imag>\d+(?:\.\d+)?)?i?$/
+        
+        // Prüfen, ob der gesamte String dem Muster entspricht
+        guard let match = input.wholeMatch(of: pattern) else {
+            return nil
+        }
+        
+        // Realteil in Double umwandeln
+        guard let real = Double(match.output.real) else {
+            return nil
+        }
+        
+        // Imaginärteil berechnen
+        var imag: Double = 0.0
+        if let sign = match.output.sign {
+            let multiplier: Double = (sign == "-") ? -1.0 : 1.0
+            if let imagString = match.output.imag {
+                guard let imagValue = Double(imagString) else { return nil }
+                imag = multiplier * imagValue
+            } else {
+                // Fall wie "3+i" oder "3-i" (ohne Ziffer vor dem i)
+                imag = multiplier * 1.0
+            }
+        }
+        
+        return (real, imag)
+    }
+    
+    /// Init with precision specifier
+    public init(_ real: Double, _ imaginary: Double, precision: Int = 53) {
         self.init(real, imaginary)
     }
     
+    /// Init with numeric strings
     public init?(_ real: String, _ imaginary: String) {
         guard let real = Double(real), let imaginary = Double(imaginary) else { return nil }
         self.init(real, imaginary)
@@ -137,9 +181,11 @@ extension Complex<Double>: ComplexNumber, @retroactive LosslessStringConvertible
 }
 
 extension String {
+    
     /// Convert Cplx to String
     init (_ c: Cplx) {
         self = c.description
     }
+    
 }
 

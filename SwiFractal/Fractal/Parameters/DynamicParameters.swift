@@ -9,6 +9,7 @@ import Foundation
 import Accelerate
 import SwiftMPx
 import Metal64
+import MetalCompute
 
 
 ///
@@ -16,7 +17,7 @@ import Metal64
 ///
 /// Contains fractal parameters needed for calculation and color mapping.
 ///
-nonisolated struct DynamicParameters<PT: FractalData> {
+nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
 
     typealias RT = PT.RT
     typealias CT = PT.CT
@@ -65,13 +66,23 @@ nonisolated struct DynamicParameters<PT: FractalData> {
     let limits: FractalDynamicLimits
         
     /// Distance normalization factor
-    let diag: RT                     // 1 / abs(size)
+    let logDiag: RT                     // log(1 / abs(size))
     
-    /// Minimum pixel distance
+    /// Minimum pixel distance\
+    /// `min(dx, dy)`
     let minPixelDistance: RT
     
-    /// Threshold for filament calculation
-    let distThreshold: RT            // pixelDistance * 0.5
+    /// Logarithm of min pixel distance\
+    /// `RT.log(minPixelDistance).toDouble()`
+    let logPixel: Double
+    
+    /// Inverse threshold of min pixel distance for filament calculation\
+    /// `RT(1.0, precision: precision) / min(dx, dy) * 0.5`
+    let invDistThreshold: RT            // 1 / pixelDistance * 0.5
+    
+    /// Logarithm of minimum of 0.5 and maximum complex size for interior distance coloring\
+    /// `log(min(RT(0.5, precision: precision), min(sx, sy))).toDouble()`
+    let logMinSize: Double
     
     /// Calculate stripes
     let bStripes: Bool
@@ -93,6 +104,7 @@ nonisolated struct DynamicParameters<PT: FractalData> {
     var potential: [Double] = []
     
     /// Return Metal compute parameters
+    /*
     var computeParameters: MetalComputeParameters {
         MetalComputeParameters(
             iterations: Int32(limits.iterations),
@@ -102,10 +114,11 @@ nonisolated struct DynamicParameters<PT: FractalData> {
             div_2_logBailout: Float2(limits.div_2_logBailout),
             stripes: Float2(stripes),
             stripeSig: Float2(stripeSig),
-            diag: Float2(diag.asDouble),
-            distThreshold: Float2(distThreshold.asDouble)
+            logPixel: Float2(logPixel),
+            invDistThreshold: Float2(invDistThreshold.asDouble)
         )
     }
+    */
     
     /// Initialize dynamic calculation parameters
     /// - Parameters:
@@ -138,12 +151,14 @@ nonisolated struct DynamicParameters<PT: FractalData> {
         self.dimensions = anypar.dimensions
         let sx = anypar.dimensions.sizeX
         let sy = anypar.dimensions.sizeY
-        self.diag = RT(1.0, precision: precision) / RT.sqrt(sx * sx + sy * sy)
+        self.logDiag = RT.log(RT(1.0, precision: precision) / RT.sqrt(sx * sx + sy * sy))
 
         // Distance threshold for filaments and series approximation
         let (dx, dy) = anypar.dimensions.pixelDistance(resolution: resolution)
         self.minPixelDistance = min(dx, dy)
-        self.distThreshold = min(dx, dy) * 0.5
+        self.logPixel = RT.log(minPixelDistance).toDouble()
+        self.invDistThreshold = RT(1.0, precision: precision) / min(dx, dy) * 0.5
+        self.logMinSize = RT.log(min(RT(0.5, precision: precision), min(sx, sy))).toDouble()
 
         // Limits
         self.limits = FractalDynamicLimits(anypar.limits)
@@ -166,6 +181,20 @@ nonisolated struct DynamicParameters<PT: FractalData> {
             potential[i] = pot
             pot *= 0.5
         }
+    }
+    
+    func toMetal() -> MetalComputeParameters {
+        MetalComputeParameters(
+            iterations: Int32(limits.iterations),
+            bStripes: bStripes ? 1 : 0,
+            bailout: Float(limits.bailout),
+            logBailout: Float2(limits.logBailout),
+            div_2_logBailout: Float2(limits.div_2_logBailout),
+            stripes: Float2(stripes),
+            stripeSig: Float2(stripeSig),
+            logPixel: Float2(logPixel),
+            invDistThreshold: Float2(invDistThreshold.asDouble)
+        )
     }
     
 }

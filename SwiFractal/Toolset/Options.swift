@@ -80,6 +80,17 @@ where Element: RawRepresentable, Element: CaseIterable, Element: Equatable, Elem
         self.rawValue = element.rawValue
     }
     
+    /// Update option
+    /// - Parameter element: New option / element
+    mutating func callAsFunction(_ element: Element) {
+        self.rawValue = element.rawValue
+    }
+    
+    /// Return current option / element
+    func callAsFunction() -> Element {
+        Element(rawValue: rawValue)!
+    }
+    
     /// Returns name of option *Element* as String
     func optName(_ option: Element) -> String {
         return String(describing: option)
@@ -159,3 +170,19 @@ where Element: RawRepresentable, Element: CaseIterable, Element: Equatable, Elem
     }
 }
 
+/*
+struct OptionRule<Element1, Element2>
+where Element1: OptionElement, Element2: OptionElement, Element1.RawValue == Int, Element2.RawValue == Int {
+    let when: Options<Element1>
+    let then: Options<Element2>
+}
+
+struct OptionMapper<Element1, Element2>
+where Element1: OptionElement, Element2: OptionElement, Element1.RawValue == Int, Element2.RawValue == Int {
+    let rules: [OptionRule<Element1, Element2>]
+    
+    func map(_ element1: Element1) -> Options<Element2>? {
+        rules.first(where: { $0.when == element1 })?.then
+    }
+}
+*/
