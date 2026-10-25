@@ -354,8 +354,6 @@ enum FractalCalculation<PT: FractalData> {
             debugPrint(error)
             return CombinedResult(nil, CalculationInfo(state: .error, message: error.localizedDescription))
         }
-        
-        return CombinedResult(nil, CalculationInfo(state: .error, message: "No results"))
     }
     
 }

@@ -53,6 +53,8 @@ MandelbrotResult iterate(c64 C, device const MetalComputeParameters *MP, device 
     int i;
 
     for(i=0; i<=MP->iterations; i++) {
+        // Derivation of Z
+        D = (Z + Z) * D + 1.0;
         
         // Iteration formula
         Z = sqr(Z) + C;
@@ -116,7 +118,12 @@ MandelbrotResult iterate(c64 C, device const MetalComputeParameters *MP, device 
             }
         }
         
-        D = (Z + Z) * D + 1.0;
+        if (MP->bStripes) {
+            // Calculate exponential moving average of stripe value
+            // stripeAvg = expMovAvg(previousAvg: stripeAvg, smooth: P.MP.stripeSig, newValue: stripet)
+            stripeAvg = stripeAvg * stripeSig + stripet * (1 - stripeSig);
+        }
+
     }
     
     return { smoothIter.v, nZ.v, normal.real().v, normal.imaginary().v, distance.v, potential.v, stripeAvg.v, filament.v, R_MAX_ITERATIONS };

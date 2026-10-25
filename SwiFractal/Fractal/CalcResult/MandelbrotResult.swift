@@ -62,7 +62,7 @@ struct MandelbrotResultFlags: OptionSet, Bitmaskable, Sendable {
 /// Mandelbrot calculation result
 ///
 struct MandelbrotResult : CalculationResult, MetalDecodable {
-
+    
     /// Smooth iteration counter
     var smoothIter: Double = 0.0
     
@@ -94,47 +94,39 @@ struct MandelbrotResult : CalculationResult, MetalDecodable {
     
     /// Convert MandelbrotResult to MandelbrotResultMtl
     /*
-    var mandelbrotResultMtl: MandelbrotResultMtl {
-        MandelbrotResultMtl(
-            smoothIter: Float2(smoothIter),
-            nZ: Float2(nZ),
-            normalReal: Float2(normalReal),
-            normalImag: Float2(normalImag),
-            distance: Float2(distance),
-            potential: Float2(potential),
-            stripeAvg: Float2(stripeAvg),
-            filament: Float2(filament),
-            flags: Int32(flags.rawValue)
-        )
-    }
+     var mandelbrotResultMtl: MandelbrotResultMtl {
+     MandelbrotResultMtl(
+     smoothIter: Float2(smoothIter),
+     nZ: Float2(nZ),
+     normalReal: Float2(normalReal),
+     normalImag: Float2(normalImag),
+     distance: Float2(distance),
+     potential: Float2(potential),
+     stripeAvg: Float2(stripeAvg),
+     filament: Float2(filament),
+     flags: Int32(flags.rawValue)
+     )
+     }
      */
-
+    
     /// Return smoothIter as histogram value
     var histValue: Double { smoothIter }
     
     /// Return true, if result contains valid histogram value (flags == .bailout)
     var hasValidHistValue: Bool { flags == .bailout }
     
-    /// Zero result. flags = .calculate
-    static let zero: MandelbrotResult = MandelbrotResult()
+    /// Zero result. flags = .defaultColor
+    static let zero: MandelbrotResult = MandelbrotResult(flags: .defaultColor)
     
     /// Initial result. flags = .calculate
-    static let initialValue: MandelbrotResult = MandelbrotResult()
+    static let initialValue: MandelbrotResult = MandelbrotResult(flags: .calculate)
     
     /// Default result. flags = .defaultColor
     static let defaultValue: MandelbrotResult = MandelbrotResult(flags: .defaultColor)
     
-    init(smoothIter: Double = 0.0, nZ: Double = 0.0, normalReal: Double = 0.0, normalImag: Double = 0.0, distance: Double = 0.0, potential: Double = 0.0, stripeAvg: Double = 0.0, filament: Double = 0.0, flags: MandelbrotResultFlags = .defaultColor) {
-        self.smoothIter = smoothIter
-        self.nZ = nZ
-        self.normalReal = normalReal
-        self.normalImag = normalImag
-        self.distance = distance
-        self.potential = potential
-        self.stripeAvg = stripeAvg
-        self.filament = filament
-        self.flags = flags
-    }
+}
+
+extension MandelbrotResult {
     
     /// Convert MandelbrotResultMtl to MandelbrotResult
     init(fromMetal m: MandelbrotResultMtl) {

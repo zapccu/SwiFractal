@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		430A15D1308BC24C00207CB1 /* MetalCompute in Frameworks */ = {isa = PBXBuildFile; productRef = 430A15D0308BC24C00207CB1 /* MetalCompute */; };
 		4339B6C32F84E3030035AFC7 /* SwiftMPx in Frameworks */ = {isa = PBXBuildFile; productRef = 4339B6C22F84E3030035AFC7 /* SwiftMPx */; };
+		435E32BF308CB57200B36E2E /* ParSetKit in Frameworks */ = {isa = PBXBuildFile; productRef = 435E32BE308CB57200B36E2E /* ParSetKit */; };
+		4375AEA5308CB35400B6063B /* SwiftMPx in Frameworks */ = {isa = PBXBuildFile; productRef = 4375AEA4308CB35400B6063B /* SwiftMPx */; };
 		43828CCA2CE8A0DF00B8099C /* ComplexModule in Frameworks */ = {isa = PBXBuildFile; productRef = 43828CC92CE8A0DF00B8099C /* ComplexModule */; };
 		43828CCC2CE8A0DF00B8099C /* Numerics in Frameworks */ = {isa = PBXBuildFile; productRef = 43828CCB2CE8A0DF00B8099C /* Numerics */; };
 		43828CCE2CE8A0DF00B8099C /* RealModule in Frameworks */ = {isa = PBXBuildFile; productRef = 43828CCD2CE8A0DF00B8099C /* RealModule */; };
@@ -35,6 +37,8 @@
 			files = (
 				4399FE7930289721006DF279 /* Metal64 in Frameworks */,
 				43828CCC2CE8A0DF00B8099C /* Numerics in Frameworks */,
+				4375AEA5308CB35400B6063B /* SwiftMPx in Frameworks */,
+				435E32BF308CB57200B36E2E /* ParSetKit in Frameworks */,
 				4339B6C32F84E3030035AFC7 /* SwiftMPx in Frameworks */,
 				43828CCA2CE8A0DF00B8099C /* ComplexModule in Frameworks */,
 				43828CCE2CE8A0DF00B8099C /* RealModule in Frameworks */,
@@ -89,6 +93,8 @@
 				4339B6C22F84E3030035AFC7 /* SwiftMPx */,
 				4399FE7830289721006DF279 /* Metal64 */,
 				430A15D0308BC24C00207CB1 /* MetalCompute */,
+				4375AEA4308CB35400B6063B /* SwiftMPx */,
+				435E32BE308CB57200B36E2E /* ParSetKit */,
 			);
 			productName = SwiFractal;
 			productReference = 43828CA42CE7CD3A00B8099C /* SwiFractal.app */;
@@ -120,10 +126,10 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				43828CC82CE8A0DF00B8099C /* XCRemoteSwiftPackageReference "swift-numerics" */,
-				43AC438F2F6C6D7800531AB1 /* XCLocalSwiftPackageReference "../ParSetKit" */,
-				4339B6C12F84E3030035AFC7 /* XCLocalSwiftPackageReference "../SwiftMPx" */,
 				430A15CF308BC24C00207CB1 /* XCRemoteSwiftPackageReference "MetalCompute" */,
 				4375AD18308BC31E00B6063B /* XCRemoteSwiftPackageReference "Metal64" */,
+				4375AEA3308CB35400B6063B /* XCRemoteSwiftPackageReference "SwiftMPx" */,
+				435E32BD308CB57200B36E2E /* XCRemoteSwiftPackageReference "ParSetKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 43828CA52CE7CD3A00B8099C /* Products */;
@@ -389,17 +395,6 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		4339B6C12F84E3030035AFC7 /* XCLocalSwiftPackageReference "../SwiftMPx" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../SwiftMPx;
-		};
-		43AC438F2F6C6D7800531AB1 /* XCLocalSwiftPackageReference "../ParSetKit" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../ParSetKit;
-		};
-/* End XCLocalSwiftPackageReference section */
-
 /* Begin XCRemoteSwiftPackageReference section */
 		430A15CF308BC24C00207CB1 /* XCRemoteSwiftPackageReference "MetalCompute" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -409,12 +404,28 @@
 				minimumVersion = 2.0.1;
 			};
 		};
+		435E32BD308CB57200B36E2E /* XCRemoteSwiftPackageReference "ParSetKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/zapccu/ParSetKit.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
 		4375AD18308BC31E00B6063B /* XCRemoteSwiftPackageReference "Metal64" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/zapccu/Metal64";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 1.0.6;
+			};
+		};
+		4375AEA3308CB35400B6063B /* XCRemoteSwiftPackageReference "SwiftMPx" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/zapccu/SwiftMPx";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.3;
 			};
 		};
 		43828CC82CE8A0DF00B8099C /* XCRemoteSwiftPackageReference "swift-numerics" */ = {
@@ -435,6 +446,16 @@
 		};
 		4339B6C22F84E3030035AFC7 /* SwiftMPx */ = {
 			isa = XCSwiftPackageProductDependency;
+			productName = SwiftMPx;
+		};
+		435E32BE308CB57200B36E2E /* ParSetKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 435E32BD308CB57200B36E2E /* XCRemoteSwiftPackageReference "ParSetKit" */;
+			productName = ParSetKit;
+		};
+		4375AEA4308CB35400B6063B /* SwiftMPx */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4375AEA3308CB35400B6063B /* XCRemoteSwiftPackageReference "SwiftMPx" */;
 			productName = SwiftMPx;
 		};
 		43828CC92CE8A0DF00B8099C /* ComplexModule */ = {

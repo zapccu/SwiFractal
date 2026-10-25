@@ -1,5 +1,5 @@
 {
-  "originHash" : "30c98fcc2ab275aaf42ec189a4e4e036425f6c6213da6d516c56a7f5ee29fa7c",
+  "originHash" : "e4f035b2a77f79a8c19a5a38aae38cd1fe60eb75966350ea8fc60db533f185e9",
   "pins" : [
     {
       "identity" : "metal64",
@@ -20,11 +20,29 @@
       }
     },
     {
+      "identity" : "parsetkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/zapccu/ParSetKit.git",
+      "state" : {
+        "revision" : "2d3fcdbf9eb5d26f2a06c2b1063234b878634b07",
+        "version" : "1.0.0"
+      }
+    },
+    {
       "identity" : "swift-numerics",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-numerics.git",
       "state" : {
         "revision" : "0c0290ff6b24942dadb83a929ffaaa1481df04a2",
+        "version" : "1.1.1"
+      }
+    },
+    {
+      "identity" : "swiftmpx",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/zapccu/SwiftMPx",
+      "state" : {
+        "revision" : "f421fc10d24b59e982b2b3aff44cd28705dd3ec6",
         "version" : "1.1.1"
       }
     }

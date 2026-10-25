@@ -131,16 +131,16 @@ struct ColorMapper : Sendable {
         if colorParameters.colorizeMode == .steps {
             // Color update: constant color on each major step
             var steps2 = 1.0 / Double(colorParameters.steps)
-            virtualIndex = cycleIter - cycleIter % steps2
+            virtualIndex = cycleIter - fmod(cycleIter, steps2)
 
             // Major step: step_s frequency
             var x = Float(fmod(cycleIter, steps2) / steps2)
-            let lightStep1: Float = 6 * (1 - x.pow(5) - (1 - x).pow(100)) / 10
+            let lightStep1: Float = 6 * (1 - pow(x, 5) - pow((1 - x), 100)) / 10
             
             // Minor step: 8 for each major step
             steps2 /= 8
             x = Float(fmod(cycleIter, steps2) / steps2)
-            let lightStep2: Float = 6 * (1 - x.pow(5) - (1 - x).pow(30)) / 10
+            let lightStep2: Float = 6 * (1 - pow(x, 5) - pow((1 - x), 30)) / 10
             
             // Overlay merge between major and minor steps
             let lightStep = blending.blend(base: lightStep2, top: lightStep1)

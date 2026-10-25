@@ -13,12 +13,17 @@ import SwiftMPx
 /// Shortcut for Complex type for Double values
 public typealias Cplx = Complex<Double>
 
+
 //
-// Extend Complex<Double>
+// Make Complex<Double> conform to ComplexNumber protocol
 //
 extension Complex<Double>: ComplexNumber, @retroactive LosslessStringConvertible {
+
+    typealias RT = Double
     
-    typealias PrecisionType = Double
+    var precision: Int {
+        return Swift.max(real.precision, imaginary.precision)
+    }
     
     private func parseComplexNumber(_ input: String) -> (real: Double, imag: Double)? {
         guard !input.isEmpty else {
@@ -99,19 +104,15 @@ extension Complex<Double>: ComplexNumber, @retroactive LosslessStringConvertible
         return "\(real)+\(imaginary)i"
     }
     
-    /// Return `real * real + imaginary * imaginary`
-    var norm: Double {
-        return lengthSquared
+    
+    /// Return square of complex number
+    var squared: Cplx {
+        .init(real * real - imaginary * imaginary, 2.0 * real * imaginary)
     }
     
     /// Return atan2(imaginary, real)
     var arg: Double {
         return atan2(imaginary, real)
-    }
-    
-    /// Return `sqrt(real * real + imaginary * imaginary)`
-    var abs: Double {
-        return length
     }
     
     /// Return minimum of real and imaginary part
@@ -132,6 +133,14 @@ extension Complex<Double>: ComplexNumber, @retroactive LosslessStringConvertible
     /// Convert to Cplx
     func toCplx() -> Cplx {
         return self
+    }
+    
+    static func zero(precision: Int = 53) -> Complex<Double> {
+        .init(0, 0)
+    }
+    
+    func toMPComplex(precision: Int) -> MPComplex {
+        return MPComplex(MPFloat(real, precision: precision), MPFloat(imaginary, precision: precision))
     }
     
     /// Compare Cplx
@@ -178,6 +187,17 @@ extension Complex<Double>: ComplexNumber, @retroactive LosslessStringConvertible
     static func - (lhs: Double, rhs: Cplx) -> Cplx {
         return Cplx(lhs) - rhs
     }
+    
+    /// Test if `(self - other).lengthSquared < tolerance`
+    /// - Parameters:
+    ///   - other: Other value
+    ///   - tolerance: Tolerance
+    /// - Returns: true if values are almost equal
+    func almostEqual(to other: Cplx, tolerance: Double) -> Bool {
+        let diff = self - other
+        return diff.lengthSquared < tolerance
+    }
+    
 }
 
 extension String {

@@ -62,15 +62,18 @@ extension FractalCalculation {
         var orbits: [CT] = [Z0]
         orbits.reserveCapacity(P.limits.orbitLength)
         
+        var dScratch = CT.makeScratch(precision: P.precision)   // Scratch value for derivation
+        var zScratch = CT.makeScratch(precision: P.precision)   // Scratch value for iteration
+        
         for i in 0...P.limits.iterations {
             
             // Derivation D of Z
             // D = D * 2.0 * Z + 1.0
-            D = (Z + Z) * D + 1.0
+            D.formDerivativeStep(z: Z, scratch: &dScratch)
             
             // Iteration formula
             // Z = Z * Z + C
-            Z = Z.squared + C
+            Z.formSquareAdd(C, scratch: &zScratch)
             
             if P.bStripes {
                 // stripet = (sin(Double(P.MP.stripes) * Z.arg) + 1.0) * 0.5
