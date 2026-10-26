@@ -92,23 +92,9 @@ protocol PreciseFloatingPoint: BasicCalculations & RealFunctions & Codable & Sen
     // Linear spacing
     static func linspace(_ start: Self, _ end: Self, _ n: Int) -> [Self]
     
+    func almostEqual(to other: Self, tolerance: Self) -> Bool
 }
 
-//
-// Initialize value by literal
-//
-extension PreciseFloatingPoint {
-  /*
-    /// Initialize with literal Double value
-    public init(floatLiteral value: Double) {
-        self.init(value, precision: 53)
-    }
-    
-    /// Initialize with literal Int value
-    public init(integerLiteral value: Int) {
-        self.init(value, precision: 53)
-    }
-    */
-}
+
 
 

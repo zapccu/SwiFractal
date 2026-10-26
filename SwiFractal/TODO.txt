@@ -1,4 +1,5 @@
 
+- Check smoothIter calculation
 - MandelbrotDynamicParameters: Arbitrary precision
 - Check code marked as "Obsolete?"
 - Check code marked as "Arbitrary precision!"

@@ -127,12 +127,6 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
     /// Return minimum of sizeX and sizeY
     var minSize: RT { RT.min(sizeX, sizeY) }
     
-    /// Return corner as complex string
-    var csCorner: ComplexString { ComplexString(cornerX.toString(), cornerY.toString()) }
-    
-    /// Return size as complex string
-    var csSize: ComplexString { ComplexString(sizeX.toString(), sizeY.toString()) }
-
     /// Return corner as complex number (either Cplx or MPComplex)
     var corner: CT { CT(cornerX, cornerY) }
     

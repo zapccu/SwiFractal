@@ -62,6 +62,7 @@ extension FractalCalculation {
         var orbits: [CT] = [Z0]
         orbits.reserveCapacity(P.limits.orbitLength)
         
+        // Reusable scratch values for MPComplex. Not used for Double precision
         var dScratch = CT.makeScratch(precision: P.precision)   // Scratch value for derivation
         var zScratch = CT.makeScratch(precision: P.precision)   // Scratch value for iteration
         
@@ -76,7 +77,6 @@ extension FractalCalculation {
             Z.formSquareAdd(C, scratch: &zScratch)
             
             if P.bStripes {
-                // stripet = (sin(Double(P.MP.stripes) * Z.arg) + 1.0) * 0.5
                 stripet = (sin(Double(P.stripes) * Z.arg.toDouble()) + 1) * 0.5
             }
             
@@ -90,14 +90,20 @@ extension FractalCalculation {
                 // Using precalculated values
                 // div_2_logBailout = 2 / log(bailout)
                 // let logRatio = logAbsZ * P.div_2_logBailout
-                //let logRatio = 2.0 * logaZ / log(P.MP.bailout)
+                // let logRatio = 2.0 * logaZ / log(P.MP.bailout)
                 
                 // Calculate smooth iteration value for smooth coloring
                 // This value must be added to the iteration count.
-                // smoothIter = 1.0 - log(logRatio) * _NC.RLOG2
+                // logRatio = 2 * log(aZ) / log(bailout)
+                // smoothIter = -log(logRatio) * _NC.RLOG2
                 let smoothIter = -log(logAbsZ / P.limits.logBailout) * _NC.RLOG2
                 
                 // Exterior distance estimation
+                //
+                // We return the logarithm of the distance because:
+                // - Logarithm must be calculated with arbitrary precision
+                // - MandelbrotResult supports only Double values
+                // - We need the logarithm of the distance for color mapping
                 //
                 // distance = (absZ * logAbsZ * 2) / D.length
                 // The numerator (absZ * logAbsZ * 2) is a Double value .

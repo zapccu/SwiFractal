@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/zapccu/SwiftMPx",
       "state" : {
-        "revision" : "f421fc10d24b59e982b2b3aff44cd28705dd3ec6",
-        "version" : "1.1.1"
+        "revision" : "c5532fdffaac387beedf702e80b76feae4afa028",
+        "version" : "1.2.0"
       }
     }
   ],

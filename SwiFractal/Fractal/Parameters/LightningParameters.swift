@@ -14,22 +14,22 @@ import SwiftMPx
 ///
 struct LightningParameters: FractalParameters {
     
-    /// Angle of light source in degrees (0...360)/
+    /// Angle of light source in degrees (0...360)
     var angle: Int = 45
     
     /// Elevation of light source in degrees (0...90)
     var elevation: Int = 45
     
-    /// Opacity of the lightning effect (0...1)/
+    /// Opacity of the lightning effect (0...1)
     var opacity: Double = 0.75
     
     /// Ambient light factor (0...1)
     var ambient: Double = 0.2
     
-    /// Diffuse reflection factor (0...1)/
+    /// Diffuse reflection factor (0...1)
     var diffuse: Double = 0.5
     
-    /// Specular reflection factor (0...1)/
+    /// Specular reflection factor (0...1)
     var specular: Double = 0.5
     
     /// Shininess factor for specular reflection

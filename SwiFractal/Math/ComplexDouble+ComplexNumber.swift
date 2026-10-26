@@ -19,7 +19,7 @@ public typealias Cplx = Complex<Double>
 //
 extension Complex<Double>: ComplexNumber, @retroactive LosslessStringConvertible {
 
-    typealias RT = Double
+    //typealias RT = Double
     
     var precision: Int {
         return Swift.max(real.precision, imaginary.precision)

@@ -11,12 +11,14 @@ import SwiftMPx
 
 
 //
-// Make MPFloat conform to PreciseFloatingPoint
+// Make MPFloat conform to RealFunctions and ElementaryFunction from Swift-Numerics package
 //
 extension MPFloat: @retroactive RealFunctions {}
 extension MPFloat: @retroactive ElementaryFunctions {}
-extension MPFloat: @retroactive AdditiveArithmetic {}
 
+//
+// Make MPFloat conform to PreciseFloatingPoint
+//
 extension MPFloat : PreciseFloatingPoint {
     
     typealias CT = MPComplex
@@ -32,8 +34,19 @@ extension MPFloat : PreciseFloatingPoint {
     public var asDouble: Double { Double(self.toDouble()) }
     
     /// Convert to MPFloat
+    @inline(__always)
     public func toMPFloat(precision: Int) -> MPFloat {
         MPFloat(self, precision: precision)
+    }
+    
+    /// Check if absolute difference between two values is less or equal a tolerance value
+    /// - Parameters:
+    ///   - other: 2nd value
+    ///   - tolerance: Tolerance. Default = 0: Identical with ==
+    /// - Returns: true if values are almost equal
+    @inline(__always)
+    public func almostEqual(to other: MPFloat, tolerance: MPFloat) -> Bool {
+        MPFloat.abs(self - other) < tolerance
     }
     
 }
