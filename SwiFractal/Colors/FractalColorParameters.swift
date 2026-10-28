@@ -17,7 +17,6 @@ import Numerics
 enum EnumColorizeMode: Int, CaseIterable {
     case iterations = 0     // iteration count
     case distance   = 1     // distance to Mandelbrot set
-    case potential  = 2     // potential of fractal point
     case steps      = 3     // color steps
     case stripes    = 4     // stripes
 }
@@ -80,7 +79,7 @@ struct FractalColorParameters: FractalParameters {
         "Grey-1024", colorPoints: [RGBAColor(80.0/255.0, 80.0/255.0, 80.0/255.0), .white], colorCount: 1024, defColor: .black)
     )
     
-    /// Colorize mode: iterations, distance, potential, steps, stripes
+    /// Colorize mode: iterations, distance, steps, stripes
     var colorizeMode = ColorizeMode(.iterations)
     
     /// Colorize outside\

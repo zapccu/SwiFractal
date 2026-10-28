@@ -99,26 +99,12 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
     /// Lightning
     let lightning: Lightning         // Lightning depends on LightningParameters
     
-    /// Array with potential values:\
-    /// `potential[n] = 1/2^n, n=0..<iterations`
-    var potential: [Double] = []
+    /// Thresholds for orbit detection
+    let t1: Double
+    let t2: Double
+    let t3: Double
     
-    /// Return Metal compute parameters
-    /*
-    var computeParameters: MetalComputeParameters {
-        MetalComputeParameters(
-            iterations: Int32(limits.iterations),
-            bStripes: bStripes ? 1 : 0,
-            bailout: Float(limits.bailout),
-            logBailout: Float2(limits.logBailout),
-            div_2_logBailout: Float2(limits.div_2_logBailout),
-            stripes: Float2(stripes),
-            stripeSig: Float2(stripeSig),
-            logPixel: Float2(logPixel),
-            invDistThreshold: Float2(invDistThreshold.asDouble)
-        )
-    }
-    */
+    var extendedInfo: ResultContains = []
     
     /// Initialize dynamic calculation parameters
     /// - Parameters:
@@ -140,12 +126,12 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
         self.initial = anypar.initialMapping
         
         // Resolutions
-        self.resolution = resolution
-        self.imageWidth  = Int(resolution.width)
-        self.imageHeight = Int(resolution.height)
-        self.osImageWidth = Int(resolution.width) * anypar.dimensions.oversampling
+        self.resolution    = resolution
+        self.imageWidth    = Int(resolution.width)
+        self.imageHeight   = Int(resolution.height)
+        self.osImageWidth  = Int(resolution.width) * anypar.dimensions.oversampling
         self.osImageHeight = Int(resolution.height) * anypar.dimensions.oversampling
-        self.osSize = ISize(width: osImageWidth, height: osImageHeight)
+        self.osSize        = ISize(width: osImageWidth, height: osImageHeight)
         
         // Dimensions
         self.dimensions = anypar.dimensions
@@ -163,24 +149,26 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
         // Limits
         self.limits = FractalDynamicLimits(anypar.limits)
         
+        // Tolerances
+        // P.logPixel = log(Pixelsize); calculate in Log space to prevent underflows
+        let logEps = min(max(self.logPixel + log(8.0), log(anypar.limits.orbitDelta1)), log(3e-6))
+        self.t1 = exp(2.0 * logEps)
+        self.t2 = t1 * anypar.limits.orbitDeltaF
+        self.t3 = anypar.limits.orbitDelta3
+        
         // Orbits / colorize interior of Mandelbrot set
         self.colorizeInside = anypar.colorParameters.colorizeInside.element
 
         // Stripes
-        self.bStripes = anypar.colorParameters.stripes > 0
+        self.bStripes = anypar.colorParameters.colorizeMode == .stripes && anypar.colorParameters.stripes > 0
         self.stripes = anypar.colorParameters.stripes
         self.stripeSig = anypar.colorParameters.stripeSig
         
         // Lightning
         self.lightning = Lightning(anypar.lightParameters)
         
-        // Build potential lookup table
-        var pot: Double = 1.0
-        self.potential = Array(repeating: 0.0, count: anypar.limits.iterations + 1)
-        for i in 0...anypar.limits.iterations {
-            potential[i] = pot
-            pot *= 0.5
-        }
+        if self.bStripes { self.extendedInfo |= .stripes }
+        if anypar.colorParameters.colorizeInside == .orbits { self.extendedInfo |= .orbits }
     }
     
     func toMetal() -> MetalComputeParameters {

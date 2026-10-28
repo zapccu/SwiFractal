@@ -75,10 +75,10 @@ enum FractalCalculation<PT: FractalData> {
             guard outRow[i].flags == .calculate else { continue }
             
             // Initial values of iteration
-            let (z0, c) = mapping.values(for: inRow[i])
+            let (z0, c, d0) = mapping.values(for: inRow[i])
             
             // Calculate point
-            outRow[i] = calculatePointZ2(Z0: z0, C: c, P: P)
+            outRow[i] = calculatePointZ2(Z0: z0, C: c, D0: d0, P: P)
         }
     }
     
@@ -134,8 +134,8 @@ enum FractalCalculation<PT: FractalData> {
         let mapper = P.initial
         
         for i in stride(from: 0, to: inRow.count, by: skip + 1) {
-            let (z0, c) = mapper.values(for: inRow[i])
-            outRow[i] = calculatePointZ2(Z0: z0, C: c, P: P)
+            let (z0, c, d0) = mapper.values(for: inRow[i])
+            outRow[i] = calculatePointZ2(Z0: z0, C: c, D0: d0, P: P)
             
             for j in 1...skip {
                 let n = i + j
@@ -173,8 +173,8 @@ enum FractalCalculation<PT: FractalData> {
         for i in 0..<totalCount {
             guard outChunk.buffer[i].flags == .calculate else { continue }
             
-            let (z0, c) = mapper.values(for: inChunk.buffer[i])
-            let result = calculatePointZ2(Z0: z0, C: c, P: P)
+            let (z0, c, d0) = mapper.values(for: inChunk.buffer[i])
+            let result = calculatePointZ2(Z0: z0, C: c, D0: d0, P: P)
             if result.flags == .error {
                 errorCount += 1
             }
@@ -186,10 +186,10 @@ enum FractalCalculation<PT: FractalData> {
                 return CombinedResult(nil, CalculationInfo(state: .cancelled))
             }
         }
-
+            
         return CombinedResult(
             Matrix<MandelbrotResult>((P.osImageHeight, P.osImageWidth), grid: Array(outBuffer.pointer)),
-            CalculationInfo(state: .completed, errorCount: errorCount)
+            CalculationInfo(state: .completed, extendedInfo: P.extendedInfo, errorCount: errorCount)
         )
     }
 
@@ -280,7 +280,7 @@ enum FractalCalculation<PT: FractalData> {
                 
         return CombinedResult(
             Matrix<MandelbrotResult>((P.osImageHeight, P.osImageWidth), grid: Array(outBuffer.pointer)),
-            CalculationInfo(state: .completed, errorCount: glitchCount)
+            CalculationInfo(state: .completed, extendedInfo: P.extendedInfo, errorCount: glitchCount)
         )
     }
 
@@ -325,7 +325,7 @@ enum FractalCalculation<PT: FractalData> {
 
         return CombinedResult(
             Matrix<MandelbrotResult>((P.osImageHeight, P.osImageWidth), grid: Array(outBuffer.pointer)),
-            CalculationInfo(state: .completed)
+            CalculationInfo(state: .completed, extendedInfo: P.extendedInfo)
         )
     }
     
@@ -343,7 +343,7 @@ enum FractalCalculation<PT: FractalData> {
             let kernel = try metal.kernel("mandelbrot")
             
             // Compute the Mandelbrot set
-            let result: [MandelbrotResult] = try await kernel.run(cplx2Grid.pointer, P, P.potential, count: cplx2Grid.size)
+            let result: [MandelbrotResult] = try await kernel.run(cplx2Grid.pointer, P, count: cplx2Grid.size)
             
             return CombinedResult(
                 Matrix<MandelbrotResult>((P.osImageHeight, P.osImageWidth), grid: result),
@@ -352,7 +352,7 @@ enum FractalCalculation<PT: FractalData> {
         }
         catch {
             debugPrint(error)
-            return CombinedResult(nil, CalculationInfo(state: .error, message: error.localizedDescription))
+            return CombinedResult(nil, CalculationInfo(state: .error, extendedInfo: P.extendedInfo, message: error.localizedDescription))
         }
     }
     

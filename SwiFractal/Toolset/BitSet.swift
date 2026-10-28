@@ -97,6 +97,16 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
         return rawValue == 0
     }
     
+    /// Return true if bit is not set
+    func notSet(_ bit: Element) -> Bool {
+        return self.rawValue & (1 << bit.rawValue) == 0
+    }
+    
+    /// Return true if bit is set
+    func isSet(_ bit: Element) -> Bool {
+        return self.rawValue & (1 << bit.rawValue) != 0
+    }
+    
     /// Test if all bits in array are set
     func allSet(_ bits: [Element]) -> Bool {
         return bits.allSatisfy( { self.rawValue & (1 << $0.rawValue) != 0} )
@@ -162,14 +172,23 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
         }
     }
     
-    static func == (lhs: BitSet, rhs: Element) -> Bool {
+    /// Return true if BitSet contains only specified bit
+    static func === (lhs: BitSet, rhs: Element) -> Bool {
         let bitMask = 1 << rhs.rawValue
         return lhs.rawValue == bitMask
     }
-
+    
+    static func == (lhs: BitSet, rhs: Element) -> Bool {
+        return lhs.isSet(rhs)
+    }
+    
     static func != (lhs: BitSet, rhs: Element) -> Bool {
-        let bitMask = 1 << rhs.rawValue
-        return lhs.rawValue != bitMask
+        lhs.notSet(rhs)
+    }
+
+    /// Compare BitSets. Return true if BitSets are  equal
+    static func == (lhs: BitSet, rhs: BitSet) -> Bool {
+        return lhs.rawValue == rhs.rawValue
     }
     
     // ----------------------------------------------------------------------
@@ -218,6 +237,11 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
     static func | (lhs: BitSet, rhs: Element) -> Bool {
         let bitMask = 1 << rhs.rawValue
         return (lhs.rawValue | bitMask) != 0
+    }
+    
+    /// Return true if all bits are 0
+    static prefix func ! (lhs: BitSet) -> Bool {
+        return lhs.rawValue == 0
     }
 
 }

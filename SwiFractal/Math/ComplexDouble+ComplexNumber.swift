@@ -131,14 +131,21 @@ extension Complex<Double>: ComplexNumber, @retroactive LosslessStringConvertible
     }
     
     /// Convert to Cplx
+    @inline(__always)
     func toCplx() -> Cplx {
         return self
     }
     
+    /// Zero value
+    @inline(__always)
     static func zero(precision: Int = 53) -> Complex<Double> {
         .init(0, 0)
     }
     
+    /// Convert Complex<Double> to MPComplex
+    /// - Parameter precision: Precision bits
+    /// - Returns: MPComplex value
+    @inline(__always)
     func toMPComplex(precision: Int) -> MPComplex {
         return MPComplex(MPFloat(real, precision: precision), MPFloat(imaginary, precision: precision))
     }

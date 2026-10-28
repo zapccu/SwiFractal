@@ -43,7 +43,6 @@ struct MandelbrotResult {
     float2 normalReal;
     float2 normalImag;
     float2 distance;
-    float2 potential;
     float2 stripeAvg;
     float2 filament;
     int32_t flags;

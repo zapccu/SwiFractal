@@ -24,11 +24,10 @@ f64 interpolateCubic(f64 edge0, f64 edge1, f64 x) {
 }
 
 // Mandelbrot iteration
-MandelbrotResult iterate(c64 C, device const MetalComputeParameters *MP, device const float2 *Potentials) {
+MandelbrotResult iterate(c64 C, device const MetalComputeParameters *MP) {
     
     f64 distance = 0.0;      // Distance of current point to Mandelbrot set
     f64 logPixelDist = 0.0;  // Logarithm of distance
-    f64 potential = 0.0;     // Potential of current point
     f64 stripeAvg = 0.0;     // Stripe average value
     f64 stripet = 0.0;       // Current stripe value
 
@@ -80,9 +79,6 @@ MandelbrotResult iterate(c64 C, device const MetalComputeParameters *MP, device 
             f64 ratio = distance * invDistThreshold;
             f64 t = min(max(1.5 - ratio, 0.0), 1.0);     // 1 for ratio <= 0.5, 0 for ratio >= 1.5
             f64 filamentStrength = t * t * (3.0 - 2.0 * t);
-            
-            // Potential calculation
-            potential = logAbsZ * f64(Potentials[i]);
 
             if (MP->bStripes) {
                 // Stripes calculation
@@ -99,7 +95,6 @@ MandelbrotResult iterate(c64 C, device const MetalComputeParameters *MP, device 
                 nZ.v,
                 normal.real().v, normal.imaginary().v,
                 distance.v,
-                potential.v,
                 stripeAvg.v,
                 filamentStrength.v,
                 R_BAILOUT
@@ -108,7 +103,7 @@ MandelbrotResult iterate(c64 C, device const MetalComputeParameters *MP, device 
         
         // Simplified periodicity check, no orbit colorization
         if (abs(nZ.v.x - nZ1.v.x) < 1.0e-10) {
-            return { smoothIter.v, nZ.v, normal.real().v, normal.imaginary().v, distance.v, potential.v, stripeAvg.v, filament.v, R_MAX_ITERATIONS };
+            return { smoothIter.v, nZ.v, normal.real().v, normal.imaginary().v, distance.v, stripeAvg.v, filament.v, R_MAX_ITERATIONS };
         }
         else {
             period++;
@@ -126,19 +121,18 @@ MandelbrotResult iterate(c64 C, device const MetalComputeParameters *MP, device 
 
     }
     
-    return { smoothIter.v, nZ.v, normal.real().v, normal.imaginary().v, distance.v, potential.v, stripeAvg.v, filament.v, R_MAX_ITERATIONS };
+    return { smoothIter.v, nZ.v, normal.real().v, normal.imaginary().v, distance.v, stripeAvg.v, filament.v, R_MAX_ITERATIONS };
 }
 
 
 // Kernel function for Mandelbrot calculation
 kernel void mandelbrot(device const float4 *C,                          // Array with complex coordinates
                        device const MetalComputeParameters *MP,         // Compute parameters
-                       device const float2 *Potentials,                 // Potential factors
                        device MandelbrotResult *resultArray,            // Calculation results
                        uint   index [[ thread_position_in_grid ]])
 {
     // Result array contains a MandelbrotResultMtl element for each point in array C
-    resultArray[index] = iterate(c64(C[index]), MP, Potentials);
+    resultArray[index] = iterate(c64(C[index]), MP);
 }
 
 

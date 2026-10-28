@@ -103,4 +103,5 @@ extension FractalCalculation {
         
         return MandelbrotResult.defaultValue
     }
+    
 }

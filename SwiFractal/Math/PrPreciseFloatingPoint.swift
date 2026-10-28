@@ -39,6 +39,9 @@ protocol PreciseFloatingPoint: BasicCalculations & RealFunctions & Codable & Sen
     // Not a number
     static var nan: Self { get }
     
+    /// Return the sign of a value
+    var sign: FloatingPointSign { get }
+    
     // Convert to MPFloat
     var asMPFloat: MPFloat { get }
     
@@ -73,6 +76,8 @@ protocol PreciseFloatingPoint: BasicCalculations & RealFunctions & Codable & Sen
     
     // Maximum of two values
     static func max(_ lhs: Self, _ rhs: Self) -> Self
+    
+    /// Sign of value
     
     // Floating point modulo division
     static func fmod(_ lhs: Self, _ rhs: Self) -> Self

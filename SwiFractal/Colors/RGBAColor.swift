@@ -256,6 +256,14 @@ struct RGBAColor: FractalParameters {
         self.init(col3: ColConv.xyz2rgb(ColConv.lab2xyz(ColConv.oklch2lab(COL3(lch.0, lch.1, lch.2)))))
     }
 
+    /// Scale color channels, ignore alpha channel
+    /// - Parameter scale: Scaling factor
+    /// - Returns: Scaled color. Channels clamped to 0...1
+    @inline(__always)
+    func scaleRGB(by scale: Float) -> RGBAColor {
+        RGBAColor(red * scale, green * scale, blue * scale, alpha)
+    }
+    
     /// Gamma correction
     /// - Parameter gamma: Gamma value
     /// - Returns: Corrected color

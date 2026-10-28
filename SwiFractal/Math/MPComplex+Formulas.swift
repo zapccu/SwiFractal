@@ -32,7 +32,7 @@ extension MPComplex {
     ///   - c:       Value to add
     ///   - scratch: Temporary value, reused across calls. Its precision is adjusted to the
     ///              precision of self if necessary (allocation only on first use).
-    public mutating func formSquareAdd(_ c: MPComplex, scratch: inout MPFloat) {
+    public mutating func squareAdd(_ c: MPComplex, scratch: inout MPFloat) {
         if scratch.precision != real.precision {
             scratch = MPFloat(precision: real.precision)
         }
@@ -52,13 +52,13 @@ extension MPComplex {
     }
     
     /// Calculate z = z² + c, in place (allocates one temporary value per call)
-    public mutating func formSquareAdd(_ c: MPComplex) {
+    public mutating func squareAdd(_ c: MPComplex) {
         var scratch = MPFloat(precision: real.precision)
-        formSquareAdd(c, scratch: &scratch)
+        squareAdd(c, scratch: &scratch)
     }
     
     /// Calculate z = z², in place. Use predefined scratch value
-    public mutating func formSquare(scratch: inout MPFloat) {
+    public mutating func square(scratch: inout MPFloat) {
         if scratch.precision != real.precision {
             scratch = MPFloat(precision: real.precision)
         }
@@ -70,16 +70,16 @@ extension MPComplex {
         swap(&real, &scratch)
     }
     
-    /// Calculate D = 2·D·Z + 1, in place (derivative dZ/dc of the Mandelbrot iteration).
-    /// Must be called with Z of the current iteration, i.e. BEFORE z.formSquareAdd(c).
-    /// Use MPComplex.formMandelbrotStep(z:d:c:scratch:) to perform both steps in the correct order.
+    /// Calculate first derivation of Z, in place. Must be called with Z of the current iteration (before squareAdd)
+    /// D = 2·D·Z + 1 for Mandelbrot, D = 2·D·Z for Julia.
     /// Rounding: imaginary part 1 rounding (fmma, doubling is exact), real part 2 roundings (fmms, +1).
     /// - Parameters:
     ///   - z:       Current value Z
+    ///   - isJulia: True if function called from Julia iteration
     ///   - scratch: Temporary value, reused across calls. Its precision is adjusted to the
     ///              precision of self if necessary. Use the same precision for D and Z to avoid
     ///              reallocations when the same scratch value is used for both steps.
-    public mutating func formDerivativeStep(z: MPComplex, scratch: inout MPFloat) {
+    public mutating func derivativeStep(z: MPComplex, isJulia: Bool, scratch: inout MPFloat) {
         if scratch.precision != real.precision {
             scratch = MPFloat(precision: real.precision)
         }
@@ -95,18 +95,21 @@ extension MPComplex {
                   imaginary.ptr, z.real.ptr, MPFR_RNDN)
         mpfr_mul_2ui(imaginary.mutablePtr, imaginary.ptr, 1, MPFR_RNDN)
         
-        // Re(D) = 2·Re(D·Z) + 1
+        // Re(D) = 2·Re(D·Z)
         mpfr_mul_2ui(scratch.mutablePtr, scratch.ptr, 1, MPFR_RNDN)
-        mpfr_add_ui(scratch.mutablePtr, scratch.ptr, 1, MPFR_RNDN)
+        if !isJulia {
+            // Mandelbrot set: Re(D) = Re(D) + 1
+            mpfr_add_ui(scratch.mutablePtr, scratch.ptr, 1, MPFR_RNDN)
+        }
         
         // New real part is in scratch. The old real part becomes the next scratch value.
         swap(&real, &scratch)
     }
     
     /// Calulate D = 2·D·Z + 1, in place (allocates one temporary value per call)
-    public mutating func formDerivativeStep(z: MPComplex) {
+    public mutating func derivativeStep(z: MPComplex, isJulia: Bool) {
         var scratch = MPFloat(precision: real.precision)
-        formDerivativeStep(z: z, scratch: &scratch)
+        derivativeStep(z: z, isJulia: isJulia, scratch: &scratch)
     }
     
 }

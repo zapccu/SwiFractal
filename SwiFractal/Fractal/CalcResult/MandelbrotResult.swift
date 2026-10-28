@@ -80,9 +80,6 @@ struct MandelbrotResult : CalculationResult, MetalDecodable {
     /// Contains orbit period for points inside of Mandelbrot set.
     var distance: Double = 0.0
     
-    /// Potential
-    var potential: Double = 0.0
-    
     /// Stripe average
     var stripeAvg: Double = 0.0
     
@@ -91,23 +88,6 @@ struct MandelbrotResult : CalculationResult, MetalDecodable {
     
     /// Flags: .calculate, .defaultColor, .maxIterations, .bailout, .inside, .error
     var flags: MandelbrotResultFlags = .calculate
-    
-    /// Convert MandelbrotResult to MandelbrotResultMtl
-    /*
-     var mandelbrotResultMtl: MandelbrotResultMtl {
-     MandelbrotResultMtl(
-     smoothIter: Float2(smoothIter),
-     nZ: Float2(nZ),
-     normalReal: Float2(normalReal),
-     normalImag: Float2(normalImag),
-     distance: Float2(distance),
-     potential: Float2(potential),
-     stripeAvg: Float2(stripeAvg),
-     filament: Float2(filament),
-     flags: Int32(flags.rawValue)
-     )
-     }
-     */
     
     /// Return smoothIter as histogram value
     var histValue: Double { smoothIter }
@@ -136,7 +116,6 @@ extension MandelbrotResult {
             normalReal: Double(fromMetal: m.normalReal),
             normalImag: Double(fromMetal: m.normalImag),
             distance: Double(fromMetal: m.distance),
-            potential: Double(fromMetal: m.potential),
             stripeAvg: Double(fromMetal: m.stripeAvg),
             filament: Double(fromMetal: m.filament),
             flags: MandelbrotResultFlags(rawValue: Int(m.flags))
@@ -156,28 +135,10 @@ struct MandelbrotResultMtl {
     var normalReal: Float2
     var normalImag: Float2
     var distance: Float2
-    var potential: Float2
     var stripeAvg: Float2
     var filament: Float2
     var flags: Int32
-    
-    /// Convert MandelbrotResultMtl to MandelbrotResult
-    /*
-    var mandelbrotResult: MandelbrotResult {
-        MandelbrotResult(
-            smoothIter: Double(smoothIter),
-            nZ: Double(nZ),
-            normalReal: Double(normalReal),
-            normalImag: Double(normalImag),
-            distance: Double(distance),
-            potential: Double(potential),
-            stripeAvg: Double(stripeAvg),
-            filament: Double(filament),
-            flags: MandelbrotResultFlags(rawValue: Int(flags))
-        )
-    }
-     */
-    
+
 }
 
 

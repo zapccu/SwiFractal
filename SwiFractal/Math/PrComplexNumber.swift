@@ -95,15 +95,15 @@ protocol ComplexNumber : Sendable {
     /// - Parameter precision: Precision in bits (ignored by fixed precision types)
     static func makeScratch(precision: Int) -> Scratch
     
-    /// D = 2·D·Z + 1, in place. Must be called with Z of the current iteration (before formSquareAdd)
-    mutating func formDerivativeStep(z: Self, scratch: inout Scratch)
+    /// D = 2·D·Z + 1, in place. Must be called with Z of the current iteration (before squareAdd)
+    mutating func derivativeStep(z: Self, isJulia: Bool, scratch: inout Scratch)
     
     /// Calculate z = z² + c, in place.
-    mutating func formSquareAdd(_ c: Self, scratch: inout Scratch)
-    mutating func formSquareAdd(_ c: Self)
+    mutating func squareAdd(_ c: Self, scratch: inout Scratch)
+    mutating func squareAdd(_ c: Self)
     
     /// Calculate z = z², in place.
-    mutating func formSquare(scratch: inout Scratch)
+    mutating func square(scratch: inout Scratch)
     
 }
 

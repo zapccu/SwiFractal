@@ -84,39 +84,16 @@ extension FractalCalculation {
         var refOrbit: [Cplx] = []
         refOrbit.reserveCapacity(limits.iterations + 1)
         
+        // Reusable scratch values for MPComplex. Not used for Double precision
+        var zScratch = CT.makeScratch(precision: refPoint.precision)   // Scratch value for iteration
+
         for _ in 0...limits.iterations {
             refOrbit.append(Z.toCplx())
             
-            Z = Z.squared + refPoint
+            Z.squareAdd(refPoint, scratch: &zScratch)
             
             if Z.lengthSquared > bailout {
                 refOrbit.append(Z.toCplx())
-                break
-            }
-        }
-        
-        return refOrbit
-    }
-    
-    /// Generate reference orbit for perturbation algorithm calculation in Metal.
-    /// Reference orbit is calculated in double precision and converted to single precision (SIMD2 Float32).
-    /// - Parameters:
-    ///   - refPoint: Reference point
-    ///   - limits: Calculation limits
-    /// - Returns: Array of type Float2 with reference orbit
-    nonisolated static func generateReferenceOrbit(refPoint: Cplx, limits: FractalLimits) -> [Float2] {
-        var Z = Cplx.zero
-        
-        var refOrbit: [Float2] = []
-        refOrbit.reserveCapacity(limits.iterations + 1)
-
-        for _ in 0...limits.iterations {
-            refOrbit.append(Float2(Float(Z.real), Float(Z.imaginary)))
-            
-            Z = Z.squared + refPoint
-            
-            if Z.lengthSquared > limits.bailout {
-                refOrbit.append(Float2(Float(Z.real), Float(Z.imaginary)))
                 break
             }
         }
@@ -189,7 +166,7 @@ extension FractalCalculation {
     ///   - sa: Series approximation coefficients
     ///   - P: Dynamic calculation parameters
     /// - Returns: Mandelbrot result
-    static func calculatePointZ2PT(deltaC: Cplx, refOrbit: [Cplx],
+    nonisolated static func calculatePointZ2PT(deltaC: Cplx, refOrbit: [Cplx],
                                    sa: SACoefficients, P: DynamicParameters<PT>) -> MandelbrotResult
     {
         let maxRefIter = refOrbit.count - 1 // Length of reference orbit
@@ -202,27 +179,23 @@ extension FractalCalculation {
         var dZ: Cplx = .zero
         var ndZ: Double = 0.0
         var nZ: Double = 0.0                // Norm of Z: Z.imaginary * Z.imaginary + Z.real * Z.real
-        var nZ1: Double = 10.0              // Old value of nZ for fast orbit detection
-        var absZ: Double = 0.0              // abs(Z) = sqrt(nZ)
+        var Z1: Cplx = Cplx(10.0)           // Old value of Z for fast orbit detection
         
         var period: Int = 0                 // Period counter for fast orbit detection
         var D: Cplx = .zero                 // 1st derivation of Z
        
-        // Tolerance values for orbit detection
-        let t1 = P.limits.orbitDelta1
-        let t2 = P.limits.orbitDelta1 * P.limits.orbitDeltaF
-        let t3 = P.limits.orbitDelta3
+        // Create array for storing orbits
+        var orbits: [Cplx] = [.zero]
+        orbits.reserveCapacity(P.limits.orbitLength)
 
-        var orbits = Array<Cplx>(repeating: .zero, count: P.limits.iterations + 1)
-        
         let dC = sa.getDeltaC(deltaC: deltaC)
-        
+
         for i in sa.skipIndex...P.limits.iterations {
-            // Derivation D of Z
-            // D = D * 2.0 * Z + 1.0
-            D = (Z + Z) * D + 1.0
-            
-            dZ = 2.0 * refOrbit[refIndex] * dZ + dZ * dZ + dC
+            // Derivation D of old Z
+            D = (D + D) * Z + 1.0
+
+            // Iteration step
+            dZ = (2.0 * refOrbit[refIndex] + dZ) * dZ + dC
             refIndex += 1
             Z = refOrbit[refIndex] + dZ
             
@@ -232,60 +205,76 @@ extension FractalCalculation {
             }
             
             if P.bStripes {
-                stripet = (sin(Double(P.stripes) * Z.arg) + 1.0) * 0.5
+                // Double precision is sufficient
+                stripet = (sin(Double(P.stripes) * Z.toCplx().arg) + 1) * 0.5
             }
             
             nZ = Z.lengthSquared
             
             if nZ > P.limits.bailout {
-                absZ = sqrt(nZ)           // aZ = abs(Z)
-                let logAbsZ = log(absZ)
+                let logAbsZ = 0.5 * log(nZ)     // log(abs(Z)) without sqrt
 
                 // Calculate smooth iteration value for smooth coloring
+                //
                 // This value must be added to the iteration count.
-                // smoothIter = 1.0 - log(logRatio) * _NC.RLOG2
+                // logRatio = 2 * log(aZ) / log(bailout)
+                // smoothIter = -log(logRatio) * _NC.RLOG2
                 let smoothIter = -log(logAbsZ / P.limits.logBailout) * _NC.RLOG2
-
-                // Exterior distance estimation
-                //
-                // distance = (absZ * logAbsZ * 2) / D.length
-                // The numerator (absZ * logAbsZ * 2) is a Double value .
-                // The denominator D.length must be a RT value.
-                // Division is done in RT to prevent overflow and underflow.
-                let rtDistance: RT = RT(absZ * logAbsZ * 2.0, precision: P.precision) / D.length
-                let logPixelDist: Double = RT.log(rtDistance).toDouble() - P.logPixel
                 
-                // Calculate filament
+                // Exterior distance estimation (logarithm of the distance)
                 //
-                // Dimensionless ratio is calculated in RT,
-                // everything else can be calculated with Double precision
-                let ratio: Double = (rtDistance * P.invDistThreshold).toDouble()
-                let t = min(max(1.5 - ratio, 0.0), 1.0)      // 1 for ratio <= 0.5, 0 for ratio >= 1.5
-                let filamentStrength = t * t * (3.0 - 2.0 * t)
-                
-                // Calculate potential
-                //
-                // Potential = log(abs(Z)) / 2^N
-                // P.potential[N] already contains 1/2^N
-                //
-                let potential = logAbsZ * P.potential[i]
+                // distance = (absZ * logAbsZ * 2) / |D|, calculated in RT to avoid over-/underflow
+                // We return the logarithm of the distance because:
+                // - Logarithm must be calculated with arbitrary precision
+                // - MandelbrotResult supports only Double values
+                // - We need the logarithm of the distance for color mapping
+                let dLength = D.length
+                var logPixelDist: Double = .greatestFiniteMagnitude
+                var filamentStrength: Double = 0.0
+                if dLength > 0 {
+                    let absZ = sqrt(nZ)     // abs(Z), only needed for the distance estimate
+                    let distance = absZ * logAbsZ * 2.0 / dLength
+                    logPixelDist = log(distance) - P.logPixel
+                    
+                    // Calculate filament: dimensionless ratio in RT, the rest in Double
+                    let ratio: Double = distance * P.invDistThreshold.asDouble
+                    let t = min(max(1.5 - ratio, 0.0), 1.0)      // 1 for ratio <= 0.5, 0 for ratio >= 1.5
+                    filamentStrength = t * t * (3.0 - 2.0 * t)
+                }
                 
                 // Calculate stripes
                 if P.bStripes {
-                    stripeAvg = expMovAvg(previousAvg: stripeAvg, smooth: P.stripeSig, newValue: stripet, smoothIter: smoothIter)
-                    stripeAvg = biasCorrect(previousAvg: stripeAvg, smooth: P.stripeSig, iter: i, smoothIter: smoothIter)
+                    let frac = smoothIter.clamped
+                    
+                    // Exponential moving average
+                    // stripeAvg = stripeAvg * (1.0 + smoothIter * (P.MP.stripeSig - 1.0))
+                    //             + stripet * smoothIter * (1.0 - P.MP.stripeSig)
+                    stripeAvg = expMovAvg(previousAvg: stripeAvg, smooth: P.stripeSig, newValue: stripet, smoothIter: frac)
+                    
+                    // BIAS correction
+                    // stripeAvg = stripeAvg /
+                    //             (1 - pow(P.colorParameters.stripeSig, Double(i))
+                    //             * (1 + smoothIter * (P.colorParameters.stripeSig - 1)))
+                    stripeAvg = biasCorrect(previousAvg: stripeAvg, smooth: P.stripeSig, iter: i, smoothIter: frac)
                 }
                 
                 // Calculate normal
-                let normal = Z/D
+                // Normal: normalize in RT BEFORE converting to Double (otherwise underflow at deep zoom)
+                var normal: Cplx = .zero
+                if dLength > 0 {
+                    let u = Z / D
+                    let len = u.length
+                    if len > 0 {
+                        normal = (u / len)
+                    }
+                }
                 
                 // Return iteration result. Double values only
                 return MandelbrotResult(
                     smoothIter: smoothIter + Double(i),
                     nZ: nZ,
-                    normalReal: normal.real.toDouble(), normalImag: normal.imaginary.toDouble(),
+                    normalReal: normal.real, normalImag: normal.imaginary,
                     distance: logPixelDist,
-                    potential: potential,
                     stripeAvg: stripeAvg,
                     filament: filamentStrength,
                     flags: .bailout
@@ -294,37 +283,23 @@ extension FractalCalculation {
             
             // Calculate orbits
             if P.colorizeInside == .orbits {
-                // Search for orbits (full periodicity check)
-                var idx: Int = -1
-                let end: Int = max(-1, i - 100)
-                
-                for t in [t1, t2] {
-                    for n in stride(from: i-1, to: end, by: -1) {
-                        let d = Z - orbits[n]
-                        if d.lengthSquared < t {
-                            idx = n
-                            break
-                        }
-                    }
+                // Long periodicity check
+                if let index = findOrbit(orbit: orbits, Z: Z, tolerance: (P.t1, P.t2)) {
+                    return MandelbrotResult(smoothIter: Double(i), distance: Double(orbits.count - index), flags: .inside)
                 }
-                
-                if idx > -1 {
-                    // Found orbit, colorize point inside mandelbrot set
-                    return MandelbrotResult(smoothIter: Double(i), distance: Double(i - idx), flags: .inside)
-                }
-                orbits[i] = Z
+                orbits.append(Z)
+                if orbits.count == P.limits.orbitLength { orbits.removeFirst() }
             }
             else if P.colorizeInside == .fastOrbits {
-                // Simplified periodicity check, no orbit colorization
-                if abs(nZ - nZ1) < t3 {
-                    return MandelbrotResult(smoothIter: Double(i), distance: Double(i - period), flags: .inside)
+                // Simplified periodicity check
+                if Z.almostEqual(to: Z1, tolerance: P.t3) {
+                    return MandelbrotResult(smoothIter: Double(i), distance: Double(period), flags: .inside)
                 }
-                else {
-                    period += 1
-                    if period > P.limits.orbitLength {
-                        period = 0
-                        nZ1 = nZ
-                    }
+                
+                period += 1
+                if period > P.limits.orbitLength {
+                    period = 0
+                    Z1 = Z
                 }
             }
             

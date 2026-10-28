@@ -127,8 +127,17 @@ struct ControlParameterView<T: FractalProtocol & Observable>: View {
                     Text("Mode")
                     OptionsPicker(options: bFractal.colorizeMode, width: 140)
                         .onChange(of: fractal.colorizeMode) { _, newValue in
-                            if newValue == .stripes && fractal.stripes == 0 { fractal.stripes = 1 }
-                            if newValue == .steps && fractal.steps == 0 { fractal.steps = 1 }
+                            if newValue == .stripes {
+                                if fractal.stripes == 0 { fractal.stripes = 1 }
+                                if controller.calcInfo.extendedInfo != .stripes {
+                                    ToastCenter.shared.show("Image must be recalculated", systemImage: "checkmark.circle.fill")
+                                    return
+                                }
+                            }
+                            else if newValue == .steps {
+                                if fractal.steps == 0 { fractal.steps = 1 }
+                            }
+                            Task { await controller.drawResultSet() }
                         }
                 }
                 GridRow {
@@ -136,6 +145,10 @@ struct ControlParameterView<T: FractalProtocol & Observable>: View {
                     OptionsPicker(options: bFractal.colorizeInside, width: 140)
                         .onChange(of: fractal.colorizeInside) {
                             if fractal.colorizeInside == .orbits {
+                                if controller.calcInfo.extendedInfo != .orbits {
+                                    ToastCenter.shared.show("Image must be recalculated", systemImage: "checkmark.circle.fill")
+                                    return
+                                }
                                 ToastCenter.shared.show("Image must be recalculated", systemImage: "checkmark.circle.fill")
                             }
                             Task { await controller.drawResultSet() }

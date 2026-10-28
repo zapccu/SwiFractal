@@ -53,7 +53,7 @@ struct ColorMapper : Sendable {
     @inline(__always)
     func compress(smoothIter: Double) -> Double {
         let compression = Double(max(colorParameters.compression, 1))
-        guard compression > 1 else { return smoothIter }
+        guard compression > 1 else { return smoothIter }    // No compression
         
         if compression == 2 { return sqrt(smoothIter) }
         if compression == 3 { return cbrt(smoothIter) }
@@ -94,6 +94,12 @@ struct ColorMapper : Sendable {
     @inline(__always)
     func cycle(smoothIter: Double, scale: Double = 1.0, offset: Double = 0.0) -> Double {
         return (fmod(smoothIter * scale + offset, sqrtncycle) / sqrtncycle)
+    }
+    
+    @inline(__always)
+    func smoothstep(_ e0: Double, _ e1: Double, _ x: Double) -> Double {
+        let u = min(max((x - e0) / (e1 - e0), 0.0), 1.0)
+        return u * u * (3.0 - 2.0 * u)
     }
 
     /// Shading
@@ -213,11 +219,12 @@ struct ColorMapper : Sendable {
         // The brightness 0...1
         var brightness: Float = 1.0
         
-        // The resulting color, initialized with default color
+        // Color interior of Mandelbrot set
         if let interiorColor = mapFlags(result: result) {
             return interiorColor
         }
         
+        // The resulting color, initialized with default color
         var color: RGBAColor = coloring.defColor
         
         // 3D shading, calculate brightness in range 0...
@@ -291,23 +298,13 @@ struct ColorMapper : Sendable {
         
         // Color based on distance
         else if colorParameters.colorizeMode == .distance {
-            let t = tanh(result.distance)
-            color = coloring.getColor(t: t)
-        }
-        
-        // Color based on potential
-        else if colorParameters.colorizeMode == .potential {
-            let lognZ12 = log(result.nZ) / 2.0
-            let nu = log(lognZ12 / _NC.LOG2) / _NC.LOG2
-            let i = result.smoothIter + 1.0 - nu
-            /*
-            let color1 = colorTable[i]
-            let color2 = colorTable[i + 1]
-            let ic: Double = i % 1.0
-            let cv = vDSP.linearInterpolate(color1.vector3, color2.vector3, using: ic)
-            color = RGBAColor(vector: cv) * brightness
-             */
-            color = coloring.getColor(t: i)
+            color = coloring.getColor(t: cycleIter)
+            if result.distance.isFinite {
+                let minBrightness: Double = 0.2
+                let edge = smoothstep(-1.0, 1.5, result.distance)       // 0 am Rand, 1 weit weg
+                let k = Float(minBrightness + (1.0 - minBrightness) * edge)
+                return color.scaleRGB(by: k)
+            }
         }
         
         // Draw filaments
