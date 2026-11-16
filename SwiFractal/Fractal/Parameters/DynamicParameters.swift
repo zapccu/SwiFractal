@@ -31,6 +31,9 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
     
     /// Initial value mapping based on fractal type
     let initial: InitialValueMapping<CT>
+    
+    /// Update calculation progress
+    let progress: CalculationProgress
         
     /// Mantissa precision bits
     let precision: Int
@@ -98,22 +101,19 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
     
     /// Lightning
     let lightning: Lightning         // Lightning depends on LightningParameters
-    
-    /// Thresholds for orbit detection
-    let t1: Double
-    let t2: Double
-    let t3: Double
-    
+
     var extendedInfo: ResultContains = []
     
     /// Initialize dynamic calculation parameters
     /// - Parameters:
     ///   - anypar: Static fractal parameters
     ///   - resolution: Image resolution without oversampling
+    ///   - progress: Calculation progress
     ///   - settings: Snapshot of application settings
-    init(anypar: PT, resolution: CGSize, settings: SettingsSnapshot) {
+    init(anypar: PT, resolution: CGSize, progress: CalculationProgress, settings: SettingsSnapshot) {
         self.parameterType = type(of: anypar)
         
+        self.progress = progress
         self.settings = settings
         
         self.precision = anypar.dimensions.precision.bits
@@ -147,14 +147,7 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
         self.logMinSize = RT.log(min(RT(0.5, precision: precision), min(sx, sy))).toDouble()
 
         // Limits
-        self.limits = FractalDynamicLimits(anypar.limits)
-        
-        // Tolerances
-        // P.logPixel = log(Pixelsize); calculate in Log space to prevent underflows
-        let logEps = min(max(self.logPixel + log(8.0), log(anypar.limits.orbitDelta1)), log(3e-6))
-        self.t1 = exp(2.0 * logEps)
-        self.t2 = t1 * anypar.limits.orbitDeltaF
-        self.t3 = anypar.limits.orbitDelta3
+        self.limits = FractalDynamicLimits(limits: anypar.limits, precision: anypar.dimensions.precision.bits)
         
         // Orbits / colorize interior of Mandelbrot set
         self.colorizeInside = anypar.colorParameters.colorizeInside.element
@@ -168,13 +161,14 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
         self.lightning = Lightning(anypar.lightParameters)
         
         if self.bStripes { self.extendedInfo |= .stripes }
-        if anypar.colorParameters.colorizeInside == .orbits { self.extendedInfo |= .orbits }
+        if anypar.colorParameters.colorizeInside.isNone(of: [.defaultColor, .fastOrbits]) { self.extendedInfo |= .orbits }
     }
     
     func toMetal() -> MetalComputeParameters {
         MetalComputeParameters(
             iterations: Int32(limits.iterations),
             bStripes: bStripes ? 1 : 0,
+            colorizeInside: Int32(colorizeInside.rawValue),
             bailout: Float(limits.bailout),
             logBailout: Float2(limits.logBailout),
             div_2_logBailout: Float2(limits.div_2_logBailout),

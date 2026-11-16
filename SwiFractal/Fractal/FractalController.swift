@@ -102,6 +102,9 @@ class FractalController {
     /// Area or point selection
     var selection: Selection
     
+    /// Calculation progress
+    let progress = CalculationProgress()
+    
     /// Status view information
     var info: Info
     
@@ -123,8 +126,17 @@ class FractalController {
     /// Flag for signalling zoomed image
     @ObservationIgnored var isImageZoomed: Bool = false
 
+    /// Show calculation progress
+    var showsProgress = false
+    
+    /// Calculation progress
+    var progressFraction: Double = 0
+    
+    /// Calculation pass
+    var calculationPass: Int = 0
+    
     /// Flag for ongoing calculation
-    @ObservationIgnored var isCalculating: Bool = false
+    var isCalculating: Bool = false
     
     /// Calculation state
     @ObservationIgnored var calcInfo: CalculationInfo = CalculationInfo(state: .idle)
@@ -136,6 +148,7 @@ class FractalController {
     @ObservationIgnored var startTime: ContinuousClock.Instant = .now
     @ObservationIgnored var endTime: ContinuousClock.Instant = .now
     @ObservationIgnored var calculationTime: Duration = .zero
+    @ObservationIgnored var drawingTime: Duration = .zero
     
     /// Return true if dimensions changed
     var dimensionsChanged: Bool {
@@ -161,12 +174,17 @@ class FractalController {
     /// Return calculation time as formatted String
     var fmtCalculationTime: String {
         calculationTime.formatted(
-            .time(pattern: .hourMinuteSecond(
-                padHourToLength: 2, fractionalSecondsLength: 3)
-            )
+            .time(pattern: .hourMinuteSecond(padHourToLength: 2, fractionalSecondsLength: 3))
         )
     }
-
+    
+    /// Return drawing time as formatted string
+    var fmtDrawingTime: String {
+        drawingTime.formatted(
+            .time(pattern: .hourMinuteSecond(padHourToLength: 2, fractionalSecondsLength: 3))
+        )
+    }
+    
     /// Initialize fractal controller
     init() {
         let mandelbrot = Mandelbrot<Double>()
@@ -344,6 +362,9 @@ class FractalController {
     /// Start of calculation. Initialize timer
     func beginCalculation() {
         startTime = clock.now
+        progressFraction = 0
+        calculationPass = 0
+        showsProgress = false
         isCalculating = true
         isImageZoomed = false
         calcInfo = CalculationInfo(state: .inProgress)
@@ -360,11 +381,34 @@ class FractalController {
     /// - Parameter method: Calculation method
     /// - Returns: Calculation state
     func calculate(method: CalculationMethod) async {
-        let combinedResult = await fractal.calculate(method: method, resolution: resolution)
+        let poller = Task { [progress] in
+            // Short calculations: Don't show the progress if calculation finished within 500 ms
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+
+            // Almost finished (progress >= 80%) ? Don't show the progress
+            guard progress.fraction < 0.8 else { return }
+
+            self.progressFraction = progress.fraction
+            self.calculationPass = progress.passes
+            self.showsProgress = true
+
+            while !Task.isCancelled {
+                self.progressFraction = progress.fraction
+                self.calculationPass = progress.passes
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+        }
+        defer {
+            poller.cancel()
+        }
+        
+        let combinedResult = await fractal.calculate(method: method, resolution: resolution, progress: progress)
         if combinedResult.info.state == .completed && combinedResult.result != nil {
             self.result = combinedResult.result!
             self.calcInfo = combinedResult.info
             self.histogram = Histogram(result: combinedResult.result!, maxValue: fractal.getLimits().iterations)
+            progressFraction = 1
         }
     }
     
@@ -386,9 +430,29 @@ class FractalController {
     
     /// Draw results into graphics
     func drawResultSet() async {
+        // Check for existing calculation results
         guard let result = result, let histogram = histogram else {
             debugPrint("No results to draw")
             return
+        }
+        
+        let colorParameters = fractal.getColorParameters()
+        
+        // Check if result contains stripe average values
+        if colorParameters.colorizeMode == .stripes && self.calcInfo.extendedInfo != .stripes {
+            ToastCenter.shared.show("Results do not contain stripe data. Image must be recalculated", systemImage: "checkmark.circle.fill")
+            debugPrint("No stripe average values in results")
+            return
+        }
+        
+        // Check if result contains orbit length values
+        if colorParameters.colorizeInside.isNone(of: [.defaultColor, .fastOrbits]) && self.calcInfo.extendedInfo != .orbits {
+            if await ToastCenter.shared.showAndWait("Results do not contain orbit data. Image must be recalculated", actionTitle: "Calculate") {
+                await calculate(method: .sequential)
+            }
+            else {
+                return
+            }
         }
         
         // Measure drawing time
@@ -399,7 +463,7 @@ class FractalController {
         let lightning = Lightning(fractal.getLightningParameters())
         
         // Create a color mapper
-        let mapper = ColorMapper(colorParameters: fractal.getColorParameters(), limits: limits, histogram: histogram, lightning: lightning)
+        let mapper = ColorMapper(colorParameters: colorParameters, limits: limits, histogram: histogram, lightning: lightning)
         
         // Create a graphics device
         let graphics = ImageGraphics(frameSize: resolution, size: size, flip: true)
@@ -409,6 +473,7 @@ class FractalController {
             
             for y in 0..<result.rows {
                 var currentResult = result[y, 0]
+                
                 graphics.color = mapper.mapColor(result: currentResult)
                 var pixelCount: Int = 1
 
@@ -439,13 +504,7 @@ class FractalController {
             
             // Measure drawing time
             let time2: ContinuousClock.Instant = clock.now
-            let duration: Duration = time2 - time1
-            let strDuration = duration.formatted(
-                .time(pattern: .hourMinuteSecond(
-                    padHourToLength: 2, fractionalSecondsLength: 3)
-                )
-            )
-            debugPrint("Drawing time \(strDuration)")
+            drawingTime = time2 - time1
             
             return graphics.cgImage
         }

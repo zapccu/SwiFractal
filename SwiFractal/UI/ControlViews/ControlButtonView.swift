@@ -75,7 +75,7 @@ struct ControlButtonView: View {
                     .disabled(controller.fractal.versionsCount < 2)
                     .help("Reset to default parameters")
                     
-                    // Draw
+                    // Draw fractal
                     Button(action: {
                         controller.info.currentAction = "Drawing ..."
 
@@ -83,11 +83,19 @@ struct ControlButtonView: View {
                             // Render fractal
                             controller.beginCalculation()
                             await controller.calculate(method: method)
+                            if controller.showsProgress {
+                                // Main Thread einen Frame lang freigeben, damit 100 % gezeichnet wird,
+                                // bevor drawResultSet ihn wieder blockiert
+                                try? await Task.sleep(for: .milliseconds(20))
+                            }
                             controller.endCalculation()
                             await controller.drawResultSet()
+                            controller.showsProgress = false
 
-                            controller.info.setState(currentAction: controller.calcInfo.message,
-                                                     statusMessage: "Calculation time: \(controller.fmtCalculationTime)")
+                            controller.info.setState(currentAction: controller.calcInfo.getMessage(),
+                                statusMessage: "Calculation time: \(controller.fmtCalculationTime) " +
+                                "Rendering time: \(controller.fmtDrawingTime) "
+                            )
                         }
 
                         controller.selection.reset()

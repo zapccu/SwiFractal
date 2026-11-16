@@ -14,6 +14,7 @@ import Metal64
 struct MetalComputeParameters {
     var iterations: Int32
     var bStripes: Int32
+    var colorizeInside: Int32
     var bailout: Float
     var logBailout: Float2
     var div_2_logBailout: Float2

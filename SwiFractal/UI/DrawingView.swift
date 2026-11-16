@@ -26,22 +26,31 @@ struct DrawingView: View {
                 Image(cgImage, scale: 1, label: Text(""))
                     .resizable()
                     .interpolation(.high)
-                }
             }
-            .frame(width: controller.resolution.width, height: controller.resolution.height, alignment: .topLeading)
-            .layerEffect(
-                ShaderLibrary.planetEffect(
-                    .float2(Float(controller.resolution.width), Float(controller.resolution.height)),
-                    .float(controller.isSphericalDisplay ? 1.0 : 0.0),
-                    .float(Float(controller.fractal.angle).deg2rad),
-                    .float(Float(controller.fractal.elevation).deg2rad)
-                ),
-                maxSampleOffset: CGSize(
-                    width: controller.resolution.width / 2,
-                    height: controller.resolution.height / 2
-                ),
-                isEnabled: controller.isSphericalDisplay
-            )
-            .background(Color.gray.opacity(0.8))
+        }
+        .frame(width: controller.resolution.width, height: controller.resolution.height, alignment: .topLeading)
+        .layerEffect(
+            ShaderLibrary.planetEffect(
+                .float2(Float(controller.resolution.width), Float(controller.resolution.height)),
+                .float(controller.isSphericalDisplay ? 1.0 : 0.0),
+                .float(Float(controller.fractal.angle).deg2rad),
+                .float(Float(controller.fractal.elevation).deg2rad)
+            ),
+            maxSampleOffset: CGSize(
+                width: controller.resolution.width / 2,
+                height: controller.resolution.height / 2
+            ),
+            isEnabled: controller.isSphericalDisplay
+        )
+        .background(Color.gray.opacity(0.8))
+        .overlay {
+            if controller.showsProgress {
+                ProgressRing(progress: controller.progressFraction,
+                                 diameter: 300,
+                                 ringColor: .cyan,
+                                 textColor: .white)
+                        .shadow(color: .black.opacity(0.5), radius: 6)
+            }
+        }
     }
 }

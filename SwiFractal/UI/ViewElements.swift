@@ -8,6 +8,37 @@
 import SwiftUI
 import ParSetKit
 
+
+struct ProgressRing: View {
+    let progress: Double
+    var diameter: CGFloat = 240
+    var lineWidth: CGFloat = 16
+    var ringColor: Color = .orange
+    var trackColor: Color = .orange.opacity(0.2)
+    var textColor: Color = .white
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(trackColor, lineWidth: lineWidth)
+
+            Circle()
+                .trim(from: 0, to: min(max(progress, 0), 1))
+                .stroke(ringColor, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .rotationEffect(.degrees(-90))          // Start oben statt rechts
+                .animation(.linear(duration: 0.1), value: progress)
+
+            Text(progress, format: .percent.precision(.fractionLength(0)))
+                .font(.system(size: diameter * 0.18, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(textColor)
+                .contentTransition(.numericText())
+        }
+        .frame(width: diameter, height: diameter)
+        .padding(lineWidth / 2)                         // Strich nicht abschneiden
+    }
+}
+
 //
 // A text label in fron of a control element
 //

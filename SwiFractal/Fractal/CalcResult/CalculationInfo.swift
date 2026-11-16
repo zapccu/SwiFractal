@@ -59,4 +59,18 @@ struct CalculationInfo: Sendable {
     /// Number of errors
     var errorCount: Int = 0
     
+    /// Return message
+    func getMessage() -> String {
+        guard message.isEmpty else { return message }
+        
+        switch state {
+        case .idle: return "Idle"
+        case .completed: return "Completed"
+        case .inProgress: return "In Progress"
+        case .cancelled: return "Cancelled"
+        case .error: return "Error"
+        default: return "Unknown State"
+        }
+    }
+    
 }

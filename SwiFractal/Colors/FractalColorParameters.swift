@@ -38,13 +38,15 @@ typealias ColorizeOutside = Options<EnumColorizeOutside>
 ///
 /// Colorize inside
 ///
-/// Inside colorization of a fractal
+/// Inside colorization of a fractal. Raw values must match constants CI_xxx defined in mandelbrot.h
 ///
 enum EnumColorizeInside: Int, CaseIterable {
-    case defaultColor   // Inside of Mandelbrot set is set to default color
-    case orbits         // Colorize orbits inside Mandelbrot set using full orbit detection
-    case fastOrbits     // Use fast orbit detection without coloring the interior of Mandelbrot set
-    case distance       // Colorize distance inside Mandelbrot set, implies distance calculation
+    case defaultColor = 0   // Inside of Mandelbrot set is set to default color
+    case orbits = 1         // Colorize orbits inside Mandelbrot set using full orbit detection
+    case brentOrbits = 2    // Brent's period detection
+    case brentLambda = 3    // Brent's period detection with lambda calculation for color assignment
+    case fastOrbits = 4     // Use fast orbit detection without coloring the interior of Mandelbrot set
+    case distance = 5       // Colorize distance inside Mandelbrot set, implies distance calculation
 }
 typealias ColorizeInside = Options<EnumColorizeInside>
 

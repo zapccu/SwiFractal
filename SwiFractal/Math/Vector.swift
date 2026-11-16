@@ -95,6 +95,12 @@ extension Vector where E: PreciseFloatingPoint {
         self.array = E.linspace(start, end, dim)
     }
     
+    /// Multiply vector with scalar
+    static func * (_ lhs: Vector<E>, _ rhs: E) -> Vector<E> {
+        let arr = lhs.array.map { $0 * rhs }
+        return Vector<E>(arr)
+    }
+
     /// Divide vector by scalar
     static func / (_ lhs: Vector<E>, _ rhs: E) -> Vector<E> {
         let arr = lhs.array.map { $0 / rhs }

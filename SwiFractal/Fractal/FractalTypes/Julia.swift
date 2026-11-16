@@ -44,10 +44,12 @@ class Julia<RT: PreciseFloatingPoint> : FractalProtocol {
     /// Mark start of calculation. Prepare calculation parameters
     /// - Parameters:
     ///   - size: Output graphics size
+    ///   - progress: Calculation progress
     /// - Returns: true if calculation parameters prepared successfully
-    func beginCalculation(resolution: CGSize) -> DynamicParameters<DataType>? {
+    func beginCalculation(resolution: CGSize, progress: CalculationProgress) -> DynamicParameters<DataType>? {
         let settingsSnapshot = AppSettings.shared.snapshot()
-        return DynamicParameters<DataType>(anypar: FP.current, resolution: resolution, settings: settingsSnapshot)
+        return DynamicParameters<DataType>(anypar: FP.current, resolution: resolution, progress: progress,
+                                           settings: settingsSnapshot)
     }
     
     /// Zoom into fractal

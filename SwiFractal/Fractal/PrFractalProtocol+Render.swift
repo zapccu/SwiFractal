@@ -8,17 +8,17 @@
 import Foundation
 import SwiftUI
 
-//
-// Extend FractalProtocol by render functions
-//
-extension FractalProtocol { // where DynParType == DynamicParameters<DataType> {
+///
+/// Extend FractalProtocol by render functions
+///
+extension FractalProtocol {
 
     /// Calculate fractal
     /// - Parameters:
     ///   - method: Calculation method
     ///   - resolution: Image resolution
     /// - Returns: Tuple of calculation state and result
-    func calculate(method: CalculationMethod, resolution: CGSize) async -> CombinedResult {
+    func calculate(method: CalculationMethod, resolution: CGSize, progress: CalculationProgress) async -> CombinedResult {
         // Get calculation function for specified method
         guard let function = FractalCalculation<DataType>.getFunction(method: method, P: FP.current)  else {
             return (
@@ -28,7 +28,7 @@ extension FractalProtocol { // where DynParType == DynamicParameters<DataType> {
         }
         
         // Setup calculation, create dynamic calculation parameters
-        guard let DP = beginCalculation(resolution: resolution) else {
+        guard let DP = beginCalculation(resolution: resolution, progress: progress) else {
             return (
                 nil,
                 CalculationInfo(state: .error, message: "Setup of calculation environment failed")

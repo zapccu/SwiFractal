@@ -1,0 +1,203 @@
+//
+//  julia.metal
+//  SwiFractal
+//
+//  Created by Dirk Braner on 04.11.26.
+//
+
+
+#include <metal_stdlib>
+#include <c64.h>
+#include "mandelbrot.h"
+
+using namespace metal;
+
+
+// Julia set iteration
+// - Parameters:
+//   - C: Complex point
+//   - J: Julia point
+//   - MP: Compute parameters
+// - Returns: Mandelbrot result
+MandelbrotResult iterateJulia(c64 C, c64 J, constant MetalComputeParameters *MP) {
+
+    f64 stripeAvg = 0.0;        // Stripe average value
+    f64 stripet = 0.0;          // Current stripe value
+
+    c64 Z = C;                  // Start of iteration: Z = Julia point
+    c64 D = 1.0;                // 1st derivation of Z: D = 1
+    c64 Z1 = c64(10.0, 10.0);   // Old Z for fast orbit detection
+    f64 nZ = 0.0;               // Squared norm of Z
+
+    int period = 0;             // Period counter for fast orbit detection
+
+    c64 orbits[100];            // Orbit values
+    orbits[0] = Z;
+    int orbitIndex = 1;         // Index of next orbit entry
+    int orbitEntries = 1;       // Number of entries in the orbit buffer
+    int orbitLength = 20;
+    
+    // Convert Float2 values to f64
+    f64 logPixel = f64(MP->logPixel);
+    f64 invDistThreshold = f64(MP->invDistThreshold);
+    f64 logBailout = f64(MP->logBailout);
+    f64 stripes = f64(MP->stripes);
+    f64 stripeSig = f64(MP->stripeSig);
+
+    int i;
+
+    for(i=0; i<=MP->iterations; i++) {
+        // Derivation of Z
+        D = (Z + Z) * D;
+        
+        // Iteration formula
+        Z = sqr(Z) + J;
+        
+        if (MP->bStripes) {
+            stripet = (sin(stripes * atan2(Z.imaginary(), Z.real())) + 1.0) * 0.5;
+        }
+        
+        nZ = norm(Z);
+        
+        if (flt(nZ) > MP->bailout) {
+            f64 logAbsZ = log(nZ) * 0.5;
+            
+            // Calculate smooth iteration value for smooth coloring
+            //
+            // This value must be added to the iteration count.
+            // logRatio = 2 * log(aZ) / log(bailout)
+            // smoothIter = -log(logRatio) * _NC.RLOG2
+            f64 smoothIter = -log(logAbsZ / logBailout) * F64_1_LOG2;
+      
+            // Normalize, exterior distance, filaments
+            f64 dLength = abs(D);
+            f64 logPixelDist = f64(FLT_MAX);
+            f64 filamentStrength = 0.0;
+            c64 normal = 0.0;
+            if (dLength > 0.0) {
+                // Normalize
+                normal = normalize(Z, D);
+                
+                // Calculate exterior distance
+                // distance = (absZ * logAbsZ * 2) / |D|, calculated in RT to avoid over-/underflow
+                // - Logarithm must be calculated with arbitrary precision
+                // - MandelbrotResult supports only Double values
+                // - We need the logarithm of the distance for color mapping
+                f64 absZ = sqrt(nZ);     // abs(Z), only needed for the distance estimate
+                f64 distance = absZ * logAbsZ * 2.0 / dLength;
+                logPixelDist = log(distance) - logPixel;
+                
+                // Calculate filament: dimensionless ratio in RT, the rest in Double
+                f64 ratio = distance * invDistThreshold;
+                f64 t = min(max(1.5 - ratio, 0.0), 1.0);      // 1 for ratio <= 0.5, 0 for ratio >= 1.5
+                filamentStrength = t * t * (3.0 - 2.0 * t);
+            }
+
+            // Calculate stripes
+            if (MP->bStripes) {
+                f64 frac = max(min(smoothIter, 1.0), 0.0);
+
+                // Exponential moving average
+                // stripeAvg = stripeAvg * (1.0 + smoothIter * (P.MP.stripeSig - 1.0))
+                //             + stripet * smoothIter * (1.0 - P.MP.stripeSig)
+                stripeAvg = (stripeAvg * (1.0 + frac * (stripeSig-1.0)) + stripet * frac * (1.0 - stripeSig));
+
+                // BIAS correction
+                // stripeAvg = stripeAvg /
+                //             (1 - pow(P.colorParameters.stripeSig, Double(i))
+                //             * (1 + smoothIter * (P.colorParameters.stripeSig - 1)))
+                stripeAvg = stripeAvg / (1.0 - pow(stripeSig, f64(i)) * (1.0 + frac * (stripeSig - 1.0)));
+            }
+
+            smoothIter += float(i);
+            
+            return {
+                smoothIter.v,                           // smoothIter
+                nZ.v,                                   // norm of last Z
+                normal.real().v, normal.imaginary().v,  // normal.real, normal imaginary
+                logPixelDist.v,                         // logarithm of distance
+                stripeAvg.v,                            // stripe average value
+                filamentStrength.v,                     // filament
+                R_BAILOUT                               // flag
+            };
+        }
+        
+        if (MP->colorizeInside == CI_ORBITS) {
+            // Long periodicity check
+            int index = findOrbit(orbits, Z, orbitIndex, orbitEntries, f64(1.0e-24));
+            if (index > -1) {
+                index = findOrbit(orbits, Z, orbitIndex, orbitEntries, f64(1.0e-22));
+                return {
+                    flt2(i),                    // smoothIter
+                    nZ.v,                       // norm of last Z
+                    F2_ZERO, F2_ZERO,           // normal.real, normal.imaginary
+                    flt2(orbitEntries - index), // distance = orbit length
+                    F2_ZERO,                    // stripeAvg
+                    F2_ZERO,                    // filament
+                    R_INSIDE                    // flag
+                };
+            }
+            orbits[orbitIndex++] = Z;
+            orbitEntries = min(orbitEntries + 1, orbitLength);
+            if (orbitIndex == orbitLength) { orbitIndex = 0; }
+        }
+        else if (MP->colorizeInside == CI_FAST_ORBITS) {
+            // Simplified periodicity check, no orbit colorization
+            c64 diff = Z - Z1;
+            if (norm(diff) < 1.0e-10) {
+                return {
+                    flt2(i),                // smoothIter
+                    nZ.v,                   // norm of last Z
+                    F2_ZERO, F2_ZERO,       // normal.real, normal.imaginary
+                    flt2(period),           // distance = orbit period
+                    F2_ZERO,                // stripeAvg
+                    F2_ZERO,                // filament
+                    R_INSIDE                // flag
+                };
+            }
+            
+            period++;
+            if (period > 20) {
+                period = 0;
+                Z1 = Z;
+            }
+        }
+        
+        if (MP->bStripes) {
+            // Calculate exponential moving average of stripe value
+            // stripeAvg = expMovAvg(previousAvg: stripeAvg, smooth: P.MP.stripeSig, newValue: stripet)
+            stripeAvg = stripeAvg * stripeSig + stripet * (1 - stripeSig);
+        }
+
+    }
+    
+    return {
+        flt2(i),            // smoothIter
+        F2_ZERO,            // norm of last Z
+        F2_ZERO, F2_ZERO,   // normal.real, normal.imag
+        F2_ZERO,            // distance
+        F2_ZERO,            // stripeAvg
+        F2_ZERO,            // filament
+        R_MAX_ITERATIONS    // flag
+    };
+}
+
+// Kernel function for Mandelbrot calculation
+// - Parameters:
+//   - C: Array with complex coordinates
+//   - J: Julia point
+//   - MP: Compute parameters
+//   - resultArray: Array with calculation results
+kernel void julia(device const float4 *C,
+                  constant float4 &J,
+                  constant MetalComputeParameters *MP,
+                  device MandelbrotResult *resultArray,
+                  uint   index [[ thread_position_in_grid ]])
+{
+    c64 j = c64(J);
+    
+    // Result array contains a MandelbrotResultMtl element for each point in array C
+    resultArray[index] = iterateJulia(c64(C[index]), j, MP);
+}
+
+

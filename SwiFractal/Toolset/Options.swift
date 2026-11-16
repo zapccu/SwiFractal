@@ -101,6 +101,11 @@ where Element: RawRepresentable, Element: CaseIterable, Element: Equatable, Elem
         return of.contains(where: { self.rawValue == $0.rawValue })
     }
     
+    /// Return true if option is not in list *Element*
+    func isNone(of: [Element]) -> Bool {
+        return !of.contains(where: { self.rawValue == $0.rawValue })
+    }
+    
     /// Compare options
     static func == (lhs: Options<Element>, rhs: Options<Element>) -> Bool {
         return lhs.rawValue == rhs.rawValue

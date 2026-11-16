@@ -75,10 +75,10 @@ protocol FractalProtocol: AnyObject {
     // Mark start of calculation.
     // Return dynamic calculation parameters
     // func beginCalculation(resolution: CGSize) -> DynParType?
-    func beginCalculation(resolution: CGSize) -> DynamicParameters<DataType>?
+    func beginCalculation(resolution: CGSize, progress: CalculationProgress) -> DynamicParameters<DataType>?
 
     // Calculate fractal
-    func calculate(method: CalculationMethod, resolution: CGSize) async -> CombinedResult
+    func calculate(method: CalculationMethod, resolution: CGSize, progress: CalculationProgress) async -> CombinedResult
     
     // Mark end of calculation.
     // Define this function in a fractal class if anything must be

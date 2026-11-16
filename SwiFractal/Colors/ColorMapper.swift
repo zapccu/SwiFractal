@@ -9,7 +9,9 @@ import Foundation
 import Accelerate
 
 
-/// Colormapper
+///
+/// Colormapper for fractal calculation results
+///
 struct ColorMapper : Sendable {
     
     /// Static color table for coloring the interior of the Mandelbrot set based on orbit length
@@ -167,11 +169,16 @@ struct ColorMapper : Sendable {
     /// - Parameter normal: Last Z / D
     /// - Returns: Brightness value greater than or equal to 0.0
     func shading3D(normal: Cplx) -> Float {
-        var brightness: Float = 1.0
+        var brightness: Float = 1.0                         // Default brightness
+        var vecNormal: Vector<Double> = [0.0, 0.0, 1.0]     // Default normal vector
         
-        // Normal vector
-        let absNormal = normal / normal.length
-        let vecNormal: Vector<Double> = [absNormal.real, absNormal.imaginary, 1.0]
+        // Calculate normal vector
+        let len = normal.length
+        if len.isFinite && len > 0.0 {
+            let absNormal = normal / len
+            vecNormal = [absNormal.real, absNormal.imaginary, 1.0]
+            //vecNormal = vecNormal / sqrt(2.0)
+        }
         
         // Simple 3D shading
         if colorParameters.colorizeOutside == .simple3d {
@@ -190,8 +197,11 @@ struct ColorMapper : Sendable {
     /// - Parameter result: Mandelbrot result
     /// - Returns: Color or nil
     func mapFlags(result: MandelbrotResult) -> RGBAColor? {
-        if result.flags.isSubset(of: [.defaultColor, .maxIterations, .error, .calculate]) {
+        if result.flags.isSubset(of: [.defaultColor, .maxIterations, .calculate]) {
             return coloring.defColor
+        }
+        else if result.flags == .error {
+            return .red
         }
         else if result.flags == .inside {
             switch colorParameters.colorizeInside() {
@@ -199,10 +209,15 @@ struct ColorMapper : Sendable {
                 return coloring.defColor
             case .distance:
                 return coloring.getColor(t: result.distance)
-            case .orbits:
+            case .orbits, .brentOrbits:
                 let index = Int(result.distance) % category10.count
                 let color = category10[index]
                 let brightness = Float(pow(0.7, result.smoothIter / 100.0))
+                return color.blend(with: brightness, mode: .multiply)
+            case .brentLambda:
+                let index = Int(result.distance) % category10.count
+                let color = category10[index]
+                let brightness = Float(1.0 - pow(result.nZ, 4.0))
                 return color.blend(with: brightness, mode: .multiply)
             }
         }
@@ -211,21 +226,17 @@ struct ColorMapper : Sendable {
     }
     
     /// Map Mandelbrot iteration result to color
-    /// - Parameters:
-    ///   - result: Mandelbrot iteration result
-    ///   - P: Mandelbrot dynamic calculation parameters
+    /// - Parameter result: Mandelbrot iteration result
     /// - Returns: Color
     func mapColor(result: MandelbrotResult) -> RGBAColor {
-        // The brightness 0...1
-        var brightness: Float = 1.0
+        
+        var color: RGBAColor = coloring.defColor    // The resulting color, initialized with default color
+        var brightness: Float = 1.0                 // The brightness 0...1
         
         // Color interior of Mandelbrot set
-        if let interiorColor = mapFlags(result: result) {
-            return interiorColor
+        if let flagColor = mapFlags(result: result) {
+            return flagColor
         }
-        
-        // The resulting color, initialized with default color
-        var color: RGBAColor = coloring.defColor
         
         // 3D shading, calculate brightness in range 0...
         if colorParameters.colorizeOutside.isAny(of: [.blinnPhong, .simple3d]) {

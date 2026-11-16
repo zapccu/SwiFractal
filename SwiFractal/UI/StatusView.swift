@@ -33,6 +33,16 @@ struct StatusView: View {
                 Text(controller.info.mousePosition)
                     .padding([.leading, .trailing], 10)
             }
+            
+            if controller.isCalculating {
+                Divider()
+                Text("Calculation pass \(controller.calculationPass)")
+                    .padding([.leading, .trailing], 10)
+                /*
+                Text(controller.progressFraction, format: .percent.precision(.fractionLength(0)))
+                        .monospacedDigit()
+                 */
+            }
             Spacer()
         }.background(Color.yellow.opacity(0.5))
     }

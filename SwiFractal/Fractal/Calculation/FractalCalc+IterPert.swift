@@ -159,15 +159,16 @@ extension FractalCalculation {
         return SACoefficients(a: a, b: b, c: c, skipIndex: refOrbit.count - 1)
     }
     
-    /// Calculate point of Mandelbrot set using perturbation algorithm
+    /// Calculate point of Mandelbrot set with perturbation
     /// - Parameters:
-    ///   - dC: Delta C to reference Point
+    ///   - deltaC: Offset of the pixel to the reference point (Double)
+    ///   - refC: C of the reference point in calculation precision (CT)
     ///   - refOrbit: Reference orbit
     ///   - sa: Series approximation coefficients
-    ///   - P: Dynamic calculation parameters
+    ///   - P: Dynamic parameter structure
     /// - Returns: Mandelbrot result
-    nonisolated static func calculatePointZ2PT(deltaC: Cplx, refOrbit: [Cplx],
-                                   sa: SACoefficients, P: DynamicParameters<PT>) -> MandelbrotResult
+    nonisolated static func calculatePointZ2PT(deltaC: Cplx, refC: CT, refOrbit: [Cplx],
+                                               sa: SACoefficients, P: DynamicParameters<PT>) -> MandelbrotResult
     {
         let maxRefIter = refOrbit.count - 1 // Length of reference orbit
         var refIndex: Int = 0               // Index to reference orbit
@@ -183,17 +184,27 @@ extension FractalCalculation {
         
         var period: Int = 0                 // Period counter for fast orbit detection
         var D: Cplx = .zero                 // 1st derivation of Z
-       
-        // Create array for storing orbits
-        var orbits: [Cplx] = [.zero]
-        orbits.reserveCapacity(P.limits.orbitLength)
-
+        
+        // Period detectors (only the one matching colorizeInside is used).
+        // Detection on the full Z = refOrbit + dZ in Double; delta alone is not periodic.
+        var orbitBuffer = OrbitBuffer(Z0: Cplx.zero, capacity: P.limits.orbitLength)   // Ring buffer
+        var brent = BrentState(Z0: Cplx.zero, startIter: sa.skipIndex)                  // Brent
+        
+        // Full C in calculation precision. Needed only for cycle verification (Newton, |λ|,
+        // interior distance). In Double all pixels would collapse to the same C at deep zoom.
+        // Uses the raw deltaC, not the SA-adjusted dC.
+        let cFull: CT = refC + CT(deltaC.real, deltaC.imaginary, precision: P.precision)
+        
+        /// Converts the full Z from Double to CT for verification and result
+        @inline(__always)
+        func toCT(_ z: Cplx) -> CT { CT(z.real, z.imaginary, precision: P.precision) }
+        
         let dC = sa.getDeltaC(deltaC: deltaC)
-
+        
         for i in sa.skipIndex...P.limits.iterations {
             // Derivation D of old Z
             D = (D + D) * Z + 1.0
-
+            
             // Iteration step
             dZ = (2.0 * refOrbit[refIndex] + dZ) * dZ + dC
             refIndex += 1
@@ -206,14 +217,14 @@ extension FractalCalculation {
             
             if P.bStripes {
                 // Double precision is sufficient
-                stripet = (sin(Double(P.stripes) * Z.toCplx().arg) + 1) * 0.5
+                stripet = (sin(Double(P.stripes) * Z.arg) + 1) * 0.5
             }
             
             nZ = Z.lengthSquared
             
             if nZ > P.limits.bailout {
                 let logAbsZ = 0.5 * log(nZ)     // log(abs(Z)) without sqrt
-
+                
                 // Calculate smooth iteration value for smooth coloring
                 //
                 // This value must be added to the iteration count.
@@ -223,9 +234,8 @@ extension FractalCalculation {
                 
                 // Exterior distance estimation (logarithm of the distance)
                 //
-                // distance = (absZ * logAbsZ * 2) / |D|, calculated in RT to avoid over-/underflow
+                // distance = (absZ * logAbsZ * 2) / |D|
                 // We return the logarithm of the distance because:
-                // - Logarithm must be calculated with arbitrary precision
                 // - MandelbrotResult supports only Double values
                 // - We need the logarithm of the distance for color mapping
                 let dLength = D.length
@@ -236,7 +246,7 @@ extension FractalCalculation {
                     let distance = absZ * logAbsZ * 2.0 / dLength
                     logPixelDist = log(distance) - P.logPixel
                     
-                    // Calculate filament: dimensionless ratio in RT, the rest in Double
+                    // Calculate filament: dimensionless ratio
                     let ratio: Double = distance * P.invDistThreshold.asDouble
                     let t = min(max(1.5 - ratio, 0.0), 1.0)      // 1 for ratio <= 0.5, 0 for ratio >= 1.5
                     filamentStrength = t * t * (3.0 - 2.0 * t)
@@ -259,7 +269,6 @@ extension FractalCalculation {
                 }
                 
                 // Calculate normal
-                // Normal: normalize in RT BEFORE converting to Double (otherwise underflow at deep zoom)
                 var normal: Cplx = .zero
                 if dLength > 0 {
                     let u = Z / D
@@ -281,26 +290,39 @@ extension FractalCalculation {
                 )
             }
             
-            // Calculate orbits
-            if P.colorizeInside == .orbits {
-                // Long periodicity check
-                if let index = findOrbit(orbit: orbits, Z: Z, tolerance: (P.t1, P.t2)) {
-                    return MandelbrotResult(smoothIter: Double(i), distance: Double(orbits.count - index), flags: .inside)
-                }
-                orbits.append(Z)
-                if orbits.count == P.limits.orbitLength { orbits.removeFirst() }
-            }
-            else if P.colorizeInside == .fastOrbits {
-                // Simplified periodicity check
-                if Z.almostEqual(to: Z1, tolerance: P.t3) {
-                    return MandelbrotResult(smoothIter: Double(i), distance: Double(period), flags: .inside)
+            // Period detection for the inside of the set.
+            // Candidate detection in Double, verification in CT with the full C.
+            switch P.colorizeInside {
+            case .orbits:
+                // Ring buffer: fast for small periods
+                if let cycle = orbitBuffer.detect(i: i, Z: Z, t1: P.limits.t1, verify: {
+                    verifyCycle(Z: toCT(Z), C: cFull, candidate: $0, P: P)
+                }) {
+                    return insideResult(i: i, Z: toCT(Z), cycle: cycle, P: P)
                 }
                 
+            case .brentOrbits, .distance:
+                // Brent: any period
+                if let cycle = brent.detect(i: i, Z: Z, t1: P.limits.t1, verify: {
+                    verifyCycle(Z: toCT(Z), C: cFull, candidate: $0, P: P)
+                }) {
+                    return insideResult(i: i, Z: toCT(Z), cycle: cycle, P: P)
+                }
+                
+            case .fastOrbits:
+                // Simplified periodicity check
+                let diff = Z - Z1
+                if diff.lengthSquared < P.limits.t3 {
+                    return MandelbrotResult(smoothIter: Double(i), distance: Double(period), flags: .inside)
+                }
                 period += 1
                 if period > P.limits.orbitLength {
                     period = 0
                     Z1 = Z
                 }
+                
+            default:
+                break
             }
             
             if P.bStripes {
@@ -317,8 +339,19 @@ extension FractalCalculation {
             }
         }
         
+        // Iteration limit reached without bailout and without detected cycle.
+        // Fallback for slowly converging points near the boundary (in CT with the full C).
+        switch P.colorizeInside {
+        case .orbits, .brentOrbits, .distance:
+            let zCT = toCT(Z)
+            if let cycle = findCycleAfterIteration(Zn: zCT, C: cFull, P: P) {
+                return insideResult(i: P.limits.iterations, Z: zCT, cycle: cycle, P: P)
+            }
+        default:
+            break
+        }
+        
         return .defaultValue
     }
-    
     
 }

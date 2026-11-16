@@ -13,23 +13,6 @@ import SwiftMPx
 
 extension FractalCalculation {
     
-    /// Find orbit
-    /// - Parameters:
-    ///   - orbit: Array with Z values
-    ///   - Z: Current Z value
-    ///   - tolerance: Tuple of two tolerance values
-    /// - Returns: Orbit index of first matching Z or nil if no orbit found
-    @inline(__always)
-    nonisolated static func findOrbit<C: ComplexNumber>(orbit: [C], Z: C,
-                                                        tolerance: (t1: Double, t2: Double)) -> Int? {
-        // t1: are there any orbits?
-        guard orbit.lastIndex(where: { ($0 - Z).lengthSquared.toDouble() < tolerance.t1 }) != nil else {
-            return nil
-        }
-        // t2: double check with higher tolerance
-        return orbit.lastIndex(where: { ($0 - Z).lengthSquared.toDouble() < tolerance.t2 })
-    }
-    
     /// Calculate normal. Normalize in RT before converting to Double (otherwise underflow at deep zoom)
     /// - Parameters:
     ///   - Z: Z value
@@ -51,21 +34,21 @@ extension FractalCalculation {
     /// - Returns: Mandelbrot result
     nonisolated static func calculatePointZ2(Z0: CT, C: CT, D0: CT, P: DynamicParameters<PT>) -> MandelbrotResult {
         
-        var stripeAvg: Double = 0.0     // Stripe average value
-        var stripet: Double = 0.0       // Current stripe value
+        var stripeAvg: Double = 0.0                       // Stripe average value
+        var stripet: Double = 0.0                         // Current stripe value
         
-        var Z = Z0                      // Start of iteration
-        var D = D0                      // 1st derivation of Z. D0: 0 for Mandelbrot, 1 for Julia
-        var Z1 = CT(10.0, 10.0)         // Old Z for fast orbit detection
-        var nZ: Double = 0.0            // Squared norm of Z: Z.imaginary * Z.imaginary + Z.real * Z.real
+        var Z = Z0                                        // Start of iteration
+        var D = D0                                        // 1st derivation of Z. D0: 0 for Mandelbrot, 1 for Julia
+        var Z1 = CT(10.0, 10.0, precision: P.precision)   // Old Z for fast orbit detection
+        var nZ: Double = 0.0                              // Squared norm of Z: Z.imaginary * Z.imaginary + Z.real * Z.real
         
-        var period: Int = 0             // Period counter for fast orbit detection
+        var period: Int = 0                               // Period counter for fast orbit detection
         
-        let isJulia = P.initial.kind == .julia
+        let isJulia = P.initial.kind == .julia            // Flag for Julia set
         
-        // Create array for storing orbits (ring buffer)
-        var orbits: [CT] = [Z0]
-        orbits.reserveCapacity(P.limits.orbitLength)
+        // Period detectors (only the one matching colorizeInside is used)
+        var orbitBuffer = OrbitBuffer(Z0: Z0, capacity: P.limits.orbitLength)  // Ring buffer
+        var brent = BrentState(Z0: Z0)                                         // Brent
         
         // Reusable scratch values for MPComplex. Not used for Double precision
         var dScratch = CT.makeScratch(precision: P.precision)   // Scratch value for derivation
@@ -98,9 +81,6 @@ extension FractalCalculation {
                 // smoothIter = -log(logRatio) * _NC.RLOG2
                 let smoothIter = -log(logAbsZ / P.limits.logBailout) * _NC.RLOG2
                 
-                // Exterior distance estimation (logarithm of the distance)
-                //
-                
                 // Normalize, exterior distance, filaments
                 let dLength: RT = D.length
                 var logPixelDist: Double = .greatestFiniteMagnitude
@@ -119,7 +99,8 @@ extension FractalCalculation {
                     let rtDistance: RT = RT(absZ * logAbsZ * 2.0, precision: P.precision) / dLength
                     logPixelDist = RT.log(rtDistance).toDouble() - P.logPixel
                     
-                    // Calculate filament: dimensionless ratio in RT, the rest in Double
+                    // Calculate filament
+                    // Calculate dimensionless ratio in RT, the rest in Double
                     let ratio: Double = (rtDistance * P.invDistThreshold).toDouble()
                     let t = min(max(1.5 - ratio, 0.0), 1.0)      // 1 for ratio <= 0.5, 0 for ratio >= 1.5
                     filamentStrength = t * t * (3.0 - 2.0 * t)
@@ -153,19 +134,28 @@ extension FractalCalculation {
                 )
             }
             
-            // Calculate orbits
-            if P.colorizeInside == .orbits {
-                // Long periodicity check
-                if let index = findOrbit(orbit: orbits, Z: Z, tolerance: (P.t1, P.t2)) {
-                    return MandelbrotResult(smoothIter: Double(i), distance: Double(orbits.count - index), flags: .inside)
+            // Period detection for the inside of the set
+            switch P.colorizeInside {
+            case .orbits:
+                // Ring buffer: fast for small periods
+                if let cycle = orbitBuffer.detect(i: i, Z: Z, t1: P.limits.t1, verify: {
+                    verifyCycle(Z: Z, C: C, candidate: $0, P: P)
+                }) {
+                    return insideResult(i: i, Z: Z, cycle: cycle, P: P)
                 }
-                orbits.append(Z)
-                if orbits.count == P.limits.orbitLength { orbits.removeFirst() }
-            }
-            else if P.colorizeInside == .fastOrbits {
+                
+            case .brentOrbits, .brentLambda, .distance:
+                // Brent: any period
+                if let cycle = brent.detect(i: i, Z: Z, t1: P.limits.t1, verify: {
+                    verifyCycle(Z: Z, C: C, candidate: $0, P: P)
+                }) {
+                    return insideResult(i: i, Z: Z, cycle: cycle, P: P)
+                }
+                
+            case .fastOrbits:
                 // Simplified periodicity check
                 let diff = Z - Z1
-                if diff.lengthSquared.toDouble() < P.t3 {
+                if diff.lengthSquared.toDouble() < P.limits.t3 {
                     return MandelbrotResult(smoothIter: Double(i), distance: Double(period), flags: .inside)
                 }
                 period += 1
@@ -173,6 +163,9 @@ extension FractalCalculation {
                     period = 0
                     Z1 = Z
                 }
+                
+            default:
+                break
             }
             
             if P.bStripes {
@@ -182,12 +175,18 @@ extension FractalCalculation {
             }
         }
         
-        if P.colorizeInside == .distance {
-            return interiorDistance(C: C, Zn: Z, P: P)
+        // Iteration limit reached without bailout and without detected cycle.
+        // Fallback for slowly converging points near the boundary.
+        switch P.colorizeInside {
+        case .orbits, .brentOrbits, .brentLambda, .distance:
+            if let cycle = findCycleAfterIteration(Zn: Z, C: C, P: P) {
+                return insideResult(i: P.limits.iterations, Z: Z, cycle: cycle, P: P)
+            }
+        default:
+            break
         }
         
         return .defaultValue
     }
     
 }
-

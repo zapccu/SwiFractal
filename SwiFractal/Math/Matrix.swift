@@ -5,31 +5,30 @@
 //  Created by Dirk Braner on 28.03.26.
 //
 
-//
-// Implement a matrix type as 1-dimensional array
-//
-// Initialize matrix:
-//
-//   let M = Matrix<Double>((rows, columns), defaultValue: 0.0)
-//   let M = Matrix<Int> = [
-//     [1, 2, 3],
-//     [4, 5, 6]
-//   ]
-//
-// Access matrix:
-//
-//   Element: M[row, col]
-//   Row:     M[row: r]
-//   Column:  M[col: c]
-//
-// Properties:
-//
-//   dim.x: width of matrix
-//   dim.y: height of matrix
-//   size:  size of matrix (number of elements)
-//   grid:  the 1-dimensional array
-//
-
+///
+/// Implement a matrix type as 1-dimensional array
+///
+/// Initialize matrix:
+///```
+///   let M = Matrix<Double>((rows, columns), defaultValue: 0.0)
+///   let M = Matrix<Int> = [
+///     [1, 2, 3],
+///     [4, 5, 6]
+///   ]
+///```
+/// Access matrix:
+///```
+///   Element: M[row, col]
+///   Row:     M[row: r]
+///   Column:  M[col: c]
+///```
+/// Properties:
+///
+///   dim.x: width of matrix\
+///   dim.y: height of matrix\
+///   size:  size of matrix (number of elements)\
+///   grid:  the 1-dimensional array
+///
 struct Matrix<E: Sendable> : Sendable {
     
     /// Matrix dimensions
@@ -77,6 +76,10 @@ struct Matrix<E: Sendable> : Sendable {
         self.grid = grid
     }
     
+    /// Initialize Matrix with unsafe buffer values
+    /// - Parameters:
+    ///   - dim: Dimensions of matrix (rows, columns). Must match the number of elements in grid.
+    ///   - grid: Buffer with elements in row-major order. Must have dim.0 x dim.1 elements.
     init(_ dim: (Int, Int), grid: UnsafeBufferPointer<E>) {
         assert(dim.0 * dim.1 == grid.count, "Matrix size mismatch")
         self.dim = dim
@@ -115,7 +118,7 @@ struct Matrix<E: Sendable> : Sendable {
     }
     
     /// Access matrix row
-    @inline(__always) subscript(y: Int) -> [E] {
+    @inline(__always) subscript(row y: Int) -> [E] {
         get {
             assert(y >= 0 && y < dim.0, "Line index out of bounds")
             let start = y * dim.1
@@ -154,10 +157,12 @@ struct Matrix<E: Sendable> : Sendable {
         
         return grid.withUnsafeBufferPointer { buffer in
             var col = [E]()
+            var rowIndex = 0
             col.reserveCapacity(dim.0)
             
-            for y in 0..<dim.0 {
-                col.append(buffer[y * dim.1 + x])
+            for _ in 0..<dim.0 {
+                col.append(buffer[rowIndex + x])
+                rowIndex += dim.1
             }
             
             return col
@@ -194,7 +199,7 @@ extension Matrix {
     func maxValue<T: Comparable>(by selector: (E) -> T) -> T? {
         return grid.map(selector).max()
     }
-
+    
 }
 
 //

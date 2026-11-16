@@ -50,6 +50,9 @@ protocol ComplexNumber : Sendable {
     /// Constructor. Precision is max(real.precision, imaginary.precision)
     init(_ real: RT, _ imaginary: RT)
     
+    /// Constructor with Double values
+    init(_ real: Double, _ imaginary: Double, precision: Int)
+    
     /// Constructor with precision support
     init(_ real: RT, _ imaginary: RT, precision: Int)
     
