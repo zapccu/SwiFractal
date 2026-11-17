@@ -76,7 +76,7 @@ struct ControlView: View {
                         }
                         GridRow {
                             Text("Method")
-                            CasePicker(selection: $method, width: 120)
+                            CasePicker(selection: $method, width: 150)
                         }
                     }.padding(.horizontal, 5)
                 }.padding([.top, .leading], 10)
