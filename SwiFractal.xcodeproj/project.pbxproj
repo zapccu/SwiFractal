@@ -11,6 +11,7 @@
 		4339B6C32F84E3030035AFC7 /* SwiftMPx in Frameworks */ = {isa = PBXBuildFile; productRef = 4339B6C22F84E3030035AFC7 /* SwiftMPx */; };
 		435E32BF308CB57200B36E2E /* ParSetKit in Frameworks */ = {isa = PBXBuildFile; productRef = 435E32BE308CB57200B36E2E /* ParSetKit */; };
 		4375AEA5308CB35400B6063B /* SwiftMPx in Frameworks */ = {isa = PBXBuildFile; productRef = 4375AEA4308CB35400B6063B /* SwiftMPx */; };
+		438081A330AC47BE0076CF51 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 438081A230AC47B40076CF51 /* README.md */; };
 		43828CCA2CE8A0DF00B8099C /* ComplexModule in Frameworks */ = {isa = PBXBuildFile; productRef = 43828CC92CE8A0DF00B8099C /* ComplexModule */; };
 		43828CCC2CE8A0DF00B8099C /* Numerics in Frameworks */ = {isa = PBXBuildFile; productRef = 43828CCB2CE8A0DF00B8099C /* Numerics */; };
 		43828CCE2CE8A0DF00B8099C /* RealModule in Frameworks */ = {isa = PBXBuildFile; productRef = 43828CCD2CE8A0DF00B8099C /* RealModule */; };
@@ -19,6 +20,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		438081A230AC47B40076CF51 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		43828CA42CE7CD3A00B8099C /* SwiFractal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiFractal.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -53,6 +55,7 @@
 		43828C9B2CE7CD3A00B8099C = {
 			isa = PBXGroup;
 			children = (
+				438081A230AC47B40076CF51 /* README.md */,
 				43828CA52CE7CD3A00B8099C /* Products */,
 				43828CA62CE7CD3A00B8099C /* SwiFractal */,
 			);
@@ -146,6 +149,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				438081A330AC47BE0076CF51 /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
