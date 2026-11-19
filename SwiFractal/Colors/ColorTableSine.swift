@@ -9,9 +9,9 @@ import Foundation
 import SwiftUI
 
 
-//
-// Sine color table
-//
+///
+/// Sine color table
+///
 struct ColorTableSine : ColorTable {
 
     enum CodingKeys: String, CodingKey {

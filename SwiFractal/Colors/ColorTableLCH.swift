@@ -38,9 +38,9 @@ struct LCHParameters: FractalParameters {
     
 }
 
-//
-// LCH color table
-//
+///
+/// LCH color table
+///
 struct ColorTableLCH : ColorTable {
 
     enum CodingKeys: String, CodingKey {

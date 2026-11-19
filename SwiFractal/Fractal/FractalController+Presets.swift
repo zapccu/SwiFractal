@@ -86,7 +86,7 @@ extension FractalController {
                         "smooth": {
                             "smoothColorTable": {
                                 "name": "Grey-1024",
-                                "count": 1024,
+                                "numberOfColors": 1024,
                                 "defColor": {
                                     "alpha": 1,
                                     "blue": 0,
@@ -337,7 +337,7 @@ extension FractalController {
                         "smooth": {
                             "smoothColorTable": {
                                 "name": "Grey-1024",
-                                "count": 1024,
+                                "numberOfColors": 1024,
                                 "defColor": {
                                     "alpha": 1,
                                     "blue": 0,

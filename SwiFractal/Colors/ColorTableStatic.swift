@@ -29,7 +29,7 @@ struct ColorTableStatic: ColorTable {
     // Default color
     var defColor: RGBAColor = .black
     
-    /// Return number of colors in table
+    /// Return number of colors in table or change color table size
     var count: Int {
         get { self.colors.count }
         set { _ = self.resize(colorCount: newValue) }

@@ -19,22 +19,28 @@ import SwiftUI
 ///
 struct ColorTableSmooth: ColorTable {
     
-    // Do not encode/decode the color array
+    /// Do not encode/decode the color array
     enum CodingKeys: String, CodingKey {
-        case name, count, defColor, fixedSize, colorPoints
+        case name, numberOfColors, defColor, fixedSize, colorPoints
     }
     
-    // Color table name
+    /// Color table name
     var name: String = "MonoWhite"
     
-    // Color array
+    /// Color array
     var colors: [RGBAColor] = [.white]
     
-    // Default color
+    /// Default color
     var defColor: RGBAColor = .black
     
-    /// Return number of colors in table
-    var count: Int = 1
+    /// Desired number of colors. Updated by resize()
+    var numberOfColors: Int
+    
+    /// Return number of colors in table or change color table size
+    var count: Int {
+        get { self.colors.count }
+        set { _ = self.resize(colorCount: newValue) }
+    }
     
     /// Color table has fixed size
     var fixedSize: Bool = true
@@ -63,20 +69,21 @@ struct ColorTableSmooth: ColorTable {
         self.defColor = defColor
         self.fixedSize = fixedSize
         self.colorPoints = colorPoints
-        self.count = self.resize(colorCount: colorCount)
+        self.numberOfColors = colorCount
+        _ = self.resize(colorCount: colorCount)
     }
     
     /// Custom decoder. Prevent decoding of color array
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
             
-        let name        = try container.decode(String.self, forKey: .name)
-        let count       = try container.decode(Int.self, forKey: .count)
-        let defColor    = try container.decode(RGBAColor.self, forKey: .defColor)
-        let fixedSize   = try container.decode(Bool.self, forKey: .fixedSize)
-        let colorPoints = try container.decode([RGBAColor].self, forKey: .colorPoints)
+        let name            = try container.decode(String.self, forKey: .name)
+        let numberOfColors  = try container.decode(Int.self, forKey: .numberOfColors)
+        let defColor        = try container.decode(RGBAColor.self, forKey: .defColor)
+        let fixedSize       = try container.decode(Bool.self, forKey: .fixedSize)
+        let colorPoints     = try container.decode([RGBAColor].self, forKey: .colorPoints)
 
-        self.init(name, colorPoints: colorPoints, colorCount: count, defColor: defColor, fixedSize: fixedSize)
+        self.init(name, colorPoints: colorPoints, colorCount: numberOfColors, defColor: defColor, fixedSize: fixedSize)
     }
     
     /// Clone color table
@@ -98,7 +105,7 @@ struct ColorTableSmooth: ColorTable {
             numColors = max(colorCount, 2)
             self.colorPoints = [RGBAColor(0.3, 0.3, 0.3), .white]
             if numColors > 2 {
-                self.colors = RGBAColor.linspace(RGBAColor(0.3, 0.3, 0.3), RGBAColor.white, max(colorCount, self.count))
+                self.colors = RGBAColor.linspace(RGBAColor(0.3, 0.3, 0.3), RGBAColor.white, numColors)
             }
             else {
                 self.colors = self.colorPoints
@@ -107,7 +114,7 @@ struct ColorTableSmooth: ColorTable {
         else if self.colorPoints.count == 1 {
             // Monochrome palette, set cyclic to true
             numColors = max(colorCount, 1)
-            self.colors = Array(repeating: self.colorPoints[0], count: self.count)
+            self.colors = Array(repeating: self.colorPoints[0], count: numColors)
         }
         else if self.colorPoints.count > 1 && self.colorPoints.count == colorCount {
             // Palette contains only the color points. No interpolation.
@@ -120,14 +127,25 @@ struct ColorTableSmooth: ColorTable {
             numColors = max(colorCount, colorPointCount)
             colorPointCount -= 1
             self.colors.removeAll()
-            var secSize = Int(numColors / colorPointCount)
+            var secSize = Int(round(Double(numColors) / Double(colorPointCount)))
             for i in 0..<colorPointCount {
-                if secSize + colors.count - 1 > numColors {
-                    secSize = numColors - colors.count
+                // Adjust size of last segment so size of reulting table matches required number of colors
+                if secSize + colors.count != numColors { secSize = numColors - colors.count }
+                
+                // Create new color segment
+                let newSegment = RGBAColor.linspace(self.colorPoints[i], self.colorPoints[i+1], secSize)
+                
+                // Prevent duplicate entries
+                if let lastIndex = colors.indices.last {
+                    colors.replaceSubrange(lastIndex...lastIndex, with: newSegment)
                 }
-                self.colors.append(contentsOf: RGBAColor.linspace(self.colorPoints[i], self.colorPoints[i+1], secSize))
+                else {
+                    colors.append(contentsOf: newSegment)
+                }
             }
         }
+        
+        self.numberOfColors = numColors
         
         return numColors
     }
