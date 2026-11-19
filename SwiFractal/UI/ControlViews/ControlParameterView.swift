@@ -346,7 +346,7 @@ struct ControlParameterView<T: FractalProtocol & Observable>: View {
                 }
                 GridRow {
                     Text("Iterations")
-                    LinearStepper(value: bFractal.FP.limits.iterations, range: 0...8192, step: 50)
+                    LinearStepper(value: bFractal.FP.limits.iterations, range: FractalAppData.iterationRagne, step: 50)
                         .disabled(autoIterations)
                     Spacer()
                 }

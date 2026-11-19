@@ -10,19 +10,31 @@ import SwiftMPx
 
 
 ///
-/// Application data
+/// Application data.
+/// Contains static constants and variables.
 ///
 @MainActor
 class FractalAppData {
     
-    // The default window size
+    /// The default window size
     static let windowSize: CGSize = CGSize(width: 1200, height: 900)
     
-    // The default image size
+    /// The default image size
     static let resolution: CGSize = CGSize(width: 800, height: 800)
     
-    // The width of the control view
+    /// The width of the control view
     static let controlViewWidth: CGFloat = 300
+    
+    /// Minimum iteration count
+    static let minIterationCount: Int = 1
+    
+    /// Maximum iteration count (variable, might be substituted by an application setting in the future)
+    static var maxIterationCount: Int = 8192
+    
+    /// Return iteration range
+    static var iterationRagne: ClosedRange<Int> {
+        Self.minIterationCount ... Self.maxIterationCount
+    }
     
     /// Dictionary with colorings
     static var colorings: [String: EnumColoring] = [
@@ -85,7 +97,7 @@ class FractalAppData {
         )
     ]
     
-    // The default coloring
+    /// The default coloring
     static let defaultColoring: String = "Grey-1024"
 
     /// Add or replace coloring

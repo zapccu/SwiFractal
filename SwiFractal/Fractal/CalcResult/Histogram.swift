@@ -27,8 +27,9 @@ struct Histogram {
     /// Create histogram from result matrix.
     /// - Parameters:
     ///   - result: Result matrix
-    ///   - maxValue: Maximum calculation value. For Mandelbrot set this is equal to maxIterations.
+    ///   - maxValue: Maximum calculation value. For Mandelbrot set this is equal to *maxIterations*.
     init(result: Matrix<MandelbrotResult>, maxValue: Int) {
+        let maxValue = max(maxValue, 1)             // maxValue must be >= 1
         self.maxHistValue = maxValue - 1
         self.escapedCount = 0
 
