@@ -61,6 +61,10 @@ c64 normalize(c64 Z, c64 D);
 int findOrbit(thread c64 *orbits, c64 Z, int orbitIndex, int orbitEntries, f64 tolerance);
 int findOrbit2(thread c64 *orbits, c64 Z, int orbitIndex, int orbitsEntries, f64 tolerance);
 
+// Exact scaling of a f64 value with 2^k. Implemented in mandelbrot.metal.
+f64 inline scale2(f64 a, float s) { return f64(float2(a.v.x * s, a.v.y * s)); }
+c64 inline scale2(c64 a, float s) { return c64(scale2(a.real(), s), scale2(a.imaginary(), s)); }
+
 
 #endif
 

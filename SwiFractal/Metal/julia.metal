@@ -44,11 +44,19 @@ MandelbrotResult iterateJulia(c64 C, c64 J, constant MetalComputeParameters *MP)
     f64 stripes = f64(MP->stripes);
     f64 stripeSig = f64(MP->stripeSig);
 
+    float dExp = 0.0f;              // Exponent of D. D' = D * 2^dExp
+    const float DLIM = 0x1p60f;     // |D| < 2^60 → norm(D) < 2^120, no overflow
+
     int i;
 
     for(i=0; i<=MP->iterations; i++) {
         // Derivation of Z
         D = (Z + Z) * D;
+        float dm = max(abs(D.real().v.x), abs(D.imaginary().v.x));
+        if (dm > DLIM) {
+            D = scale2(D, 0x1p-60f);
+            dExp += 60.0f;
+        }
         
         // Iteration formula
         Z = sqr(Z) + J;
@@ -110,6 +118,12 @@ MandelbrotResult iterateJulia(c64 C, c64 J, constant MetalComputeParameters *MP)
             }
 
             smoothIter += float(i);
+            
+            // Check for Inf values in the results.
+            // If any of the values are not finite, return flag = R_ERROR (red color on CPU side)
+            if (!isfinite(nZ.v.x) || !isfinite(dLength.v.x) || !isfinite(normal.real().v.x)) {
+                return { smoothIter.v, F2_ZERO, F2_ZERO, F2_ZERO, F2_ZERO, F2_ZERO, F2_ZERO, R_ERROR };
+            }
             
             return {
                 smoothIter.v,                           // smoothIter

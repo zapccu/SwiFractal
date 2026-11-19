@@ -42,18 +42,12 @@ int findOrbit(thread c64 *orbits, c64 Z, int orbitIndex, int orbitEntries, f64 t
 // - Parameters:
 //   - Z: Z value
 //   - D: Derivation of Z
-// - Returns: Normal als c64 value
+// - Returns: Normal as c64 value
 c64 inline normalize(c64 Z, c64 D) {
     c64 u = Z / D;
     f64 len = abs(u);
     return len > 0.0 ? (u / len) : c64(0.0);
 }
-
-
-// Exact scaling of a f64 value with 2^k
-static inline f64 scale2(f64 a, float s) { return f64(float2(a.v.x * s, a.v.y * s)); }
-static inline c64 scale2(c64 a, float s) { return c64(scale2(a.real(), s), scale2(a.imaginary(), s)); }
-
 
 // Mandelbrot iteration
 // - Parameters:
