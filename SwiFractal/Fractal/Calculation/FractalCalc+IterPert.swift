@@ -301,7 +301,7 @@ extension FractalCalculation {
                     return insideResult(i: i, Z: toCT(Z), cycle: cycle, P: P)
                 }
                 
-            case .brentOrbits, .distance:
+            case .brentOrbits, .brentLambda, .distance:
                 // Brent: any period
                 if let cycle = brent.detect(i: i, Z: Z, t1: P.limits.t1, verify: {
                     verifyCycle(Z: toCT(Z), C: cFull, candidate: $0, P: P)
@@ -342,7 +342,7 @@ extension FractalCalculation {
         // Iteration limit reached without bailout and without detected cycle.
         // Fallback for slowly converging points near the boundary (in CT with the full C).
         switch P.colorizeInside {
-        case .orbits, .brentOrbits, .distance:
+        case .orbits, .brentOrbits, .brentLambda, .distance:
             let zCT = toCT(Z)
             if let cycle = findCycleAfterIteration(Zn: zCT, C: cFull, P: P) {
                 return insideResult(i: P.limits.iterations, Z: zCT, cycle: cycle, P: P)
