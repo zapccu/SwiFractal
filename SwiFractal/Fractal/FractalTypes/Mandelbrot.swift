@@ -52,22 +52,5 @@ class Mandelbrot<RT: PreciseFloatingPoint> : FractalProtocol {
         return DynamicParameters<DataType>(anypar: FP.current, resolution: resolution, progress: progress,
                                            settings: settingsSnapshot)
     }
-    
-    /// Zoom into fractal
-    /// - Parameters:
-    ///   - area: Area to zoom into
-    ///   - resolution: Image resolution
-    /// - Returns: New fractal object considering a change of fractal dimensions precision
-    func zoom(into area: CGRect, resolution: CGSize) -> any FractalProtocol {
-        let newDimensions = FP.dimensions.zoomArea(area: area, resolution: resolution)
-        switch newDimensions {
-        case .double(let dim):
-            let parameters = MandelbrotParameters<Double>(dimensions: dim)
-            return Mandelbrot<Double>(mandelbrotParameters: parameters)
-        case .mpfloat(let dim):
-            let parameters = MandelbrotParameters<MPFloat>(dimensions: dim)
-            return Mandelbrot<MPFloat>(mandelbrotParameters: parameters)
-        }
-    }
 
 }

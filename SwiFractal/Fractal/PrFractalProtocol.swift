@@ -88,13 +88,6 @@ protocol FractalProtocol: AnyObject {
     // Map pixel coordinates to complex point.
     // Return point as tuple of Strings
     func mapPointFormatted(_ location: CGPoint, resolution: CGSize) -> (String, String)
-    
-    // Draw calculation result
-    //func drawResultSet(result: Matrix<ResultType>, resolution: CGSize, size: ISize, mapper: ColorMapper) -> CGImage?
-    
-    // Zoom into fractal.
-    // Return new fractal with different precision
-    func zoom(into area: CGRect, resolution: CGSize) -> any FractalProtocol
 
 }
 
