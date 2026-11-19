@@ -14,10 +14,10 @@ import simd
 /// Type for SIMD3``<Float>``
 typealias SIMD3f = SIMD3<Float>
 
-/// Type for RGB color value with components in range 0...1
+/// Type for RGB color value with components in range -1...1
 typealias RGB = SIMD3<Float>
 
-/// Type for RGBA color value with components in range 0...1
+/// Type for RGBA color value with components in range -1...1
 typealias RGBA = SIMD4<Float>
 
 /// Type for HSB color value
@@ -186,9 +186,10 @@ struct RGBAColor: FractalParameters {
         self.colorValue = SIMD4<Float>(0.0, 0.0, 0.0, 1.0)
     }
     
-    /// Init color channels with Float values in range 0..1
+    /// Init color channels with Float values
+    /// Color channel values are clamped to -1...1
     init (_ red: Float, _ green: Float, _ blue: Float, _ alpha: Float = 1.0) {
-        self.colorValue = SIMD4<Float>(red, green, blue, alpha).clamped
+        self.colorValue = SIMD4<Float>(red, green, blue, alpha).clamped(to: -1.0...1.0)
     }
     
     /// Init color channels with Double values in range 0..1
@@ -202,18 +203,21 @@ struct RGBAColor: FractalParameters {
     }
     
     /// Init color with RGB / SIMD3 Value
+    /// Color channel values are clamped to -1...1
     init(rgb: RGB, _ alpha: Float = 1.0) {
-        self.colorValue = RGBA(rgb, alpha).clamped
+        self.colorValue = RGBA(rgb, alpha).clamped(to: -1.0...1.0)
     }
     
-    /// Init color with RGBA / SIMD4 value
+    /// Init color with RGBA / SIMD4 value.
+    /// Color channel values are clamped to -1...1
     init(rgba: RGBA) {
-        self.colorValue = rgba.clamped
+        self.colorValue = rgba.clamped(to: -1.0...1.0)
     }
 
     /// Init grey color with Float value
+    /// Color channel values are clamped to -1...1
     init(grey: Float, _ alpha: Float = 1.0) {
-        self.colorValue = SIMD4<Float>(grey, grey, grey, alpha).clamped
+        self.colorValue = SIMD4<Float>(grey, grey, grey, alpha).clamped(to: -1.0...1.0)
     }
     
     /// Init grey color with Double value
@@ -221,17 +225,18 @@ struct RGBAColor: FractalParameters {
         self.init(grey: Float(grey), Float(alpha))
     }
     
-    /// Init color with vector of channels in range 0..1
+    /// Init color with vector of channel values
+    /// Color channel values are clamped to -1...1
     init (vector: [Float]) {
         self.colorValue = SIMD4<Float>(
             vector.count > 0 ? vector[0] : 0.0,
             vector.count > 1 ? vector[1] : 0.0,
             vector.count > 2 ? vector[2] : 0.0,
             vector.count > 3 ? vector[3] : 1.0
-        ).clamped
+        ).clamped(to: -1.0...1.0)
     }
     
-    /// Init color with vector of channels in range 0..1
+    /// Init color with vector of channels values
     init (vector: [Double]) {
         self.init(vector: vector.map { Float($0) })
     }
@@ -386,8 +391,10 @@ struct RGBAColor: FractalParameters {
     /// - Returns: Array with colors
     static func linspace(_ start: RGBAColor, _ end: RGBAColor, _ count: Int) -> [RGBAColor] {
         guard count > 0 else { return [] }
-        let step = (end - start) / Float(count - 1)
-        var a = Array(0..<count).map { step * Float($0) + start }
+        
+        // SIMD4 calculation
+        let step = (end.colorValue - start.colorValue) / Float(count - 1)
+        var a: [RGBAColor] = Array(0..<count).map { RGBAColor(rgba: step * Float($0) + start.colorValue) }
         
         // Prevent rounding errors for last array element
         if count > 1 { a[count-1] = end }
