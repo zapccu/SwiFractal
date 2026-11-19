@@ -38,9 +38,9 @@ struct ColorTableStatic: ColorTable {
     /// Color table has fixed size
     var fixedSize: Bool = true
     
-    /// Color table is cyclic
+    /// Return true if color table is cyclic
     var cyclic: Bool {
-        self.colors.count == 1 || (self.colors.count > 2 && self.colors.first != self.colors.last)
+        self.colors.count == 1 || (self.colors.count > 1 && self.colors.first == self.colors.last)
     }
     
     /// Return gradient colors

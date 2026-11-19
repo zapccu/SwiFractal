@@ -45,9 +45,9 @@ struct ColorTableSmooth: ColorTable {
     /// Color table has fixed size
     var fixedSize: Bool = true
     
-    /// Color table is cyclic
+    /// Return true if color table is cyclic
     var cyclic: Bool {
-        self.colorPoints.count == 1 || (self.colorPoints.count > 2 && self.colorPoints.first != self.colorPoints.last)
+        self.colorPoints.count == 1 || (self.colorPoints.count > 1 && self.colorPoints.first == self.colorPoints.last)
     }
     
     // Fixed color points

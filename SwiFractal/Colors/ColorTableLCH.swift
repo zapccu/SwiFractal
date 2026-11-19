@@ -53,6 +53,7 @@ struct ColorTableLCH : ColorTable {
     
     var fixedSize: Bool = true
     
+    /// Return true if color table is cyclic
     var cyclic: Bool {
         colors.count > 0 && colors.first == colors.last
     }

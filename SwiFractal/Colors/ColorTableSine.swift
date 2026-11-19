@@ -24,16 +24,18 @@ struct ColorTableSine : ColorTable {
     
     var fixedSize: Bool = true
     
+    /// Return true if color table is cyclic
     var cyclic: Bool {
         colors.count > 0 && colors.first == colors.last
     }
     
-    // Color array
+    /// Color array
     var colors: [RGBAColor] = [ .white ]
     
-    // Default color
+    /// Default color
     var defColor: RGBAColor = .black
     
+    /// Theta values
     var thetas: [Float] = [0.85, 0.0, 0.15]
     
     /// Return gradient colors
