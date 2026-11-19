@@ -5,7 +5,9 @@
 //  Created by Dirk Braner on 04.08.26.
 //
 
+import Foundation
 import SwiftUI
+
 
 ///
 /// Keys for setting parameters
@@ -14,7 +16,8 @@ enum SettingsKeys {
     static let cpuCount = "settings.cpuCount"
     static let oversubscription = "settings.oversubscription"
     static let drawParallel = "settings.drawParallel"
-    static let resolution = "settings.resolution"
+    static let resolutionWidth = "settings.resolution.width"
+    static let resolutionHeight = "settings.resolution.height"
     static let usePerturbation = "settings.usePerturbation"
     static let useSeriesApproximation = "settings.useSeriesApproximation"
     static let perturbationPasses = "settings.perturbationPasses"
@@ -87,6 +90,9 @@ final class AppSettings {
     static let shared = AppSettings()
 
     private let defaults: UserDefaults
+    
+    /// The default resolution
+    private static let defaultResolution = CGSize(width: 800, height: 800)
 
     /// Number of CPU cores used for calculation
     var cpuCount: Int {
@@ -105,7 +111,10 @@ final class AppSettings {
 
     /// Default image resolution
     var resolution: CGSize {
-        didSet { defaults.set(resolution, forKey: SettingsKeys.resolution) }
+        didSet {
+            defaults.set(Int(resolution.width.rounded()), forKey: SettingsKeys.resolutionWidth)
+            defaults.set(Int(resolution.height.rounded()), forKey: SettingsKeys.resolutionHeight)
+        }
     }
     
     /// Always use perturbation method
@@ -134,7 +143,9 @@ final class AppSettings {
         self.cpuCount = defaults.object(forKey: SettingsKeys.cpuCount) as? Int ?? ProcessInfo.processInfo.activeProcessorCount
         self.oversubscription = defaults.object(forKey: SettingsKeys.oversubscription) as? Int ?? 2
         self.drawParallel = defaults.object(forKey: SettingsKeys.drawParallel) as? Bool ?? false
-        self.resolution = defaults.object(forKey: SettingsKeys.resolution) as? CGSize ?? CGSize(width: 800, height: 800)
+        let width = defaults.object(forKey: SettingsKeys.resolutionWidth) as? Int ?? Int(Self.defaultResolution.width)
+        let height = defaults.object(forKey: SettingsKeys.resolutionHeight) as? Int ?? Int(Self.defaultResolution.height)
+        self.resolution = CGSize(width: Double(width), height: Double(height))
         self.usePerturbation = defaults.object(forKey: SettingsKeys.usePerturbation) as? Bool ?? false
         self.useSeriesApproximation = defaults.object(forKey: SettingsKeys.useSeriesApproximation) as? Bool ?? false
         self.perturbationPasses = defaults.object(forKey: SettingsKeys.perturbationPasses) as? Int ?? 5
