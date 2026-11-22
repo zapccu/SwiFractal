@@ -42,6 +42,6 @@ struct LightningParameters: FractalParameters {
     var ev: Int = 0
 
     /// Blending mode for combining lightning with fractal image
-    var blendingMode: BlendingMode = BlendingMode(.none)
+    var blendingMode: BlendingMode = .none
     
 }

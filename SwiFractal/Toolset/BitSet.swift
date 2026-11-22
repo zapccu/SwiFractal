@@ -1,6 +1,5 @@
 //
-//  based.swift
-//  Swift-Toolbox
+//  BitSet.swift
 //
 //  Created by Dirk Braner on 07.02.26.
 //
@@ -14,7 +13,7 @@ import Foundation
 ///
 /// Example:
 ///
-///     enum EnumDrawingAttributes: Int, CaseIterable {
+///     enum EnumDrawingAttributes: Int, NamedBit {
 ///         case solid
 ///         case rounded
 ///         case colored
@@ -31,100 +30,76 @@ import Foundation
 ///
 /// BitSet is conform to Codable. A bitmask is converted to a JSON array containing the names of the bits.
 ///
-
-struct BitSet<Element>: ExpressibleByArrayLiteral, RawRepresentable, Codable, Equatable
-where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int {
+struct BitSet<T: NamedBit>: ExpressibleByArrayLiteral, Codable {
     
-    // ----------------------------------------------------------------------
-    //  Implementation of BitSet
-    // ----------------------------------------------------------------------
-
-	var rawValue: Int
+    /// The bit mask
+    var mask: Int = 0
     
-    /// Return Array with all cases as String
-    var allNames: [String] = Element.allCases.map { String(describing: $0) }
+    /// Return true if no bit is set
+    var noneSet: Bool { mask == 0 }
     
-    /// Return number of highest bit, starting with 0
-    var highBit: Int = Element.allCases.count - 1
+    /// Return true if all bits are set
+    var allSet: Bool { mask == T.allBits }
     
-    /// Return mask with all bits set
-    var allBits: Int = (1 << (Element.allCases.count)) - 1
-    
-    /// Default initializer
-	init() {
-		rawValue = 0
-	}
-    
-    /// Init with bit number. If bitnumber is > highest bit number or < 0, initialize with 0
-    init (_ bit: Int) {
-        self.rawValue = bit >= 0 && bit <= highBit ? 1 << bit : 0
+    /// Init with bit. If bit number is > highest bit number or < 0, initialize with 0
+    init(_ bit: T) {
+        self.mask = bit.bitValue
     }
     
-    /// Init with raw value without bit conversion. Bits > highBit are masked.
+    /// Init with bit mask raw value without bit conversion. Bits > highBit are masked.
 	init(rawValue: Int) {
-		self.rawValue = rawValue & allBits
+        self.mask = rawValue & T.allBits
 	}
     
     /// Init from String Array
-    init(values: [String]) {
-        self.rawValue = 0
+    init?(_ values: [String]) {
+        self.mask = 0
         for value in values {
-            if let bit = allNames.firstIndex(of: value) {
-                self.rawValue |= 1 << bit
-            }
+            guard let bit = T.bit(of: value) else { return nil }
+            self.mask |= 1 << bit
         }
-    }
-    
-    init(_ element: Element) {
-        self.rawValue = 1 << element.rawValue
     }
 
     /// Initialize bitset with multiple bits by using a bitwise OR operation
     /// Example: bitset = [.bit1, .bit2 ]
     /// This function is also called for decoding keyed JSON strings like "{ \"key\": [ \"case1\”, \"case2\" ] }"
-    init(arrayLiteral elements: Element...) {
-        let or = elements.reduce(0) { $0 | 1 << $1.rawValue }
-        self.rawValue = or
+    init(arrayLiteral elements: T...) {
+        self.mask = elements.reduce(0) { $0 | $1.bitValue }
     }
     
-    /// Returns name of bit as String
-    func bitName(_ bit: Element) -> String {
-        return String(describing: bit)
-    }
-
-    /// Test if no bits are set
-    func noneSet() -> Bool {
-        return rawValue == 0
+    /// Check if bit is not set
+    /// - Parameter bit: Named bit
+    /// - Returns: true if bit is not set, otherwise false
+    func notSet(_ bit: T) -> Bool {
+        return self.mask & bit.bitValue == 0
     }
     
-    /// Return true if bit is not set
-    func notSet(_ bit: Element) -> Bool {
-        return self.rawValue & (1 << bit.rawValue) == 0
-    }
-    
-    /// Return true if bit is set
-    func isSet(_ bit: Element) -> Bool {
-        return self.rawValue & (1 << bit.rawValue) != 0
+    /// Check if bit is set
+    /// - Parameter bit: Named bit
+    /// - Returns: true if bit is set, otherwise false
+    func isSet(_ bit: T) -> Bool {
+        return self.mask & bit.bitValue != 0
     }
     
     /// Test if all bits in array are set
-    func allSet(_ bits: [Element]) -> Bool {
-        return bits.allSatisfy( { self.rawValue & (1 << $0.rawValue) != 0} )
+    /// - Parameter bits: Array with named bits
+    /// - Returns: true if all bits are set, otherwise false
+    func allSet(_ bits: [T]) -> Bool {
+        return bits.allSatisfy( { self.mask & $0.bitValue != 0} )
     }
     
     /// Test if any bit in array is set
-    func anySet(_ bits: [Element]) -> Bool {
-        return bits.contains(where: { self.rawValue & (1 << $0.rawValue) != 0} )
+    /// - Parameter bits: Array with named bits
+    /// - Returns: true if at least one bit is set, otherwise false
+    func anySet(_ bits: [T]) -> Bool {
+        return bits.contains(where: { self.mask & $0.bitValue != 0 } )
     }
-    
-    // ----------------------------------------------------------------------
-    //  JSON encoding / decoding
-    // ----------------------------------------------------------------------
 
     /// Put bitset bit-names as String array into JSON instead of rawValue
+    /// - Parameter encoder: Encoder
     func encode(to encoder: any Encoder) throws {
         var container = encoder.unkeyedContainer()
-        let names = Element.allCases.filter { self.rawValue & (1 << $0.rawValue) != 0 }.map { String(describing: $0) }
+        let names = T.allCases.filter { self.mask & $0.bitValue != 0 }.map { $0.name }
         try container.encode(contentsOf: names)
     }
     
@@ -133,13 +108,13 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
     init(from decoder: Decoder) throws {
         // Open an unkeyedContainer for reading the array
         var container = try decoder.unkeyedContainer()
-        self.rawValue = 0
+        self.mask = 0
 
         // Iterate through the array
         while !container.isAtEnd {
             let value = try container.decode(String.self)
-            if let bit = allNames.firstIndex(of: value) {
-                self.rawValue |= 1 << bit
+            if let bit = T.bit(of: value) {
+                self.mask |= 1 << bit
             }
         }
     }
@@ -150,7 +125,7 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
         guard let data = jsonString.data(using: .utf8) else { return false }
         do {
             let newBitset = try JSONDecoder().decode(BitSet.self, from: data)
-            self.rawValue = newBitset.rawValue
+            self.mask = newBitset.mask
             return true
         }
         catch {
@@ -173,75 +148,52 @@ where Element: RawRepresentable, Element: CaseIterable, Element.RawValue == Int 
     }
     
     /// Return true if BitSet contains only specified bit
-    static func === (lhs: BitSet, rhs: Element) -> Bool {
-        let bitMask = 1 << rhs.rawValue
-        return lhs.rawValue == bitMask
+    static func === (lhs: BitSet, rhs: T) -> Bool {
+        return lhs.mask == rhs.bitValue
     }
     
-    static func == (lhs: BitSet, rhs: Element) -> Bool {
+    static func == (lhs: BitSet, rhs: T) -> Bool {
         return lhs.isSet(rhs)
     }
     
-    static func != (lhs: BitSet, rhs: Element) -> Bool {
+    static func != (lhs: BitSet, rhs: T) -> Bool {
         lhs.notSet(rhs)
     }
 
     /// Compare BitSets. Return true if BitSets are  equal
     static func == (lhs: BitSet, rhs: BitSet) -> Bool {
-        return lhs.rawValue == rhs.rawValue
+        return lhs.mask == rhs.mask
     }
-    
-    // ----------------------------------------------------------------------
-    //  Logical operations
-    // ----------------------------------------------------------------------
 
     /// Logical AND with bit
     /// Example: bitset = bitset & .bitname
-    static func & (lhs: BitSet, rhs: Element) -> BitSet {
-        let bitMask = 1 << rhs.rawValue
-        let resultRawValue = lhs.rawValue & bitMask
+    static func & (lhs: BitSet, rhs: T) -> BitSet {
+        let resultRawValue = lhs.mask & rhs.bitValue
         return BitSet(rawValue: resultRawValue)
     }
     
     /// Logical AND with bit
     /// Example: bitset = bitset & .bitname
-    static func &= (lhs: inout BitSet, rhs: Element) {
-        let bitMask = 1 << rhs.rawValue
-        lhs.rawValue &= bitMask
+    static func &= (lhs: inout BitSet, rhs: T) {
+        lhs.mask &= rhs.bitValue
     }
 
     /// Logical OR with bit
     /// Example: bitset = bitset | .bitname
-    static func | (lhs: BitSet, rhs: Element) -> BitSet {
-        let bitMask = 1 << rhs.rawValue
-        let resultRawValue = lhs.rawValue | bitMask
+    static func | (lhs: BitSet, rhs: T) -> BitSet {
+        let resultRawValue = lhs.mask | rhs.bitValue
         return BitSet(rawValue: resultRawValue)
     }
     
     /// Logical OR with bit
     /// Example: bitset = bitset | .bitname
-    static func |= (lhs: inout BitSet, rhs: Element) {
-        let bitMask = 1 << rhs.rawValue
-        lhs.rawValue |= bitMask
-    }
-    
-    /// Conditional statements with logical AND
-    /// Example: if bitset & .bitname ...
-    static func & (lhs: BitSet, rhs: Element) -> Bool {
-        let bitMask = 1 << rhs.rawValue
-        return (lhs.rawValue & bitMask) != 0
-    }
-    
-    /// Conditional statements with logical OR
-    /// Example: if bitset | .bitname ...
-    static func | (lhs: BitSet, rhs: Element) -> Bool {
-        let bitMask = 1 << rhs.rawValue
-        return (lhs.rawValue | bitMask) != 0
+    static func |= (lhs: inout BitSet, rhs: T) {
+        lhs.mask |= rhs.bitValue
     }
     
     /// Return true if all bits are 0
     static prefix func ! (lhs: BitSet) -> Bool {
-        return lhs.rawValue == 0
+        return lhs.mask == 0
     }
 
 }

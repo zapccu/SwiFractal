@@ -102,7 +102,7 @@ struct Lightning {
     ///   - normal: Normal vector
     ///   - blending: Blending mode. Default is .multiply
     /// - Returns: brightness value greater than or equal to 0.0
-    func blinnPhong(_ normal: Vector<Double>, blending: BlendingMode = BlendingMode(.multiply)) -> Float {
+    func blinnPhong(_ normal: Vector<Double>, blending: BlendingMode = .multiply) -> Float {
         
         // Calculate diffuse light
         //

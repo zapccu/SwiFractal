@@ -150,7 +150,7 @@ struct ControlParameterView<T: FractalProtocol & Observable>: View {
                         .onChange(of: fractal.colorizeOutside) {
                             debugPrint("Changed outside")
                             if fractal.colorizeOutside != .simple && fractal.blendingMode == .none {
-                                fractal.blendingMode(.multiply)
+                                fractal.blendingMode = .multiply
                             }
                             Task { await controller.drawResultSet() }
                         }
@@ -265,12 +265,12 @@ struct ControlParameterView<T: FractalProtocol & Observable>: View {
                         LinearStepper(value: bFractal.stripes, range: 0...32)
                             .onChange(of: fractal.stripes) { oldValue, newValue in
                                 if oldValue == 0 && newValue > 0 {
-                                    fractal.colorizeMode(.stripes)
-                                    fractal.colorizeOutside(.blinnPhong)
+                                    fractal.colorizeMode = .stripes
+                                    fractal.colorizeOutside = .blinnPhong
                                 }
                                 if oldValue > 0 && newValue == 0 {
-                                    fractal.colorizeMode(.iterations)
-                                    fractal.colorizeOutside(.simple)
+                                    fractal.colorizeMode = .iterations
+                                    fractal.colorizeOutside = .simple
                                 }
                             }
                         Spacer()
@@ -280,12 +280,12 @@ struct ControlParameterView<T: FractalProtocol & Observable>: View {
                         LinearStepper(value: bFractal.steps, range: 0...100)
                             .onChange(of: fractal.steps) { oldValue, newValue in
                                 if oldValue == 0 && newValue > 0 {
-                                    fractal.colorizeMode(.steps)
-                                    fractal.colorizeOutside(.blinnPhong)
+                                    fractal.colorizeMode = .steps
+                                    fractal.colorizeOutside = .blinnPhong
                                 }
                                 if oldValue > 0 && newValue == 0 {
-                                    fractal.colorizeMode(.iterations)
-                                    fractal.colorizeOutside(.simple)
+                                    fractal.colorizeMode = .iterations
+                                    fractal.colorizeOutside = .simple
                                 }
                                 Task { await controller.drawResultSet() }
                             }

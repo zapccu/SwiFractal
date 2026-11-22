@@ -97,7 +97,7 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
     let stripeSig: Double
     
     /// Calculate orbits
-    let colorizeInside: EnumColorizeInside
+    let colorizeInside: ColorizeInside
     
     /// Lightning
     let lightning: Lightning         // Lightning depends on LightningParameters
@@ -150,7 +150,7 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
         self.limits = FractalDynamicLimits(limits: anypar.limits, precision: anypar.dimensions.precision.bits)
         
         // Orbits / colorize interior of Mandelbrot set
-        self.colorizeInside = anypar.colorParameters.colorizeInside.element
+        self.colorizeInside = anypar.colorParameters.colorizeInside
 
         // Stripes
         self.bStripes = anypar.colorParameters.colorizeMode == .stripes && anypar.colorParameters.stripes > 0

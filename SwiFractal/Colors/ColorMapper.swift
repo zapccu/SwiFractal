@@ -112,7 +112,7 @@ struct ColorMapper : Sendable {
     ///   - brightness: Brightness. Either 1.0 or the result of *shading3D()*
     /// - Returns: Tuple (color, brightness)
     func shading(cycleIter: Double, logPixelDist: Double, stripeAvg: Double, brightness: Float) -> (RGBAColor, Float) {
-        let blending: EnumBlendingMode = .hardLight
+        let blending: BlendingMode = .hardLight
         
         var bright = brightness
         var color = coloring.defColor
@@ -204,7 +204,7 @@ struct ColorMapper : Sendable {
             return .red
         }
         else if result.flags == .inside {
-            switch colorParameters.colorizeInside() {
+            switch colorParameters.colorizeInside {
             case .defaultColor, .fastOrbits:
                 return coloring.defColor
             case .distance:

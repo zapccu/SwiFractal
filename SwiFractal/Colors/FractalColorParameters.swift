@@ -14,33 +14,31 @@ import Numerics
 ///
 /// Specifies the kind of value used to calculate the color
 ///
-enum EnumColorizeMode: Int, CaseIterable {
+enum ColorizeMode: Int, NamedIntEnum {
     case iterations = 0     // iteration count
     case distance   = 1     // distance to Mandelbrot set
     case steps      = 3     // color steps
     case stripes    = 4     // stripes
 }
-typealias ColorizeMode = Options<EnumColorizeMode>
 
 ///
 /// Colorize outside
 ///
 /// Outside colorization of a fractal
 ///
-enum EnumColorizeOutside: Int, CaseIterable {
+enum ColorizeOutside: Int, NamedIntEnum {
     case simple             // No 3D rendering
     case simple3d           // Simple 3D shading
     case blinnPhong         // Blinn-Phong 3D shading
     case filaments          // Draw filaments
 }
-typealias ColorizeOutside = Options<EnumColorizeOutside>
 
 ///
 /// Colorize inside
 ///
 /// Inside colorization of a fractal. Raw values must match constants CI_xxx defined in mandelbrot.h
 ///
-enum EnumColorizeInside: Int, CaseIterable {
+enum ColorizeInside: Int, NamedIntEnum {
     case defaultColor = 0   // Inside of Mandelbrot set is set to default color
     case orbits = 1         // Colorize orbits inside Mandelbrot set using full orbit detection
     case brentOrbits = 2    // Brent's period detection
@@ -48,7 +46,6 @@ enum EnumColorizeInside: Int, CaseIterable {
     case fastOrbits = 4     // Use fast orbit detection without coloring the interior of Mandelbrot set
     case distance = 5       // Colorize distance inside Mandelbrot set, implies distance calculation
 }
-typealias ColorizeInside = Options<EnumColorizeInside>
 
 ///
 /// Color Palette Mode
@@ -57,7 +54,7 @@ typealias ColorizeInside = Options<EnumColorizeInside>
 ///
 /// Only used when ColorizeMode = .iterations
 ///
-enum EnumPaletteMode: Int, CaseIterable {
+enum PaletteMode: Int, NamedIntEnum {
     case linear           = 0   // linear color mapping
     case interpolated     = 1   // Interpolation
     case hue              = 2
@@ -66,7 +63,6 @@ enum EnumPaletteMode: Int, CaseIterable {
     case inverseHistogram = 6   // Inverse histogram coloring
     case cycling          = 7
 }
-typealias PaletteMode = Options<EnumPaletteMode>
 
 ///
 /// Color parameters
@@ -82,15 +78,16 @@ struct FractalColorParameters: FractalParameters {
     )
     
     /// Colorize mode: iterations, distance, steps, stripes
-    var colorizeMode = ColorizeMode(.iterations)
+    var colorizeMode: ColorizeMode = .iterations
     
     /// Colorize outside\
     /// `.simple`: No shading\
     /// `.simple3D`: Simple 3D shading (fast)\
     /// `.blinnPhong`: Blinn-Phong 3D shading
-    var colorizeOutside = ColorizeOutside(.simple)      // Colorize outside: simple, simple3D, blinnPhong
-    var colorizeInside = ColorizeInside(.defaultColor)  // Colorize inside: defaultColor, orbits, distance
-    var paletteMode = PaletteMode(.linear)              // Palette assignment mode: linear, modulo, hue, huedyn, lchdyn
+    //var colorizeOutside = ColorizeOutside(.simple)      // Colorize outside: simple, simple3D, blinnPhong
+    var colorizeOutside: ColorizeOutside = .simple      // Colorize outside: simple, simple3D, blinnPhong
+    var colorizeInside: ColorizeInside = .defaultColor  // Colorize inside: defaultColor, orbits, distance
+    var paletteMode: PaletteMode = .linear              // Palette assignment mode: linear, modulo, hue, huedyn, lchdyn
     var stripes: Int = 0                                // Stripe density, frequency for stripe average coloring
                                                         // Range 0-32, 0 = No stripes, default = 0
     var stripeSig: Double = 0.9                         // Memory parameter for stripe average coloring

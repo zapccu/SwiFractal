@@ -126,7 +126,7 @@ struct Matrix<E: Sendable> : Sendable {
             return Array(grid[start..<end])
         }
         set {
-            assert(y >= 0 && y < dim.1, "Line index out of bounds")
+            assert(y >= 0 && y < dim.0, "Line index out of bounds")
             assert(newValue.count == dim.1, "Input array size mismatch")
             let start = y * dim.1
             let end = start + dim.1

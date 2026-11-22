@@ -78,18 +78,19 @@ struct CasePicker<T: Hashable>: View where T: RawRepresentable, T: CaseIterable,
 /// - Parameters:
 ///   - options: Binding
 ///   - width: Width of picker
-struct OptionsPicker<T>: View where T: RawRepresentable, T: CaseIterable, T: Equatable, T.RawValue == Int {
-    @Binding var options: Options<T>
-    
+struct OptionsPicker<T>: View where T: NamedIntEnum {
+    @Binding var options: T
+
     var width: CGFloat
     var alignment: Alignment = .leading
-    
+
     var body: some View {
-        Picker("", selection: $options.rawValue) {
-            ForEach(Array(T.allCases), id: \.rawValue) { item in
-                Text(String(describing: item).capitalized).tag(item.rawValue)
+        Picker("", selection: $options) {
+            ForEach(Array(T.allCases), id: \.self) { item in
+                Text(item.name.capitalized).tag(item)
             }
         }
+        .labelsHidden()
         .frame(minWidth: width, maxWidth: .infinity, alignment: alignment)
     }
 }

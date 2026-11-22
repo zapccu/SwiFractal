@@ -10,7 +10,7 @@ import Foundation
 ///
 /// Blending
 ///
-enum EnumBlendingMode: Int, CaseIterable, Equatable {
+enum BlendingMode: Int, NamedIntEnum {
     
     case none
     case hardLight
@@ -76,6 +76,4 @@ enum EnumBlendingMode: Int, CaseIterable, Equatable {
     }
 
 }
-
-typealias BlendingMode = Options<EnumBlendingMode>
 

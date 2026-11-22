@@ -35,12 +35,13 @@ struct CalculationState: OptionSet, Bitmaskable, Sendable {
 
 }
 
-enum EnumResultContains: Int, CaseIterable {
+enum EnumResultContains: Int, NamedBit {
     case none
     case orbits
     case stripes
 }
 typealias ResultContains = BitSet<EnumResultContains>
+
 
 ///
 /// Additional information for calculation result matrix

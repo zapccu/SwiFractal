@@ -286,7 +286,7 @@ struct RGBAColor: FractalParameters {
     ///   - correction: Correction factor. Default = 1.0: no correction
     /// - Returns: Blended color
     @inline(__always)
-    func blend(with value: Float, mode: EnumBlendingMode, correction: Float = 1.0) -> RGBAColor {
+    func blend(with value: Float, mode: BlendingMode, correction: Float = 1.0) -> RGBAColor {
         guard mode != .none else { return self }
         let col3 = mode.blend(base: self.colorValue.xyz, top: value, correction: correction)
         return RGBAColor(col3: col3)
@@ -299,7 +299,7 @@ struct RGBAColor: FractalParameters {
     ///   - lightning: Lightning parameters
     /// - Returns: Blended color
     func blend(with value: Float, lightning: Lightning) -> RGBAColor {
-        let mode = lightning.blendingMode()
+        let mode = lightning.blendingMode
         guard mode != .none else { return self }
         
         if mode == .multiply {
