@@ -131,12 +131,12 @@ struct RGBAColor: FractalParameters {
     }
     
     /// Return all channels as Float vector
-    var vector: Vector<Float> {
-        return Vector<Float>([red, green, blue, alpha])
+    var vector4: Vector4<Float> {
+        return Vector4<Float>([red, green, blue, alpha])
     }
 
     /// Return color channels as vector / Double array
-    var vector3: [Float] {
+    var array: [Float] {
         return [red, green, blue]
     }
 

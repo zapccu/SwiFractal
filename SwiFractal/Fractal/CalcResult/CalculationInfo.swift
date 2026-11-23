@@ -9,31 +9,15 @@
 import Foundation
 
 
-///
-/// Additional information for fractal calculation result
-///
-struct CalculationState: OptionSet, Bitmaskable, Sendable {
-    
-    let rawValue: Int
-    
-    /// No calculation in progress
-    static let idle = CalculationState(rawValue: 1)
-    
-    /// Calculation completed
-    static let completed = CalculationState(rawValue: 2)
-    
-    /// Calculation in progress
-    static let inProgress = CalculationState(rawValue: 4)
-    
-    /// Calculation cancelled by user
-    static let cancelled = CalculationState(rawValue: 8)
-    
-    /// Error during calculation
-    static let error = CalculationState(rawValue: 16)
-    
-    static let allCases: [CalculationState] = [.idle, .completed, .inProgress, .cancelled, .error]
-
+enum EnumCalculationState: Int, NamedBit {
+    case idle
+    case completed
+    case inProgress
+    case cancelled
+    case error
 }
+typealias CalculationState = BitSet<EnumCalculationState>
+
 
 enum EnumResultContains: Int, NamedBit {
     case none
@@ -48,8 +32,17 @@ typealias ResultContains = BitSet<EnumResultContains>
 ///
 struct CalculationInfo: Sendable {
     
+    /// Messages related to calculation state
+    static let messages: [EnumCalculationState:String] = [
+        .idle: "Idle",
+        .completed: "Completed",
+        .inProgress: "In Progress",
+        .cancelled: "Cancelled",
+        .error: "Error"
+    ]
+    
     /// Calculation state
-    var state: CalculationState = .idle
+    var state: CalculationState = [.idle]
     
     /// Additional information stored in each calculation result
     var extendedInfo: ResultContains = []
@@ -60,18 +53,26 @@ struct CalculationInfo: Sendable {
     /// Number of errors
     var errorCount: Int = 0
     
+    init(state: EnumCalculationState, extendedInfo: ResultContains = [], message: String = "", errorCount: Int = 0) {
+        self.state = [state]
+        self.extendedInfo = extendedInfo
+        self.message = message
+    }
+    
     /// Return message
     func getMessage() -> String {
         guard message.isEmpty else { return message }
+        var msg: String = ""
         
-        switch state {
-        case .idle: return "Idle"
-        case .completed: return "Completed"
-        case .inProgress: return "In Progress"
-        case .cancelled: return "Cancelled"
-        case .error: return "Error"
-        default: return "Unknown State"
+        for s in EnumCalculationState.allCases {
+            if state.isSet(s) {
+                if !msg.isEmpty { msg += "|" }
+                msg += Self.messages[s] ?? "Unknown state"
+            }
         }
+        
+        return msg
+
     }
     
 }

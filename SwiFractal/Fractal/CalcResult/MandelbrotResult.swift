@@ -10,52 +10,18 @@ import Metal64
 import MetalCompute
 
 
-protocol Bitmaskable : CaseIterable {
-    var allNames: [String] { get }
-    var highBit: Int { get }
-    var allBits: Int { get }
-}
-
-extension Bitmaskable {
-    
-    var allNames: [String] { Self.allCases.map { String(describing: $0) } }
-    var allBits: Int { (1 << (Self.allCases.count)) - 1 }
-    var highBit: Int { Self.allCases.count - 1 }
-    
-    var name: String { String(describing: self) }
-    
-}
-
 ///
-/// Mandelbrot result flags
-/// Any change on these flags must be synchronized with flags defined in Metal/mandelbrot.h
+/// Result flags
 ///
-struct MandelbrotResultFlags: OptionSet, Bitmaskable, Sendable {
-
-    let rawValue: Int
-
-    /// Not yet calculated
-    static let calculate = MandelbrotResultFlags(rawValue: 1)
-    
-    /// Assign default color
-    static let defaultColor = MandelbrotResultFlags(rawValue: 2)
-    
-    /// Maximum number of iterations reached
-    static let maxIterations = MandelbrotResultFlags(rawValue: 4)
-    
-    /// Bailout exceeded
-    static let bailout = MandelbrotResultFlags(rawValue: 8)
-    
-    /// Inside Mandelbrot set
-    static let inside = MandelbrotResultFlags(rawValue: 16)
-    
-    /// Error during calculation
-    static let error = MandelbrotResultFlags(rawValue: 32)
-
-    /// Bitmask for all cases except .calculate
-    static let allCases: [MandelbrotResultFlags] = [.defaultColor, .maxIterations, .bailout, .inside, .error]
-
+enum EnumResultFlags : Int, NamedBit {
+    case calculate
+    case defaultColor
+    case maxIterations
+    case bailout
+    case inside
+    case error
 }
+typealias MandelbrotResultFlags = BitSet<EnumResultFlags>
 
 
 ///
@@ -87,22 +53,22 @@ struct MandelbrotResult : CalculationResult, MetalDecodable {
     var filament: Double = 0.0
     
     /// Flags: .calculate, .defaultColor, .maxIterations, .bailout, .inside, .error
-    var flags: MandelbrotResultFlags = .calculate
+    var flags: MandelbrotResultFlags = [.calculate]
     
     /// Return smoothIter as histogram value
     var histValue: Double { smoothIter }
     
     /// Return true, if result contains valid histogram value (flags == .bailout)
-    var hasValidHistValue: Bool { flags == .bailout }
+    var hasValidHistValue: Bool { flags.isSet(.bailout) }
     
     /// Zero result. flags = .defaultColor
-    static let zero: MandelbrotResult = MandelbrotResult(flags: .defaultColor)
+    static let zero: MandelbrotResult = MandelbrotResult(flags: [.defaultColor])
     
     /// Initial result. flags = .calculate
-    static let initialValue: MandelbrotResult = MandelbrotResult(flags: .calculate)
+    static let initialValue: MandelbrotResult = MandelbrotResult(flags: [.calculate])
     
     /// Default result. flags = .defaultColor
-    static let defaultValue: MandelbrotResult = MandelbrotResult(flags: .defaultColor)
+    static let defaultValue: MandelbrotResult = MandelbrotResult(flags: [.defaultColor])
     
 }
 

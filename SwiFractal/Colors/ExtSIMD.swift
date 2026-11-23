@@ -18,19 +18,13 @@ extension SIMD3: @retroactive ExpressibleByFloatLiteral where Scalar: Expressibl
     
 }
 
-extension SIMD3 where Scalar == Float {
-    
-    static func *= (_ value: inout Self, _ scalar: Scalar) {
-        value.x *= scalar
-        value.y *= scalar
-        value.z *= scalar
-    }
+extension SIMD3 where Scalar: BinaryFloatingPoint {
     
     var asRGBA: SIMD4<Scalar> {
         return SIMD4<Scalar>(
-            x: RGBAColor.linearToRGB(x),
-            y: RGBAColor.linearToRGB(y),
-            z: RGBAColor.linearToRGB(z),
+            x: Scalar(RGBAColor.linearToRGB(Float(x))),
+            y: Scalar(RGBAColor.linearToRGB(Float(y))),
+            z: Scalar(RGBAColor.linearToRGB(Float(z))),
             w: 1.0
         )
     }

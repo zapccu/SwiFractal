@@ -30,10 +30,13 @@ import Foundation
 ///
 /// BitSet is conform to Codable. A bitmask is converted to a JSON array containing the names of the bits.
 ///
-struct BitSet<T: NamedBit>: ExpressibleByArrayLiteral, Codable {
-    
+struct BitSet<T: NamedBit>: ExpressibleByArrayLiteral, Equatable, Codable {
+        
     /// The bit mask
     var mask: Int = 0
+    
+    /// Return bits as Array of named bits
+    var bits: [T] { T.allCases.filter { $0.bitValue & mask != 0 } }
     
     /// Return true if no bit is set
     var noneSet: Bool { mask == 0 }
@@ -51,7 +54,8 @@ struct BitSet<T: NamedBit>: ExpressibleByArrayLiteral, Codable {
         self.mask = rawValue & T.allBits
 	}
     
-    /// Init from String Array
+    /// Init from String array
+    /// - Parameter values: Array of bit names
     init?(_ values: [String]) {
         self.mask = 0
         for value in values {
@@ -65,6 +69,26 @@ struct BitSet<T: NamedBit>: ExpressibleByArrayLiteral, Codable {
     /// This function is also called for decoding keyed JSON strings like "{ \"key\": [ \"case1\”, \"case2\" ] }"
     init(arrayLiteral elements: T...) {
         self.mask = elements.reduce(0) { $0 | $1.bitValue }
+    }
+    
+    /// Set bit
+    mutating func set(_ bit: T) {
+        self.mask |= bit.bitValue
+    }
+    
+    /// Clear bit
+    mutating func clear(_ bit: T) {
+        self.mask &= ~bit.bitValue
+    }
+    
+    /// Toggle bit
+    mutating func toggle(_ bit: T) {
+        self.mask ^= bit.bitValue
+    }
+    
+    /// Set mask to single bit
+    mutating func set(to bit: T) {
+        self.mask = bit.bitValue
     }
     
     /// Check if bit is not set
@@ -147,24 +171,21 @@ struct BitSet<T: NamedBit>: ExpressibleByArrayLiteral, Codable {
         }
     }
     
-    /// Return true if BitSet contains only specified bit
-    static func === (lhs: BitSet, rhs: T) -> Bool {
-        return lhs.mask == rhs.bitValue
-    }
-    
-    static func == (lhs: BitSet, rhs: T) -> Bool {
-        return lhs.isSet(rhs)
-    }
-    
-    static func != (lhs: BitSet, rhs: T) -> Bool {
-        lhs.notSet(rhs)
+    /// Return true if BitSet contains specified bits. Shortcut for allSet()
+    static func == (lhs: BitSet, rhs: [T]) -> Bool {
+        return lhs.allSet(rhs)
     }
 
-    /// Compare BitSets. Return true if BitSets are  equal
+    /// Compare BitSets. Return true if BitSets are equal
     static func == (lhs: BitSet, rhs: BitSet) -> Bool {
         return lhs.mask == rhs.mask
     }
 
+    /// Compare BitSets. Return true if BitSets are not equal
+    static func != (lhs: BitSet, rhs: BitSet) -> Bool {
+        return lhs.mask != rhs.mask
+    }
+    
     /// Logical AND with bit
     /// Example: bitset = bitset & .bitname
     static func & (lhs: BitSet, rhs: T) -> BitSet {
@@ -191,9 +212,9 @@ struct BitSet<T: NamedBit>: ExpressibleByArrayLiteral, Codable {
         lhs.mask |= rhs.bitValue
     }
     
-    /// Return true if all bits are 0
-    static prefix func ! (lhs: BitSet) -> Bool {
-        return lhs.mask == 0
+    /// Logical NOT
+    static prefix func ~ (lhs: BitSet) -> BitSet {
+        return BitSet(rawValue: ~lhs.mask)
     }
 
 }

@@ -212,7 +212,7 @@ extension FractalCalculation {
             
             // Check for glitch
             if isGlitch(delta: dZ, Z: Z) {
-                return MandelbrotResult(smoothIter: Double(i), flags: .error)
+                return MandelbrotResult(smoothIter: Double(i), flags: [.error])
             }
             
             if P.bStripes {
@@ -286,7 +286,7 @@ extension FractalCalculation {
                     distance: logPixelDist,
                     stripeAvg: stripeAvg,
                     filament: filamentStrength,
-                    flags: .bailout
+                    flags: [.bailout]
                 )
             }
             
@@ -313,7 +313,7 @@ extension FractalCalculation {
                 // Simplified periodicity check
                 let diff = Z - Z1
                 if diff.lengthSquared < P.limits.t3 {
-                    return MandelbrotResult(smoothIter: Double(i), distance: Double(period), flags: .inside)
+                    return MandelbrotResult(smoothIter: Double(i), distance: Double(period), flags: [.inside])
                 }
                 period += 1
                 if period > P.limits.orbitLength {

@@ -266,6 +266,7 @@ extension Matrix: ExpressibleByArrayLiteral where E: Numeric {
     }
     
     /// Subtract scalar value from each matrix element
+    @inline(__always)
     static func - (lhs: Matrix<E>, rhs: E) -> Matrix<E> {
         var newMatrix = lhs
         newMatrix -= rhs
@@ -274,9 +275,9 @@ extension Matrix: ExpressibleByArrayLiteral where E: Numeric {
     
     /// Dot product of matrix and vector
     static func * (_ mat: Matrix<E>, _ vec: Vector<E>) -> Vector<E> {
-        guard mat.dim.0 == vec.dim else { return Vector<E>() }
+        precondition(mat.dim == (vec.dim, vec.dim), "Matrix must be \(vec.dim)x\(vec.dim). Current: \(mat.dim)")
+
         var r = Vector<E>(vec.dim, defaultValue: 0)
-        
         for i in 0..<mat.dim.0 {
             for j in 0..<vec.dim {
                 r[i] += mat[i, j] * vec[j]
@@ -284,6 +285,29 @@ extension Matrix: ExpressibleByArrayLiteral where E: Numeric {
         }
         
         return r
+    }
+    
+    @inline(__always)
+    static func * (_ mat: Matrix<E>, _ vec: Vector3<E>) -> Vector3<E> where E: BinaryFloatingPoint {
+        precondition(mat.dim == (3, 3), "Matrix must be 3×3. Current: \(mat.dim)")
+        
+        return Vector3<E>(
+            x: mat[0, 0] * vec.x + mat[0, 1] * vec.y + mat[0, 2] * vec.z,
+            y: mat[1, 0] * vec.x + mat[1, 1] * vec.y + mat[1, 2] * vec.z,
+            z: mat[2, 0] * vec.x + mat[2, 1] * vec.y + mat[2, 2] * vec.z
+        )
+    }
+    
+    @inline(__always)
+    static func * (_ mat: Matrix<E>, _ vec: Vector4<E>) -> Vector4<E> where E: BinaryFloatingPoint {
+        precondition(mat.dim == (4, 4), "Matrix must be 4x4. Current: \(mat.dim)")
+        
+        return Vector4<E>(
+            x: mat[0, 0] * vec.x + mat[0, 1] * vec.y + mat[0, 2] * vec.z + mat[0, 3] * vec.w,
+            y: mat[1, 0] * vec.x + mat[1, 1] * vec.y + mat[1, 2] * vec.z + mat[1, 3] * vec.w,
+            z: mat[2, 0] * vec.x + mat[2, 1] * vec.y + mat[2, 2] * vec.z + mat[2, 3] * vec.w,
+            w: mat[3, 0] * vec.x + mat[3, 1] * vec.y + mat[3, 2] * vec.z + mat[3, 3] * vec.w
+        )
     }
     
 }

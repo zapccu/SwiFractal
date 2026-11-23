@@ -404,7 +404,7 @@ class FractalController {
         }
         
         let combinedResult = await fractal.calculate(method: method, resolution: resolution, progress: progress)
-        if combinedResult.info.state == .completed && combinedResult.result != nil {
+        if combinedResult.info.state.isSet(.completed) && combinedResult.result != nil {
             self.result = combinedResult.result!
             self.calcInfo = combinedResult.info
             self.histogram = Histogram(result: combinedResult.result!, maxValue: fractal.getLimits().iterations)
@@ -421,8 +421,8 @@ class FractalController {
         var errors: Int = 0
 
         for r in result.grid {
-            if r.flags == .inside { inside += 1 }
-            if r.flags == .error { errors += 1 }
+            if r.flags.isSet(.inside) { inside += 1 }
+            if r.flags.isSet(.error) { errors += 1 }
         }
         
         return (inside, errors)
@@ -439,14 +439,14 @@ class FractalController {
         let colorParameters = fractal.getColorParameters()
         
         // Check if result contains stripe average values
-        if colorParameters.colorizeMode == .stripes && self.calcInfo.extendedInfo != .stripes {
+        if colorParameters.colorizeMode == .stripes && self.calcInfo.extendedInfo.notSet(.stripes) {
             ToastCenter.shared.show("Results do not contain stripe data. Image must be recalculated", systemImage: "checkmark.circle.fill")
             debugPrint("No stripe average values in results")
             return
         }
         
         // Check if result contains orbit length values
-        if colorParameters.colorizeInside.isNone(of: [.defaultColor, .fastOrbits]) && self.calcInfo.extendedInfo != .orbits {
+        if colorParameters.colorizeInside.isNone(of: [.defaultColor, .fastOrbits]) && self.calcInfo.extendedInfo.notSet(.orbits) {
             if await ToastCenter.shared.showAndWait("Results do not contain orbit data. Image must be recalculated", actionTitle: "Calculate") {
                 await calculate(method: .sequential)
             }

@@ -8,8 +8,27 @@
 import Foundation
 import Numerics
 
+typealias Vector3<E: Numeric & SIMDScalar> = SIMD3<E>
+typealias Vector4<E: Numeric & SIMDScalar> = SIMD4<E>
+
+extension SIMD where Scalar: FloatingPoint {
+    
+    /// Return SIMD as array
+    var array: [Scalar] {
+        indices.map { self[$0] }
+    }
+    
+    /// Calculate dot product
+    func dot(_ other: Self) -> Scalar {
+        (self * other).sum()
+    }
+
+}
+
+
+
 ///
-/// Vector type
+/// Vector type. Currently not needed by SwiFractal
 ///
 struct Vector<E> : ExpressibleByArrayLiteral, Sendable where E: Numeric, E: Sendable {
     

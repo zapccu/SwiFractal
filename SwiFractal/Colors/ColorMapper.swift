@@ -170,7 +170,7 @@ struct ColorMapper : Sendable {
     /// - Returns: Brightness value greater than or equal to 0.0
     func shading3D(normal: Cplx) -> Float {
         var brightness: Float = 1.0                         // Default brightness
-        var vecNormal: Vector<Double> = [0.0, 0.0, 1.0]     // Default normal vector
+        var vecNormal: Vector3<Double> = [0.0, 0.0, 1.0]     // Default normal vector
         
         // Calculate normal vector
         let len = normal.length
@@ -197,13 +197,13 @@ struct ColorMapper : Sendable {
     /// - Parameter result: Mandelbrot result
     /// - Returns: Color or nil
     func mapFlags(result: MandelbrotResult) -> RGBAColor? {
-        if result.flags.isSubset(of: [.defaultColor, .maxIterations, .calculate]) {
+        if result.flags.anySet([.defaultColor, .maxIterations, .calculate]) {
             return coloring.defColor
         }
-        else if result.flags == .error {
+        else if result.flags.isSet(.error) {
             return .red
         }
-        else if result.flags == .inside {
+        else if result.flags.isSet(.inside) {
             switch colorParameters.colorizeInside {
             case .defaultColor, .fastOrbits:
                 return coloring.defColor

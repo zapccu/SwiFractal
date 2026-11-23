@@ -15,7 +15,7 @@ typealias COL3 = SIMD3<Float>
 extension SIMD3<Float> {
     
     /// Convert COL3 to Float array
-    var toFloat: [Float] {
+    var toFloatArray: [Float] {
         [x, y, z]
     }
     
@@ -91,7 +91,7 @@ struct ColConv {
         ]
         
         //let a: [Float] = mulDot(m, xyz.vector3)
-        let a: Vector<Float> = m * Vector<Float>(xyz.toFloat)
+        let a: Vector3<Float> = m * xyz
         let c: [Float] = a.array.map {
             let v0 = max($0, 0.0)
             let v1 = v0 > 0.0031308 ? 1.055 * pow(v0, 1 / 2.4) - 0.055 : 12.92 * v0

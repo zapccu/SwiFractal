@@ -30,19 +30,19 @@ struct Lightning {
     let exposure: Float
     
     /// Light vector for Blinn-Phong-Shading
-    let vecLight: Vector<Double>
+    let vecLight: Vector3<Double>
     
     /// Azimuth vector for Blinn-Phong-Shading
-    let vecAzimuth: Vector<Double>
+    let vecAzimuth: Vector3<Double>
     
     /// Vector for simple shading
-    let vecSimple: Vector<Double>
+    let vecSimple: Vector3<Double>
     
     /// Precalculate diffuse factor for normal vector
-    let diffuseLightVector: Vector<Double>
+    let diffuseLightVector: Vector3<Double>
     
     /// Precalculate specular factor for normal vector
-    let specularLightVector: Vector<Double>
+    let specularLightVector: Vector3<Double>
     
     /// Height factor for simple shading
     let height: Double
@@ -67,20 +67,20 @@ struct Lightning {
         
         // angle = theta, elevation = phi
         // light vector = [ cos(theta) * cos(phi), sin(theta) * cos(phi), sin(phi) ]
-        self.vecLight = Vector<Double>([cos(angleRad) * cos(elevationRad), sin(angleRad) * cos(elevationRad), sin(elevationRad)])
+        self.vecLight = Vector3<Double>(x: cos(angleRad) * cos(elevationRad), y: sin(angleRad) * cos(elevationRad), z: sin(elevationRad))
         
         // Precalculate diffuse light vector for normal vector
         self.diffuseLightVector = self.vecLight / (1.0 + self.vecLight[2])
         
         // Viewer azimuth, phi2 = average between phi and pi/2
         let phi2 = (_NC.PI12 + elevationRad) / 2.0
-        self.vecAzimuth = Vector<Double>([cos(angleRad) * sin(phi2), sin(angleRad) * sin(phi2), cos(phi2)])
+        self.vecAzimuth = Vector3<Double>(x: cos(angleRad) * sin(phi2), y: sin(angleRad) * sin(phi2), z: cos(phi2))
         
         // Precalculate specular light vector for normal vector
         self.specularLightVector = vecAzimuth / (1.0 + vecAzimuth[2])
 
         // Light vector for simple shading
-        self.vecSimple = Vector<Double>([cos(angleRad), sin(angleRad), 0])
+        self.vecSimple = Vector3<Double>(x: cos(angleRad), y: sin(angleRad), z: 0)
         
         // Height factor of the incoming light for simple shading (45 degrees: 1 + 45 / 90 = 1.5)
         height = 1.0 + Double(parameters.elevation) / 90.0
@@ -89,8 +89,8 @@ struct Lightning {
     /// Simple shading
     /// - Parameter normal: Normal vector
     /// - Returns: brightness value greater than or equal to 0.0
-    func simple3D(_ normal: Vector<Double>) -> Float {
-        let diffuseLight = normal * vecSimple + height
+    func simple3D(_ normal: Vector3<Double>) -> Float {
+        let diffuseLight = normal.dot(vecSimple) + height
         let brightness = diffuseLight / (1.0 + height)
         
         return Float(max(brightness, 0.0))
@@ -102,7 +102,7 @@ struct Lightning {
     ///   - normal: Normal vector
     ///   - blending: Blending mode. Default is .multiply
     /// - Returns: brightness value greater than or equal to 0.0
-    func blinnPhong(_ normal: Vector<Double>, blending: BlendingMode = .multiply) -> Float {
+    func blinnPhong(_ normal: Vector3<Double>, blending: BlendingMode = .multiply) -> Float {
         
         // Calculate diffuse light
         //
@@ -114,7 +114,7 @@ struct Lightning {
         //
         // 1. diffuseLight  = dot product(light_vector, normal_vector)
         // 2. Normalization: diffuseLight /= (1.0 + vecLight[2])
-        let diffuseLight = normal * diffuseLightVector
+        let diffuseLight = normal.dot(diffuseLightVector)
 
         // Calculate specular light
         //
@@ -122,7 +122,7 @@ struct Lightning {
         //
         // 1. specularLight = dot-product(phi2, normal)
         // 2. Normalization: specularLight /= (1.0 + vecAzimuth[2])
-        var specularLight = max(normal * specularLightVector, 0.0)
+        var specularLight = max(normal.dot(specularLightVector), 0.0)
         
         // Shininess
         specularLight = pow(specularLight, parameters.shininess)

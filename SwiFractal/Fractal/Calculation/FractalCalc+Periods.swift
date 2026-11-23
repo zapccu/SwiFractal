@@ -241,14 +241,14 @@ extension FractalCalculation {
                 smoothIter: Double(cycle.period),
                 nZ: cycle.absLambda,
                 distance: interiorDistance(cycle, P: P) ?? 0.0,
-                flags: .inside
+                flags: [.inside]
             )
         }
         return MandelbrotResult(
             smoothIter: smoothConvergence(i: i, Z: Z, cycle: cycle, P: P),
             nZ: cycle.absLambda,
             distance: Double(cycle.period),
-            flags: .inside
+            flags: [.inside]
         )
     }
 }

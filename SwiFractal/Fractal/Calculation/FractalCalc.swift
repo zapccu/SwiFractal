@@ -84,7 +84,7 @@ enum FractalCalculation<PT: FractalData> {
             let end = min(start + batch, count)
             for i in start..<end {
                 // Check if point is already calculated
-                guard outRow[i].flags == .calculate else { continue }
+                guard outRow[i].flags.isSet(.calculate) else { continue }
                 
                 // Initial values of iteration
                 let (z0, c, d0) = mapping.values(for: inRow[i])
@@ -118,11 +118,11 @@ enum FractalCalculation<PT: FractalData> {
 
         var glitchCount: Int = 0
 
-        for (i, inElement) in zip(inRow.indices, inRow) where outRow[i].flags == .calculate {
+        for (i, inElement) in zip(inRow.indices, inRow) where outRow[i].flags.isSet(.calculate) {
             var result = calculatePointZ2PT(deltaC: inElement.toCplx(), refC: refPoint, refOrbit: refOrbit, sa: sa, P: P)
-            if result.flags == .error {
+            if result.flags.isSet(.error) {
                 // Point must be recalculated
-                result.flags = .calculate
+                result.flags = [.calculate]
                 glitchCount += 1
                 
                 if result.smoothIter > maxGlitchIterationCount {
@@ -199,11 +199,11 @@ enum FractalCalculation<PT: FractalData> {
             
             // Calculate points one by one
             for i in start..<end {
-                guard outChunk.buffer[i].flags == .calculate else { continue }
+                guard outChunk.buffer[i].flags.isSet(.calculate) else { continue }
                 
                 let (z0, c, d0) = mapper.values(for: inChunk.buffer[i])
                 let result = calculatePointZ2(Z0: z0, C: c, D0: d0, P: P)
-                if result.flags == .error {
+                if result.flags.isSet(.error) {
                     errorCount += 1
                 }
                 
@@ -283,13 +283,13 @@ enum FractalCalculation<PT: FractalData> {
                 let end = min(start + batch, totalCount)
                 
                 for i in start..<end {
-                    guard outChunk.buffer[i].flags == .calculate else { continue }
+                    guard outChunk.buffer[i].flags.isSet(.calculate) else { continue }
                     
                     var result = calculatePointZ2PT(deltaC: inChunk.buffer[i].toCplx(), refC: refPoint, refOrbit: refOrbit, sa: sa, P: P)
                     
-                    if result.flags == .error {
+                    if result.flags.isSet(.error) {
                         // Point must be recalculated
-                        result.flags = .calculate
+                        result.flags = [.calculate]
                         glitchCount += 1
                         
                         if result.smoothIter > maxGlitchIterationCount {
