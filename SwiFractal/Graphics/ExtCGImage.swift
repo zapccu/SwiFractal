@@ -15,45 +15,6 @@ extension CGImage {
     var suiImage: Image {
         Image(decorative: self, scale: 1.0).interpolation(.high)
     }
-    
-    /// Create a CGImage from RGBAColor array
-    static func fromRGBAColorArray(_ bytes: [RGBAColor], width: Int, height: Int) -> CGImage? {
-        return bytes.withUnsafeBytes { ptr in
-            let context = CGContext(data: UnsafeMutableRawPointer(mutating: ptr.baseAddress!),
-                                    width: width, height: height,
-                                    bitsPerComponent: 8, bytesPerRow: width * 4,
-                                    space: CGColorSpaceCreateDeviceRGB(),
-                                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-            return context?.makeImage()
-        }
-    }
-    
-    /// Create CGImage from vImage Interleave8x4
-    static func fromVImage(_ image: VImage) -> CGImage? {
-        let format = vImage_CGImageFormat(bitsPerComponent: 8, bitsPerPixel: 32, colorSpace: CGColorSpaceCreateDeviceRGB(),
-                                          bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue))!
-        return image.makeCGImage(cgImageFormat: format)
-    }
-    
-    /// Draw CGImage into graphics context
-    func draw(_ context: GraphicsContext) {
-        let nsImage = NSImage(cgImage: self, size: CGSize(width: width, height: height))
-        context.draw(Image(nsImage: nsImage), at: CGPoint(x: 0, y: 0), anchor: .zero)
-    }
-    
-    // Save CGImage to file
-    func saveToFile(to url: URL) -> Bool {
-        let cicontext = CIContext()
-        let ciimage = CIImage(cgImage: self)
-        print("Saving file to \(url.path)")
-        do {
-            try cicontext.writePNGRepresentation(of: ciimage, to: url, format: .RGBA8, colorSpace: ciimage.colorSpace!)
-        } catch {
-            return false
-        }
-        
-        return true
-    }
 
     /// Crop CGImage to 'area' and scale it to 'frameSize'
     /// - Parameters:
@@ -115,6 +76,7 @@ extension CGImage {
         guard error == kvImageNoError else { return nil }
 
         // vImage_Buffer → CGImage
+        /*
         var format = vImage_CGImageFormat(
             bitsPerComponent: 8,
             bitsPerPixel:     32,
@@ -125,18 +87,31 @@ extension CGImage {
             version:          0,
             decode:           nil,
             renderingIntent:  .defaultIntent
+        )*/
+        let format = vImage_CGImageFormat(
+            bitsPerComponent: 8,
+            bitsPerPixel: 32,
+            colorSpace: colorSpace,
+            bitmapInfo:  CGBitmapInfo(
+                rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
+            )
         )
 
+        /*
         let result = vImageCreateCGImageFromBuffer(
             &dstBuffer,
             &format,
             nil, nil,
             vImage_Flags(kvImageNoFlags),
             &error
-        )
-        guard error == kvImageNoError else { return nil }
+        )*/
+        do {
+            let result = try dstBuffer.createCGImage(format: format!)
+            return result
+        } catch {
+            return nil
+        }
 
-        return result?.takeRetainedValue()
     }
 
 }

@@ -40,6 +40,7 @@ final class ImageGraphics : MemoryGraphicsProtocol {
     /// Bytes per row including padding bytes
     let bytesPerLine: Int
     
+    /// Index of last pixel in buffer
     let lastIndex: Int
     
     /// Bytes per pixel
@@ -189,7 +190,7 @@ final class ImageGraphics : MemoryGraphicsProtocol {
     /// - Parameter color: Color
     @inline(__always) func clear(color: RGBAColor = .black) {
         image.withUnsafePointerToVImageBuffer { iptr in
-            _ = vImageBufferFill_ARGB8888(iptr, color.pixel, vImage_Flags(kvImageNoFlags))
+            _ = vImageBufferFill_ARGB8888(iptr, color.pixelARGB, vImage_Flags(kvImageNoFlags))
         }
     }
     

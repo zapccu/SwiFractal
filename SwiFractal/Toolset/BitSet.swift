@@ -72,21 +72,25 @@ struct BitSet<T: NamedBit>: ExpressibleByArrayLiteral, Equatable, Codable {
     }
     
     /// Set bit
+    @inline(__always)
     mutating func set(_ bit: T) {
         self.mask |= bit.bitValue
     }
     
     /// Clear bit
+    @inline(__always)
     mutating func clear(_ bit: T) {
         self.mask &= ~bit.bitValue
     }
     
     /// Toggle bit
+    @inline(__always)
     mutating func toggle(_ bit: T) {
         self.mask ^= bit.bitValue
     }
     
     /// Set mask to single bit
+    @inline(__always)
     mutating func set(to bit: T) {
         self.mask = bit.bitValue
     }
@@ -94,6 +98,7 @@ struct BitSet<T: NamedBit>: ExpressibleByArrayLiteral, Equatable, Codable {
     /// Check if bit is not set
     /// - Parameter bit: Named bit
     /// - Returns: true if bit is not set, otherwise false
+    @inline(__always)
     func notSet(_ bit: T) -> Bool {
         return self.mask & bit.bitValue == 0
     }
@@ -101,6 +106,7 @@ struct BitSet<T: NamedBit>: ExpressibleByArrayLiteral, Equatable, Codable {
     /// Check if bit is set
     /// - Parameter bit: Named bit
     /// - Returns: true if bit is set, otherwise false
+    @inline(__always)
     func isSet(_ bit: T) -> Bool {
         return self.mask & bit.bitValue != 0
     }
@@ -108,6 +114,7 @@ struct BitSet<T: NamedBit>: ExpressibleByArrayLiteral, Equatable, Codable {
     /// Test if all bits in array are set
     /// - Parameter bits: Array with named bits
     /// - Returns: true if all bits are set, otherwise false
+    @inline(__always)
     func allSet(_ bits: [T]) -> Bool {
         return bits.allSatisfy( { self.mask & $0.bitValue != 0} )
     }
@@ -115,6 +122,7 @@ struct BitSet<T: NamedBit>: ExpressibleByArrayLiteral, Equatable, Codable {
     /// Test if any bit in array is set
     /// - Parameter bits: Array with named bits
     /// - Returns: true if at least one bit is set, otherwise false
+    @inline(__always)
     func anySet(_ bits: [T]) -> Bool {
         return bits.contains(where: { self.mask & $0.bitValue != 0 } )
     }
@@ -172,22 +180,26 @@ struct BitSet<T: NamedBit>: ExpressibleByArrayLiteral, Equatable, Codable {
     }
     
     /// Return true if BitSet contains specified bits. Shortcut for allSet()
+    @inline(__always)
     static func == (lhs: BitSet, rhs: [T]) -> Bool {
         return lhs.allSet(rhs)
     }
 
     /// Compare BitSets. Return true if BitSets are equal
+    @inline(__always)
     static func == (lhs: BitSet, rhs: BitSet) -> Bool {
         return lhs.mask == rhs.mask
     }
 
     /// Compare BitSets. Return true if BitSets are not equal
+    @inline(__always)
     static func != (lhs: BitSet, rhs: BitSet) -> Bool {
         return lhs.mask != rhs.mask
     }
     
     /// Logical AND with bit
     /// Example: bitset = bitset & .bitname
+    @inline(__always)
     static func & (lhs: BitSet, rhs: T) -> BitSet {
         let resultRawValue = lhs.mask & rhs.bitValue
         return BitSet(rawValue: resultRawValue)
@@ -195,12 +207,14 @@ struct BitSet<T: NamedBit>: ExpressibleByArrayLiteral, Equatable, Codable {
     
     /// Logical AND with bit
     /// Example: bitset = bitset & .bitname
+    @inline(__always)
     static func &= (lhs: inout BitSet, rhs: T) {
         lhs.mask &= rhs.bitValue
     }
 
     /// Logical OR with bit
     /// Example: bitset = bitset | .bitname
+    @inline(__always)
     static func | (lhs: BitSet, rhs: T) -> BitSet {
         let resultRawValue = lhs.mask | rhs.bitValue
         return BitSet(rawValue: resultRawValue)
@@ -208,11 +222,13 @@ struct BitSet<T: NamedBit>: ExpressibleByArrayLiteral, Equatable, Codable {
     
     /// Logical OR with bit
     /// Example: bitset = bitset | .bitname
+    @inline(__always)
     static func |= (lhs: inout BitSet, rhs: T) {
         lhs.mask |= rhs.bitValue
     }
     
     /// Logical NOT
+    @inline(__always)
     static prefix func ~ (lhs: BitSet) -> BitSet {
         return BitSet(rawValue: ~lhs.mask)
     }

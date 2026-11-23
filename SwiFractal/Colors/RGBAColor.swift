@@ -135,14 +135,19 @@ struct RGBAColor: FractalParameters {
         return Vector4<Float>([red, green, blue, alpha])
     }
 
-    /// Return color channels as vector / Double array
+    /// Return color channels as Float array
     var array: [Float] {
         return [red, green, blue]
     }
 
-    /// Return color channels as pixel / UInt8 array
-    var pixel: [UInt8] {
+    /// Return color channels as pixel / UInt8 array in order RGBA
+    var pixelRGBA: [UInt8] {
         return [redi, greeni, bluei, alphai]
+    }
+    
+    /// Return color channels as pixel / UInt8 array in order ARGB
+    var pixelARGB: [UInt8] {
+        return [alphai, redi, greeni, bluei]
     }
     
     /// Return color channels as COL3
