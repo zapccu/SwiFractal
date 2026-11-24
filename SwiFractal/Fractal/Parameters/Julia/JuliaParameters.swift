@@ -82,6 +82,7 @@ nonisolated struct JuliaParameters<RT: PreciseFloatingPoint> : FractalData {
         let newDimensions = dimensions.toDouble()
         var newJuliaParameters = JuliaParameters<Double>(dimensions: newDimensions)
         
+        newJuliaParameters.name            = name
         newJuliaParameters.lightParameters = lightParameters
         newJuliaParameters.limits          = limits
         newJuliaParameters.colorParameters = colorParameters
@@ -98,6 +99,7 @@ nonisolated struct JuliaParameters<RT: PreciseFloatingPoint> : FractalData {
         let newDimensions = dimensions.toMPFloat(precision: precision)
         var newJuliaParameters = JuliaParameters<MPFloat>(dimensions: newDimensions)
         
+        newJuliaParameters.name            = name
         newJuliaParameters.lightParameters = lightParameters
         newJuliaParameters.limits          = limits
         newJuliaParameters.colorParameters = colorParameters

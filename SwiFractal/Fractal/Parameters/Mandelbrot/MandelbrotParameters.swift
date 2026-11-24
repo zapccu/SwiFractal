@@ -65,6 +65,7 @@ nonisolated struct MandelbrotParameters<RT: PreciseFloatingPoint> : FractalData 
         let newDimensions = dimensions.toDouble()
         var newMandelbrotParameters = MandelbrotParameters<Double>(dimensions: newDimensions)
         
+        newMandelbrotParameters.name            = name
         newMandelbrotParameters.lightParameters = lightParameters
         newMandelbrotParameters.limits          = limits
         newMandelbrotParameters.colorParameters = colorParameters
@@ -79,6 +80,7 @@ nonisolated struct MandelbrotParameters<RT: PreciseFloatingPoint> : FractalData 
         let newDimensions = dimensions.toMPFloat(precision: precision)
         var newMandelbrotParameters = MandelbrotParameters<MPFloat>(dimensions: newDimensions)
         
+        newMandelbrotParameters.name            = name
         newMandelbrotParameters.lightParameters = lightParameters
         newMandelbrotParameters.limits          = limits
         newMandelbrotParameters.colorParameters = colorParameters
