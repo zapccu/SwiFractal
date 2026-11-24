@@ -257,6 +257,12 @@ class FractalController {
         self.dimensions = fractal.getDimensions()
     }
     
+    /// Reset parameters
+    func reset() {
+        fractal.reset()
+        self.dimensions = initialDimensions
+    }
+    
     /// Apply new parameters. Create new fractal object if precision is changing between Double and MPFloat
     func applyNewParameters() {        
         // Detect rendering strategy and required precision

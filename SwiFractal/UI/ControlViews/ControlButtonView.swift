@@ -68,7 +68,7 @@ struct ControlButtonView: View {
                     
                     // Reset
                     Button(action: {
-                        controller.fractal.reset()
+                        controller.reset()
                     }) {
                         Image(systemName: "delete.left").font(.title)
                     }
