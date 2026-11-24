@@ -15,7 +15,6 @@ import SwiftUI
 enum SettingsKeys {
     static let cpuCount = "settings.cpuCount"
     static let oversubscription = "settings.oversubscription"
-    static let drawParallel = "settings.drawParallel"
     static let resolutionWidth = "settings.resolution.width"
     static let resolutionHeight = "settings.resolution.height"
     static let usePerturbation = "settings.usePerturbation"
@@ -34,9 +33,6 @@ struct SettingsSnapshot: Sendable {
     
     /// Oversubscription factor. 1 = no oversubscription
     let oversubscription: Int
-    
-    /// Deprecated. Parallel drawing of calculation results
-    let drawParallel: Bool
     
     /// Default resolution of fractal images
     let resolution: CGSize
@@ -104,11 +100,6 @@ final class AppSettings {
         didSet { defaults.set(oversubscription, forKey: SettingsKeys.oversubscription) }
     }
 
-    /// Draw calculation result parallel or sequential
-    var drawParallel: Bool {
-        didSet { defaults.set(drawParallel, forKey: SettingsKeys.drawParallel) }
-    }
-
     /// Default image resolution
     var resolution: CGSize {
         didSet {
@@ -142,7 +133,6 @@ final class AppSettings {
         self.defaults = defaults
         self.cpuCount = defaults.object(forKey: SettingsKeys.cpuCount) as? Int ?? ProcessInfo.processInfo.activeProcessorCount
         self.oversubscription = defaults.object(forKey: SettingsKeys.oversubscription) as? Int ?? 2
-        self.drawParallel = defaults.object(forKey: SettingsKeys.drawParallel) as? Bool ?? false
         let width = defaults.object(forKey: SettingsKeys.resolutionWidth) as? Int ?? Int(Self.defaultResolution.width)
         let height = defaults.object(forKey: SettingsKeys.resolutionHeight) as? Int ?? Int(Self.defaultResolution.height)
         self.resolution = CGSize(width: Double(width), height: Double(height))
@@ -154,7 +144,7 @@ final class AppSettings {
     
     /// Return snapshot of current settings
     func snapshot() -> SettingsSnapshot {
-        SettingsSnapshot(cpuCount: cpuCount, oversubscription: oversubscription, drawParallel: drawParallel,
+        SettingsSnapshot(cpuCount: cpuCount, oversubscription: oversubscription,
                          resolution: resolution,
                          usePerturbation: usePerturbation, useSeriesApproximation: useSeriesApproximation,
                          perturbationPasses: perturbationPasses, fixGlitches: fixGlitches)

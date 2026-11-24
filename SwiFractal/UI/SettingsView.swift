@@ -49,9 +49,6 @@ struct SettingsView: View {
                     Stepper("\(Int(settings.resolution.width)) px", value: $settings.resolution.width, in: 100...4096)
                     Stepper("\(Int(settings.resolution.height)) px", value: $settings.resolution.height, in: 100...4096)
                 }
-                GridRow {
-                    Toggle(isOn: $settings.drawParallel) { Text("Draw parallel") }
-                }
             }.padding(.horizontal, 5)
         }.padding([.top], 10)
     }
