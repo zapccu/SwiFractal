@@ -30,9 +30,6 @@ struct SettingsView: View {
                     Stepper("\(settings.oversubscription)", value: $settings.oversubscription, in: 1...4)
                 }
                 GridRow {
-                    Toggle(isOn: $settings.usePerturbation) { Text("Use perturbation") }
-                }
-                GridRow {
                     Toggle(isOn: $settings.useSeriesApproximation) { Text("Use series approximation") }
                 }
                 GridRow {

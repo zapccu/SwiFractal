@@ -56,7 +56,6 @@ struct ControlLabel : View {
     }
 }
 
-///
 /// Enum picker with label
 struct CasePicker<T: Hashable>: View where T: RawRepresentable, T: CaseIterable, T: Identifiable {
     @Binding var selection: T
@@ -73,7 +72,6 @@ struct CasePicker<T: Hashable>: View where T: RawRepresentable, T: CaseIterable,
     
 }
 
-///
 /// Options picker. Options must be CaseIterable.
 /// - Parameters:
 ///   - options: Binding
@@ -95,9 +93,11 @@ struct OptionsPicker<T>: View where T: NamedIntEnum {
     }
 }
 
-///
 /// Input field with text label supporting numeric input datatypes
-///
+/// - Parameters:
+///   - label: Text label
+///   - changeHandler: Closure executed when value has changed
+///   - width: Width of input field
 struct LabeledInputField : View {
     @State private var numberFormatter: NumberFormatter = {
         let numberFormatter = NumberFormatter()
@@ -133,102 +133,15 @@ struct LabeledInputField : View {
     }
 }
 
-//
-// Slider with a text label
-//
-struct LabeledSlider<T> : View where T.Stride == T, T: BinaryFloatingPoint {
-    let label: String
-    @Binding var value: T
-    var changeHandler: ((T) -> Void)? = nil
-    var minValue: T
-    var maxValue: T
-    var step: T
-    var format: String
-    var width: CGFloat
-    
-    var body: some View {
-        HStack(spacing: 10) {
-            ControlLabel(label)
-            Slider(value: $value, in: minValue...maxValue)
-                .onChange(of: value) { _, _ in
-                    changeHandler?(value)
-                }
-                .frame(width: width)
-            Text("\(Float(value), specifier: self.format)").frame(width: 30, alignment: .leading)
-            Spacer()
-        }
-    }
-    
-    init(_ label: String, _ value: Binding<T>, range: ClosedRange<T>, step: T, width: Int, format: String = "%.2f") {
-        self.label = label
-        self._value = value
-        self.minValue = range.lowerBound
-        self.maxValue = range.upperBound
-        self.step = step
-        self.width = CGFloat(width)
-        self.format = format
-    }
-    
-    func onValueChanged(_ handler: @escaping (T) -> Void) -> Self {
-        var copy = self
-        copy.changeHandler = handler
-        return copy
-    }
-}
-
-//
-// Stepper with a text label
-//
-struct LabeledStepper<T: Strideable> : View where T.Stride == T {
-    let label: String
-    @Binding var value: T
-    var changeHandler: ((T, T) -> Void)? = nil
-    var unit: String = ""
-    var range: ClosedRange<T>
-    var step: T
-    
-    var body: some View {
-        HStack(spacing: 10) {
-            if label != "" { ControlLabel(label) }
-            Stepper(formatValue() + unit, value: $value, in: range, step: step)
-                .onChange(of: value) { oldValue, newValue in
-                    changeHandler?(oldValue, newValue)
-                }
-            Spacer()
-        }
-    }
-          
-    init (_ label: String, _ value: Binding<T>, range: ClosedRange<T>, step: T = 1, unit: String = "") {
-        self.label = label
-        self._value = value
-        self.range = range
-        self.step = step
-        self.unit = unit
-    }
-    
-    func onValueChanged(_ handler: @escaping (T, T) -> Void) -> Self {
-        var copy = self
-        copy.changeHandler = handler
-        return copy
-    }
-    
-    private func formatValue() -> String {
-        if let doubleValue = value as? Double {
-            // Formatiert Double auf max. 2 Nachkommastellen, entfernt .0
-            return doubleValue.formatted(.number.precision(.fractionLength(0...2)))
-        }
-        return "\(value)"
-    }
-
-}
-
-//
-// Image showing a color table with an optional text label
-//
+/// Image showing a color table with an optional text label
+/// - Parameters:
+///   - coloring: Coloring
+///   - size: Size of image
+///   - label: Text label. Default = "", no label
 struct ColoringView: View {
     var coloring: EnumColoring
     var size: CGSize
-    var label: String
+    var label: String = ""
 
     var body: some View {
         HStack {
@@ -375,48 +288,4 @@ struct NonLinearSlider: View {
     
 }
 
-struct NonLinearSliderStepper: View {
-    @Binding var value: Double
-    var range: ClosedRange<Double> = 0.1...50.0
-    
-    // Total steps: 0.1...1.0 (10 steps: indices 0..9), 2.0...50.0 (49 steps: indices 10..58)
-    private let maxIndex: Double = 58
-    
-    private var indexBinding: Binding<Double> {
-        Binding(
-            get: { index(for: value) },
-            set: { newIndex in value = value(for: newIndex) }
-        )
-    }
-    
-    var body: some View {
-        VStack(spacing: 12) {
-            Slider(value: indexBinding, in: 0...maxIndex, step: 1)
-            
-            Stepper(value: indexBinding, in: 0...maxIndex, step: 1) {
-                Text("Wert: \(value, specifier: value < 1.0 ? "%.1f" : "%.0f")")
-                    .font(.body)
-            }
-        }
-    }
-    
-    // MARK: - Mapping Helpers
-    private func value(for index: Double) -> Double {
-        let i = Int(round(index))
-        if i <= 9 {
-            return Double(i + 1) * 0.1
-        } else {
-            return Double(i - 9) + 1.0
-        }
-    }
-    
-    private func index(for val: Double) -> Double {
-        if val <= 1.0 {
-            let steps = round(val / 0.1) - 1.0
-            return max(0, min(9, steps))
-        } else {
-            let steps = round(val) - 1.0 + 9.0
-            return max(10, min(maxIndex, steps))
-        }
-    }
-}
+

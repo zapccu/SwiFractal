@@ -166,10 +166,6 @@ extension FractalProtocol {
         // Does nothing by default
     }
     
-    static func getSetting<T>(forKey key: String, defaultValue: T) -> T {
-        UserDefaults.standard.object(forKey: key) as? T ?? defaultValue
-    }
-    
 }
 
 

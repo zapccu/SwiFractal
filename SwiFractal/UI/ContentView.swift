@@ -20,7 +20,7 @@ struct ContentView: View {
     @State private var controller: FractalController
     
     // Adjust either complex or image resolution to match aspect ratio
-    @State private var fit: AspectRatioMode = .fitToFractalSize
+   // @State private var fit: AspectRatioMode = .fitToFractalSize
     
     /// Initialize ContentView
     init() {

@@ -136,12 +136,15 @@ import SwiftUI
             
             // Adjust selected area to keep aspect ratio of view
             if keepAspectRatio && selectAR != screenAR {
+                var newArea: CGRect
                 if selectAR < 1 {
-                    area = CGRect(origin: area.origin, size: CGSize(width: area.height * screenAR, height: area.height))
+                    newArea = CGRect(origin: area.origin, size: CGSize(width: area.height * screenAR, height: area.height))
                 }
                 else {
-                    area = CGRect(origin: area.origin, size: CGSize(width: area.width, height: area.width / screenAR))
+                    newArea = CGRect(origin: area.origin, size: CGSize(width: area.width, height: area.width / screenAR))
                 }
+                // Clip and standardize selected area
+                area = clip ? clipRect.intersection(newArea.standardized) : newArea.standardized
                 graphics.drawRect(rect: IRect(rect: area), color: .red)
                 drawnRect = area
             }

@@ -63,7 +63,7 @@ struct ControlButtonView: View {
                     }) {
                         Image(systemName: "arrow.uturn.backward").font(.title)
                     }
-                    .disabled(!controller.parametersChanged)
+                    .disabled(!controller.parametersChanged && !controller.selection.anySelected)
                     .help("Undo last change")
                     
                     // Reset

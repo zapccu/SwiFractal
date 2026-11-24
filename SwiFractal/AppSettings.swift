@@ -17,7 +17,6 @@ enum SettingsKeys {
     static let oversubscription = "settings.oversubscription"
     static let resolutionWidth = "settings.resolution.width"
     static let resolutionHeight = "settings.resolution.height"
-    static let usePerturbation = "settings.usePerturbation"
     static let useSeriesApproximation = "settings.useSeriesApproximation"
     static let perturbationPasses = "settings.perturbationPasses"
     static let fixGlitches = "settings.fixGlitches"
@@ -36,9 +35,6 @@ struct SettingsSnapshot: Sendable {
     
     /// Default resolution of fractal images
     let resolution: CGSize
-    
-    /// Deprecated. Always use perturbation algorithm
-    let usePerturbation: Bool
     
     /// Use series approximation in perturbation algorithm
     let useSeriesApproximation: Bool
@@ -108,11 +104,6 @@ final class AppSettings {
         }
     }
     
-    /// Always use perturbation method
-    var usePerturbation: Bool {
-        didSet { defaults.set(usePerturbation, forKey: SettingsKeys.usePerturbation) }
-    }
-    
     /// Use series approximation
     var useSeriesApproximation: Bool {
         didSet { defaults.set(useSeriesApproximation, forKey: SettingsKeys.useSeriesApproximation) }
@@ -136,7 +127,6 @@ final class AppSettings {
         let width = defaults.object(forKey: SettingsKeys.resolutionWidth) as? Int ?? Int(Self.defaultResolution.width)
         let height = defaults.object(forKey: SettingsKeys.resolutionHeight) as? Int ?? Int(Self.defaultResolution.height)
         self.resolution = CGSize(width: Double(width), height: Double(height))
-        self.usePerturbation = defaults.object(forKey: SettingsKeys.usePerturbation) as? Bool ?? false
         self.useSeriesApproximation = defaults.object(forKey: SettingsKeys.useSeriesApproximation) as? Bool ?? false
         self.perturbationPasses = defaults.object(forKey: SettingsKeys.perturbationPasses) as? Int ?? 5
         self.fixGlitches = defaults.object(forKey: SettingsKeys.fixGlitches) as? Bool ?? false
@@ -144,10 +134,14 @@ final class AppSettings {
     
     /// Return snapshot of current settings
     func snapshot() -> SettingsSnapshot {
-        SettingsSnapshot(cpuCount: cpuCount, oversubscription: oversubscription,
-                         resolution: resolution,
-                         usePerturbation: usePerturbation, useSeriesApproximation: useSeriesApproximation,
-                         perturbationPasses: perturbationPasses, fixGlitches: fixGlitches)
+        SettingsSnapshot(
+            cpuCount: cpuCount,
+            oversubscription: oversubscription,
+            resolution: resolution,
+            useSeriesApproximation: useSeriesApproximation,
+            perturbationPasses: perturbationPasses,
+            fixGlitches: fixGlitches
+        )
     }
     
 }

@@ -20,7 +20,7 @@ class FractalAppData {
     static let windowSize: CGSize = CGSize(width: 1200, height: 900)
     
     /// The default image size
-    static let resolution: CGSize = CGSize(width: 800, height: 800)
+    //static let resolution: CGSize = CGSize(width: 800, height: 800)
     
     /// The width of the control view
     static let controlViewWidth: CGFloat = 300
@@ -115,7 +115,7 @@ class FractalAppData {
 struct SwiFractalApp: App {
 
     let settings = AppSettings.shared
-    var appData = FractalAppData()
+    //var appData = FractalAppData()
 
     init() {
         MPFloat.setPrecisions(defaultPrecision: 128, resultPrecision: .maxOfOperands)

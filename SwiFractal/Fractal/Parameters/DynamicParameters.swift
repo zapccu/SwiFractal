@@ -38,9 +38,6 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
     /// Mantissa precision bits
     let precision: Int
     
-    /// Use perturbation algorithm
-    let bPerturbation: Bool
-    
     /// Number of points to skip
     let skip: Int
 
@@ -117,7 +114,6 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
         self.settings = settings
         
         self.precision = anypar.dimensions.precision.bits
-        self.bPerturbation = settings.usePerturbation || anypar.dimensions.renderPrecision == .perturbation
         
         // Number of pixels to skip during calculation
         self.skip = 0
