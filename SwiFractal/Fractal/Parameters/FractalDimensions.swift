@@ -264,8 +264,9 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
     func zoomArea(area: CGRect, resolution: CGSize) -> DimensionsPrecisionType {
         // Current precision is sufficient for the calculation of the new dimensions
         // because the smallest possible area size is 1 pixel (current pixel size)
-        let (newCornerX, newCornerY) = mapPoint(area.origin, resolution: resolution, oversampling: oversampling)
-        let (newSizeX, newSizeY) = mapSize(area.size, resolution: resolution, oversampling: oversampling)
+        // The selected area is given in screen coordinates (without oversampling)
+        let (newCornerX, newCornerY) = mapPoint(area.origin, resolution: resolution, oversampling: 1)
+        let (newSizeX, newSizeY) = mapSize(area.size, resolution: resolution, oversampling: 1)
         let size = min(newSizeX.toMPFloat(precision: precision.bits), newSizeY.toMPFloat(precision: precision.bits))
  
         debugPrint("Mapping to area \(area)")
@@ -280,7 +281,8 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
                 cornerX: newCornerX.toDouble(),
                 cornerY: newCornerY.toDouble(),
                 sizeX: newSizeX.toDouble(),
-                sizeY: newSizeY.toDouble()
+                sizeY: newSizeY.toDouble(),
+                oversampling: oversampling
             ))
         }
         else {
@@ -289,7 +291,8 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
                 cornerX: newCornerX.toMPFloat(precision: pr.bits),
                 cornerY: newCornerY.toMPFloat(precision: pr.bits),
                 sizeX: newSizeX.toMPFloat(precision: pr.bits),
-                sizeY: newSizeY.toMPFloat(precision: pr.bits)
+                sizeY: newSizeY.toMPFloat(precision: pr.bits),
+                oversampling: oversampling
             ))
         }
     }
