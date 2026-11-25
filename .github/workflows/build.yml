@@ -27,6 +27,15 @@ jobs:
       - name: Install MPFR and GMP (needed by SwiftMPx)
         run: brew install mpfr gmp pkgconf
 
+      # The Metal shaders include Metal64 headers via MTL_HEADER_SEARCH_PATHS = $(SRCROOT)/../Metal64/...
+      # Check out Metal64 next to the project, at the revision pinned in Package.resolved
+      - name: Check out Metal64 headers
+        run: |
+          REV=$(python3 -c "import json; d=json.load(open('SwiFractal.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved')); print(next(p['state']['revision'] for p in d['pins'] if p['identity'] == 'metal64'))")
+          git clone --quiet https://github.com/zapccu/Metal64 ../Metal64
+          git -C ../Metal64 checkout --quiet "$REV"
+          echo "Metal64 at $REV"
+
       - name: Install Metal toolchain
         run: xcodebuild -downloadComponent MetalToolchain || echo "Metal toolchain already installed or not required"
 
