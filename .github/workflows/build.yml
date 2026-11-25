@@ -13,7 +13,7 @@ concurrency:
 jobs:
   build:
     name: xcodebuild (macOS)
-    runs-on: macos-26
+    runs-on: macos-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
