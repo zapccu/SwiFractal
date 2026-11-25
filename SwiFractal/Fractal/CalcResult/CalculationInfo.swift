@@ -63,6 +63,7 @@ struct CalculationInfo: Sendable {
         self.state = [state]
         self.extendedInfo = extendedInfo
         self.message = message
+        self.errorCount = errorCount
     }
     
     /// Return message
