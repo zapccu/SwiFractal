@@ -14,10 +14,10 @@ import simd
 /// Type for SIMD3``<Float>``
 typealias SIMD3f = SIMD3<Float>
 
-/// Type for RGB color value with components in range -1...1
+/// Type for RGB color value with components in range 0...1
 typealias RGB = SIMD3<Float>
 
-/// Type for RGBA color value with components in range -1...1
+/// Type for RGBA color value with components in range 0...1
 typealias RGBA = SIMD4<Float>
 
 /// Type for HSB color value
@@ -90,17 +90,25 @@ struct RGBAColor: FractalParameters {
         set { colorValue.xyz = newValue }
     }
     
+    /// Convert a channel value to UInt8 in range 0..255.
+    /// Values outside 0...1 are clamped, NaN is mapped to 0 (UInt8() would trap otherwise).
+    @inline(__always)
+    private static func channelByte(_ value: Float) -> UInt8 {
+        guard !value.isNaN else { return 0 }
+        return UInt8(min(max(value, 0.0), 1.0) * 255.0)
+    }
+
     /// Return red channel as UInt8 value in range 0..255
-    var redi:   UInt8 { return UInt8(red * 255.0) }
+    var redi:   UInt8 { Self.channelByte(red) }
 
     /// Return green channel as UInt8 value in range 0..255
-    var greeni: UInt8 { return UInt8(green * 255.0) }
+    var greeni: UInt8 { Self.channelByte(green) }
 
     /// Return blue channel as UInt8 value in range 0..255
-    var bluei:  UInt8 { return UInt8(blue * 255.0) }
+    var bluei:  UInt8 { Self.channelByte(blue) }
 
     /// Return alpha channel as UInt8 value in range 0..255
-    var alphai: UInt8 { return UInt8(alpha * 255.0) }
+    var alphai: UInt8 { Self.channelByte(alpha) }
     
     /// Return color channels as 32 bit integer in format 0xAARRGGBB
     var argb8888: UInt32 {
@@ -183,9 +191,9 @@ struct RGBAColor: FractalParameters {
     }
     
     /// Init color channels with Float values
-    /// Color channel values are clamped to -1...1
+    /// Color channel values are clamped to 0...1
     init (_ red: Float, _ green: Float, _ blue: Float, _ alpha: Float = 1.0) {
-        self.colorValue = SIMD4<Float>(red, green, blue, alpha).clamped(to: -1.0...1.0)
+        self.colorValue = SIMD4<Float>(red, green, blue, alpha).clamped(to: 0.0...1.0)
     }
     
     /// Init color channels with Double values in range 0..1
@@ -199,21 +207,21 @@ struct RGBAColor: FractalParameters {
     }
     
     /// Init color with RGB / SIMD3 Value
-    /// Color channel values are clamped to -1...1
+    /// Color channel values are clamped to 0...1
     init(rgb: RGB, _ alpha: Float = 1.0) {
-        self.colorValue = RGBA(rgb, alpha).clamped(to: -1.0...1.0)
+        self.colorValue = RGBA(rgb, alpha).clamped(to: 0.0...1.0)
     }
     
     /// Init color with RGBA / SIMD4 value.
-    /// Color channel values are clamped to -1...1
+    /// Color channel values are clamped to 0...1
     init(rgba: RGBA) {
-        self.colorValue = rgba.clamped(to: -1.0...1.0)
+        self.colorValue = rgba.clamped(to: 0.0...1.0)
     }
 
     /// Init grey color with Float value
-    /// Color channel values are clamped to -1...1
+    /// Color channel values are clamped to 0...1
     init(grey: Float, _ alpha: Float = 1.0) {
-        self.colorValue = SIMD4<Float>(grey, grey, grey, alpha).clamped(to: -1.0...1.0)
+        self.colorValue = SIMD4<Float>(grey, grey, grey, alpha).clamped(to: 0.0...1.0)
     }
     
     /// Init grey color with Double value
@@ -222,14 +230,14 @@ struct RGBAColor: FractalParameters {
     }
     
     /// Init color with vector of channel values
-    /// Color channel values are clamped to -1...1
+    /// Color channel values are clamped to 0...1
     init (vector: [Float]) {
         self.colorValue = SIMD4<Float>(
             vector.count > 0 ? vector[0] : 0.0,
             vector.count > 1 ? vector[1] : 0.0,
             vector.count > 2 ? vector[2] : 0.0,
             vector.count > 3 ? vector[3] : 1.0
-        ).clamped(to: -1.0...1.0)
+        ).clamped(to: 0.0...1.0)
     }
     
     /// Init color with vector of channels values
