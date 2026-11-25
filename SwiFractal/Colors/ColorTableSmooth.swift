@@ -23,6 +23,11 @@ struct ColorTableSmooth: ColorTable {
     enum CodingKeys: String, CodingKey {
         case name, numberOfColors, defColor, fixedSize, colorPoints
     }
+
+    /// Keys of older JSON files, only used for decoding
+    private enum LegacyCodingKeys: String, CodingKey {
+        case count
+    }
     
     /// Color table name
     var name: String = "MonoWhite"
@@ -78,7 +83,15 @@ struct ColorTableSmooth: ColorTable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
             
         let name            = try container.decode(String.self, forKey: .name)
-        let numberOfColors  = try container.decode(Int.self, forKey: .numberOfColors)
+        // Files exported before the introduction of numberOfColors store the size as "count"
+        let numberOfColors: Int
+        if let value = try container.decodeIfPresent(Int.self, forKey: .numberOfColors) {
+            numberOfColors = value
+        }
+        else {
+            let legacyContainer = try decoder.container(keyedBy: LegacyCodingKeys.self)
+            numberOfColors = try legacyContainer.decode(Int.self, forKey: .count)
+        }
         let defColor        = try container.decode(RGBAColor.self, forKey: .defColor)
         let fixedSize       = try container.decode(Bool.self, forKey: .fixedSize)
         let colorPoints     = try container.decode([RGBAColor].self, forKey: .colorPoints)
@@ -123,25 +136,20 @@ struct ColorTableSmooth: ColorTable {
         }
         else {
             // Smooth palette
-            var colorPointCount = self.colorPoints.count
-            numColors = max(colorCount, colorPointCount)
-            colorPointCount -= 1
-            self.colors.removeAll()
-            var secSize = Int(round(Double(numColors) / Double(colorPointCount)))
-            for i in 0..<colorPointCount {
-                // Adjust size of last segment so size of reulting table matches required number of colors
-                if secSize + colors.count != numColors { secSize = numColors - colors.count }
-                
-                // Create new color segment
-                let newSegment = RGBAColor.linspace(self.colorPoints[i], self.colorPoints[i+1], secSize)
-                
-                // Prevent duplicate entries
-                if let lastIndex = colors.indices.last {
-                    colors.replaceSubrange(lastIndex...lastIndex, with: newSegment)
-                }
-                else {
-                    colors.append(contentsOf: newSegment)
-                }
+            // Color point k is placed at table index k * (numColors - 1) / segments, so the first
+            // color point is the first and the last color point is the last table entry.
+            // Neighbouring segments share their boundary color, which is added only once.
+            // Total size: 1 + sum(end - start) = numColors
+            numColors = max(colorCount, self.colorPoints.count)
+            let segments = self.colorPoints.count - 1
+            self.colors.removeAll(keepingCapacity: true)
+            self.colors.reserveCapacity(numColors)
+            var start = 0
+            for i in 0..<segments {
+                let end = ((i + 1) * (numColors - 1)) / segments
+                let segment = RGBAColor.linspace(self.colorPoints[i], self.colorPoints[i+1], end - start + 1)
+                self.colors.append(contentsOf: i == 0 ? segment[...] : segment.dropFirst())
+                start = end
             }
         }
         
