@@ -14,15 +14,6 @@ import SwiftMPx
 import Metal64
 
 
-extension MPComplex {
-    
-    /// Convert MPComplex to Cplx
-    var asCplx: Cplx {
-        return Cplx(self.real.toDouble(), self.imaginary.toDouble())
-    }
-
-}
-
 ///
 /// Serial approximation coefficents for an iteration of the reference orbit
 ///

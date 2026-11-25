@@ -11,38 +11,6 @@ import ParSetKit
 
 
 ///
-/// Provide a sendable pointer for parallel drawing of calculation results
-///
-private struct SendableRawPointer: @unchecked Sendable {
-    let ptr: UnsafeMutableRawPointer
-}
-
-/// Calculation state
-/// - idle: No calculation is running
-/// - completed: Calculation finished successfully
-/// - inProgress: Calculation is running
-/// - cancelled: Calculation was cancelled
-/// - error: Calculation failed with an error
-/// - Parameters:
-///   - msg: Optional message to display
-/*
-enum CalculationState {
-    case idle(String = "Idle")
-    case completed(String = "Completed")
-    case inProgress(String = "In progress")
-    case cancelled(String = "Cancelled")
-    case error(String = "Unknown error")
-    
-    var message: String {
-        switch self {
-        case .idle(let msg), .completed(let msg), .inProgress(let msg), .cancelled(let msg), .error(let msg):
-            return msg
-        }
-    }
-}
- */
-
-///
 /// Enum for fractal kind ID
 ///
 enum FractalKindID: String, CaseIterable {

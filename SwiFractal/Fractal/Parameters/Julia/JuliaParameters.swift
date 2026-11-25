@@ -71,11 +71,6 @@ nonisolated struct JuliaParameters<RT: PreciseFloatingPoint> : FractalData {
         self.name       = "JuliaSet"
     }
     
-    /// Return initial values for Z and C
-    @inlinable func initialValues(v: CT) -> (z0: CT, c: CT) {
-        return (z0: v, c: CT(cPointX, cPointY))
-    }
-    
     /// Convert dimensions of current JuliaParameters struct to Double
     /// - Returns: Copy of current JuliaParameters struct
     func toDouble() -> JuliaParameters<Double> {

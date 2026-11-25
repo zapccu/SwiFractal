@@ -54,11 +54,6 @@ nonisolated struct MandelbrotParameters<RT: PreciseFloatingPoint> : FractalData 
         self.dimensions = dimensions
     }
     
-    /// Return initial values for Z and C
-    @inline(__always) func initialValues(v: CT) -> (z0: CT, c: CT) {
-        return (z0: CT.zero(precision: dimensions.precision.bits), c: v)
-    }
-    
     /// Convert dimensions of current MandelbrotParameters struct to Double
     /// - Returns: Copy of current MandelbrotParameters struct
     func toDouble() -> MandelbrotParameters<Double> {

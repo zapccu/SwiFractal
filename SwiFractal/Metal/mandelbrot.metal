@@ -10,15 +10,6 @@
 
 using namespace metal;
 
-int findOrbit2(thread c64 *orbits, c64 Z, int orbitIndex, int orbitsEntries, f64 tolerance) {
-    for(int i=orbitIndex-1; i>=0; i--) {
-        c64 diff = orbits[i] - Z;
-        if (norm(diff) < tolerance) {
-            return i;
-        }
-    }
-    return -1;
-}
 
 // Find orbit
 // - Parameters:

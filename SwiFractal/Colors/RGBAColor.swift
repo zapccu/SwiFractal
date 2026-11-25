@@ -103,9 +103,11 @@ struct RGBAColor: FractalParameters {
     var alphai: UInt8 { return UInt8(alpha * 255.0) }
     
     /// Return color channels as 32 bit integer in format 0xRRGGBBAA
+    /*
     var rgbi32: UInt32 {
         return UInt32((UInt32(redi) << 24) | (UInt32(greeni) << 16) | (UInt32(bluei) << 8) | UInt32(alphai))
     }
+     */
     
     /// Return color channels as 32 bit integer in format 0xAARRGGBB
     var argb8888: UInt32 {
@@ -141,9 +143,11 @@ struct RGBAColor: FractalParameters {
     }
 
     /// Return color channels as pixel / UInt8 array in order RGBA
+    /*
     var pixelRGBA: [UInt8] {
         return [redi, greeni, bluei, alphai]
     }
+     */
     
     /// Return color channels as pixel / UInt8 array in order ARGB
     var pixelARGB: [UInt8] {
@@ -156,6 +160,7 @@ struct RGBAColor: FractalParameters {
     }
     
     /// Return a GraphicsContext shading color
+    /// Currently not used but we keep it for later extensions
     var shadingColor: GraphicsContext.Shading {
         return GraphicsContext.Shading.color(color)
     }

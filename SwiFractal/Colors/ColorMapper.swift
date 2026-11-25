@@ -328,11 +328,5 @@ struct ColorMapper : Sendable {
         return color.blend(with: brightness, lightning: lightning)
     }
 
-    func mapResult(result: any CalculationResult) -> RGBAColor {
-        if let result = result as? MandelbrotResult {
-            return mapColor(result: result)
-        }
-        
-        return .black
-    }
+
 }

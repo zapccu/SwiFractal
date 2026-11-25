@@ -41,16 +41,5 @@ class Mandelbrot<RT: PreciseFloatingPoint> : FractalProtocol {
         // Never set autoVersioning to true! This doesn't work with SwiftUI
         self.FP = ParSet(initial: mandelbrotParameters, autoVersioning: false)
     }
-        
-    /// Mark start of calculation. Prepare calculation parameters
-    /// - Parameters:
-    ///   - size: Output graphics size without oversampling
-    ///   - progress: Calculation progress
-    /// - Returns: Dynamic calculation parameter structure
-    func beginCalculation(resolution: CGSize, progress: CalculationProgress) -> DynamicParameters<DataType>? {
-        let settingsSnapshot = AppSettings.shared.snapshot()
-        return DynamicParameters<DataType>(anypar: FP.current, resolution: resolution, progress: progress,
-                                           settings: settingsSnapshot)
-    }
 
 }

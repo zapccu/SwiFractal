@@ -20,7 +20,7 @@ struct CosineColoringParameters: FractalParameters {
 ///
 /// Cosine coloring
 ///
-struct CosineColoring : CalculatedColoring, FractalParameters {
+struct CosineColoring : Coloring, FractalParameters {
 
     enum CodingKeys: String, CodingKey {
         case name, defColor, parameters
@@ -97,38 +97,6 @@ struct CosineColoring : CalculatedColoring, FractalParameters {
     func clone(colorCount: Int = 0) -> CosineColoring {
         .init(self.name, parameters: self.parameters, defColor: defColor)
     }
-    
-    /// Calculate color using cosine based on Inigo Quilez cosine coloring algorithm
-    /// - Parameters:
-    ///   - smoothIter: Smooth iteration value in range 1...MaxIter. Usually result of *compress()*
-    ///   - scale: Frequency of color changing
-    ///   - offset: Offset to first value in color table
-    ///   - ncycle: Defines how many iterations correlate with 1 cycle. Modulo division by ncycle allows to determine after how many (transformed)
-    ///   iteration steps the color repeats, regardless of the absolute iteration depth. 1 = Full color cycle every 1 iteration (default).
-    ///   ncycle must be >= 1.
-    /// - Returns: Mapped color value
-    /// - Note: Parameters *scale* and *ncycle* are more or less equivelant. But they have different numeric ranges.
-    /*
-    func getColor(smoothIter: Double, scale: Double, offset: Double, ncycle: Double) -> RGBAColor {
-        let sc: Double = scale.clamped(to: 0.01...50.0)
-        let nc = max(ncycle, 1.0)
-        let t = (fmod(smoothIter * sc + offset, nc) / nc).clamped
-        
-        // 2 * π * (c * t + d)
-        let tau: Float = 2.0 * .pi
-        let inner = tau * (c * Float(t) + d)
-            
-        let cosVector = SIMD3f(
-            cos(inner.x),
-            cos(inner.y),
-            cos(inner.z)
-        )
-
-        // a + b * cos(...)
-        let rgb = a + b * cosVector
-        return RGBAColor(rgb: rgb.clamped)
-    }
-     */
     
     /// Get color base on transformed iteration counter
     /// - Parameter t: Transformed smooth iteration counter in range 0...1

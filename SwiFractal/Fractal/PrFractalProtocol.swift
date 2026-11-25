@@ -74,7 +74,6 @@ protocol FractalProtocol: AnyObject {
     
     // Mark start of calculation.
     // Return dynamic calculation parameters
-    // func beginCalculation(resolution: CGSize) -> DynParType?
     func beginCalculation(resolution: CGSize, progress: CalculationProgress) -> DynamicParameters<DataType>?
 
     // Calculate fractal
@@ -161,6 +160,18 @@ extension FractalProtocol {
         return (x.toString(), y.toString())
     }
     
+    
+/// Mark start of calculation. Prepare calculation parameters
+/// - Parameters:
+///   - size: Output graphics size
+///   - progress: Calculation progress
+/// - Returns: true if calculation parameters prepared successfully
+func beginCalculation(resolution: CGSize, progress: CalculationProgress) -> DynamicParameters<DataType>? {
+    let settingsSnapshot = AppSettings.shared.snapshot()
+    return DynamicParameters<DataType>(anypar: FP.current, resolution: resolution, progress: progress,
+                                       settings: settingsSnapshot)
+}
+
     /// Mark end of calculation. Default implementation does nothing.
     func endCalculation() {
         // Does nothing by default

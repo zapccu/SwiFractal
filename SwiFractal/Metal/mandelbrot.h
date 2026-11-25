@@ -27,7 +27,7 @@ struct MetalComputeParameters {
     int32_t colorizeInside;     // Colorize mode for interior of Mandelbrot set
     float bailout;              // Bailout radius
     float2 logBailout;          // log(bailout)
-    float2 div_2_logBailout;    // 2 / log(bailout)
+    // float2 div_2_logBailout;    // 2 / log(bailout)
     float2 stripes;
     float2 stripeSig;
     float2 logPixel;

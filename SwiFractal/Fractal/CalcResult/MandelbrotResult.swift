@@ -61,7 +61,8 @@ struct MandelbrotResult : CalculationResult, MetalDecodable {
     /// Return true, if result contains valid histogram value (flags == .bailout)
     var hasValidHistValue: Bool { flags.isSet(.bailout) }
     
-    /// Zero result. flags = .defaultColor
+    /// Zero result. flags = .defaultColor.
+    /// Not used but kept for protocol conformance.
     static let zero: MandelbrotResult = MandelbrotResult(flags: [.defaultColor])
     
     /// Initial result. flags = .calculate

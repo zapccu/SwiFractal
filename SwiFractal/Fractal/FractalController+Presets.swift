@@ -145,7 +145,6 @@ extension FractalController {
                     "orbitDeltaF": 1e4,
                     "newtonTolerance": 1e-24,
                     "newtonSteps": 12,
-                    "interiorTolerance": 1e-13,
                     "minIterationCount": 200
                 }
             }
@@ -225,7 +224,6 @@ extension FractalController {
                     "orbitDeltaF": 1e4,
                     "newtonTolerance": 1e-24,
                     "newtonSteps": 12,
-                    "interiorTolerance": 1e-13,
                     "minIterationCount": 200
                 }
             }
@@ -305,7 +303,6 @@ extension FractalController {
                     "orbitDeltaF": 1e4,
                     "newtonTolerance": 1e-24,
                     "newtonSteps": 12,
-                    "interiorTolerance": 1e-13,
                     "minIterationCount": 200
                 }
             }
@@ -396,7 +393,6 @@ extension FractalController {
                     "orbitDeltaF": 1e4,
                     "newtonTolerance": 1e-24,
                     "newtonSteps": 12,
-                    "interiorTolerance": 1e-13,
                     "minIterationCount": 200
                 }
             }
@@ -478,7 +474,6 @@ extension FractalController {
                     "orbitDeltaF": 1e4,
                     "newtonTolerance": 1e-24,
                     "newtonSteps": 12,
-                    "interiorTolerance": 1e-13,
                     "minIterationCount": 200
                 }
             }

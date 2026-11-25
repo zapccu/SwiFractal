@@ -24,8 +24,6 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
     
     //static var output: Bool = false
     
-    let parameterType: PT.Type
-    
     /// Snapshot of application settings
     let settings: SettingsSnapshot
     
@@ -37,21 +35,12 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
         
     /// Mantissa precision bits
     let precision: Int
-    
-    /// Number of points to skip
-    let skip: Int
 
     /// Image dimensions without oversampling
     let resolution: CGSize
     
     /// Fractal dimensions
     let dimensions: FractalDimensions<RT>
-    
-    /// Image width without oversampling
-    let imageWidth: Int
-    
-    /// Image height without oversampling
-    let imageHeight: Int
     
     /// Image width considering oversampling
     let osImageWidth: Int
@@ -65,9 +54,6 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
     /// Limits with precalculated values
     let limits: FractalDynamicLimits
         
-    /// Distance normalization factor
-    let logDiag: RT                     // log(1 / abs(size))
-    
     /// Minimum pixel distance\
     /// `min(dx, dy)`
     let minPixelDistance: RT
@@ -108,23 +94,16 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
     ///   - progress: Calculation progress
     ///   - settings: Snapshot of application settings
     init(anypar: PT, resolution: CGSize, progress: CalculationProgress, settings: SettingsSnapshot) {
-        self.parameterType = type(of: anypar)
-        
         self.progress = progress
         self.settings = settings
         
         self.precision = anypar.dimensions.precision.bits
-        
-        // Number of pixels to skip during calculation
-        self.skip = 0
         
         // Mapping of initial iteration values
         self.initial = anypar.initialMapping
         
         // Resolutions
         self.resolution    = resolution
-        self.imageWidth    = Int(resolution.width)
-        self.imageHeight   = Int(resolution.height)
         self.osImageWidth  = Int(resolution.width) * anypar.dimensions.oversampling
         self.osImageHeight = Int(resolution.height) * anypar.dimensions.oversampling
         self.osSize        = ISize(width: osImageWidth, height: osImageHeight)
@@ -133,7 +112,6 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
         self.dimensions = anypar.dimensions
         let sx = anypar.dimensions.sizeX
         let sy = anypar.dimensions.sizeY
-        self.logDiag = RT.log(RT(1.0, precision: precision) / RT.sqrt(sx * sx + sy * sy))
 
         // Distance threshold for filaments and series approximation
         let (dx, dy) = anypar.dimensions.pixelDistance(resolution: resolution)
@@ -167,7 +145,7 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
             colorizeInside: Int32(colorizeInside.rawValue),
             bailout: Float(limits.bailout),
             logBailout: Float2(limits.logBailout),
-            div_2_logBailout: Float2(limits.div_2_logBailout),
+            // div_2_logBailout: Float2(limits.div_2_logBailout),
             stripes: Float2(stripes),
             stripeSig: Float2(stripeSig),
             logPixel: Float2(logPixel),

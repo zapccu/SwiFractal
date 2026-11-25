@@ -30,32 +30,6 @@ struct StringDimensions {
     var sizeX: String = "0"
     var sizeY: String = "0"
     
-    /// Create FractalDimensions object from string dimensions
-    /// - Parameter scale: Scaling factor (max of width / height of image). Default = 1
-    /// - Returns: Dimensions precision type
-    func toFractalDimensions(scale: Int = 1) -> DimensionsPrecisionType? {
-        guard let pr = MPFloat.getPrecision(real: sizeX, scale: scale) else { return nil }
-
-        if pr.isDbl {
-            // Double precision
-            return .double(FractalDimensions<Double>(
-                cornerX: Double(cornerX),
-                cornerY: Double(cornerY),
-                sizeX: Double(sizeX),
-                sizeY: Double(sizeY)
-            ))
-        }
-        else {
-            // Arbitrary precision
-            return .mpfloat(FractalDimensions<MPFloat>(
-                cornerX: MPFloat(cornerX, precision: pr.bits),
-                cornerY: MPFloat(cornerY, precision: pr.bits),
-                sizeX: MPFloat(sizeX, precision: pr.bits),
-                sizeY: MPFloat(sizeY, precision: pr.bits)
-            ))
-        }
-    }
-    
 }
 
 ///
@@ -71,23 +45,11 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
     /// Corner imaginary (for calculation)
     var cornerY: RT
 
-    /// Corner real as MPFloat (for zooming and precision detection)
-    var mpfCornerX: MPFloat { cornerX.toMPFloat(precision: precision.bits ) }
-    
-    /// Corner imaginary as MPFloat (for zooming and precision detection)
-    var mpfCornerY: MPFloat { cornerY.toMPFloat(precision: precision.bits ) }
-
     /// Size real (for calculation)
     var sizeX: RT
     
     /// Size imaginary (for calculation)
     var sizeY: RT
-
-    /// Return horizontal fractal size as MPFloat (for zooming and precision detection)
-    var mpfSizeX: MPFloat { sizeX.toMPFloat(precision: precision.bits ) }
-
-    /// Return vertical fractal size as MPFloat (for zooming and precision detection)
-    var mpfSizeY: MPFloat { sizeY.toMPFloat(precision: precision.bits ) }
     
     /// Return reference point for perturbation algorithm
     var refPoint: CT { CT(cornerX + sizeX * 0.5, cornerY + sizeY * 0.5) }
@@ -294,22 +256,6 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
         return newSize
     }
     
-    /// Increase precision based on zoom factor of resolution
-    /// - Parameters:
-    ///   - resolution: Image resolution
-    ///   - area: Selected area withing image resolution
-    ///   - safetyBits: Safety bits. Default = 8
-    /// - Returns: New precision
-    func increasePrecision (resolution: CGSize, area: CGRect, safetyBits: Int = 8) -> MPFloat.Precision {
-        var p = precision.bits
-        if area.size != resolution {
-            let r  = Double(min(resolution.width, resolution.height))
-            let rz = Double(max(area.width, area.height))
-            p = precision.bits + Int(abs(log2(r/rz))) + safetyBits
-        }
-        return MPFloat.Precision(isDbl: p <= 53, bits: p)
-    }
-    
     /// Zoom into screen area
     /// - Parameters:
     ///   - area: Zoom area
@@ -318,8 +264,8 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
     func zoomArea(area: CGRect, resolution: CGSize) -> DimensionsPrecisionType {
         // Current precision is sufficient for the calculation of the new dimensions
         // because the smallest possible area size is 1 pixel (current pixel size)
-        let (newCornerX, newCornerY) = mapPoint(area.origin, resolution: resolution, oversampling: 1)
-        let (newSizeX, newSizeY) = mapSize(area.size, resolution: resolution, oversampling: 1)
+        let (newCornerX, newCornerY) = mapPoint(area.origin, resolution: resolution, oversampling: oversampling)
+        let (newSizeX, newSizeY) = mapSize(area.size, resolution: resolution, oversampling: oversampling)
         let size = min(newSizeX.toMPFloat(precision: precision.bits), newSizeY.toMPFloat(precision: precision.bits))
  
         debugPrint("Mapping to area \(area)")
@@ -461,6 +407,7 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
     ///   - osSize: Screen resolution considering oversampling
     ///   - aspectRatio: Adjust aspect ratio
     /// - Returns: Linebuffer with complex distance values as Float2 where x = real, y = imaginary
+    /*
     func mapScreenCoordinates(refPoint: Double, resolution: CGSize, osSize: ISize, aspectRatio: Bool = false) -> LinearBuffer<Float2> where RT == Double {
         let buffer = LinearBuffer<Float2>(width: osSize.width, height: osSize.height, initialValue: .zero)
         
@@ -481,6 +428,7 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
 
         return buffer
     }
+     */
 
 }
 

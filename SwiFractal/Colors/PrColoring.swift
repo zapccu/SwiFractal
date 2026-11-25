@@ -73,10 +73,6 @@ enum EnumColoring : Codable & Equatable {
 
 }
 
-enum EnumColoringClass : Codable, Equatable {
-    case table
-    case calculated
-}
 
 ///
 /// Coloring protocol
@@ -97,9 +93,6 @@ protocol Coloring: FractalParameters {
     
     /// Custom decoder
     init(from decoder: Decoder) throws
-    
-    /// Return color based on smooth iteration counter in range 0...MaxIter
-    //func getColor(smoothIter: Double, scale: Double, offset: Double, ncycle: Double) -> RGBAColor
     
     /// Return color based on transformed iteration counter
     func getColor(t: Double) -> RGBAColor

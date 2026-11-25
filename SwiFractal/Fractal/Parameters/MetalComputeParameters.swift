@@ -17,7 +17,7 @@ struct MetalComputeParameters {
     var colorizeInside: Int32
     var bailout: Float
     var logBailout: Float2
-    var div_2_logBailout: Float2
+    // var div_2_logBailout: Float2
     var stripes: Float2
     var stripeSig: Float2
     var logPixel: Float2

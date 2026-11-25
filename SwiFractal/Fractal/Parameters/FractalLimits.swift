@@ -37,9 +37,6 @@ struct FractalLimits: FractalParameters {
     /// Newton tolerance for period/orbit detection
     var newtonTolerance: Double = 1e-24
     
-    /// Tolerance value for interior distance estimation
-    var interiorTolerance: Double = 1e-13
-    
 }
 
 ///
@@ -52,9 +49,6 @@ struct FractalDynamicLimits: FractalParameters {
     let iterations: Int
     
     let logBailout: Double                          // log(bailout)
-    let div_logBailout_2: Double                    // 0.5 * log(bailout)
-    let div_2_logBailout: Double                    // 2.0 / log(bailout)
-    let div_05_logBailout: Double                   // 0.5 / log(bailout) = log(bailout) / 2.0
     
     let t1: Double
     let t2: Double
@@ -73,9 +67,6 @@ struct FractalDynamicLimits: FractalParameters {
         self.iterations = parameters.iterations
         
         self.logBailout = log(parameters.bailout)
-        self.div_logBailout_2 = 0.5 * logBailout
-        self.div_2_logBailout = 2.0 / logBailout
-        self.div_05_logBailout = 0.5 / logBailout
         
         self.t1 = parameters.orbitDelta1 * parameters.orbitDelta1
         self.t2 = parameters.orbitDelta1 * parameters.orbitDeltaF
