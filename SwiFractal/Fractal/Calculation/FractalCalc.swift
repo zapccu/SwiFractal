@@ -282,7 +282,7 @@ enum FractalCalculation<PT: FractalData> {
     /// - Parameters:
     ///   - P: Calculation parameters
     /// - Returns: Matrix of calculation results in dimensions (height, width)
-    nonisolated static func calculateParallel(P: DynamicParameters<PT>) async -> CombinedResult {
+    @concurrent nonisolated static func calculateParallel(P: DynamicParameters<PT>) async -> CombinedResult {
         // Create input and output buffers
         let inBuffer: LinearBuffer<CT> = P.dimensions.mapScreenCoordinates(resolution: P.resolution, osSize: P.osSize)
         let outBuffer = LinearBuffer<MandelbrotResult>(width: P.osImageWidth, height: P.osImageHeight, initialValue: .initialValue)
@@ -335,7 +335,7 @@ enum FractalCalculation<PT: FractalData> {
     /// - Parameters:
     ///   - P: Calculation parameters
     /// - Returns: Matrix of calculation results in dimensions (height, width)
-    nonisolated static func calculateMetal(P: DynamicParameters<PT>) async -> CombinedResult {
+    @concurrent nonisolated static func calculateMetal(P: DynamicParameters<PT>) async -> CombinedResult {
         // Create the input buffer
         let cplx2Grid: LinearBuffer<Complex2> = P.dimensions.asDouble.mapScreenCoordinates(
             resolution: P.resolution, osSize: P.osSize)

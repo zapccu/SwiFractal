@@ -10,9 +10,9 @@ import UniformTypeIdentifiers
 import ParSetKit
 
 
-//
-// File document
-//
+///
+/// File document
+///
 struct FractalJSONDocument: FileDocument {
     
     static var readableContentTypes: [UTType] { [.json] }

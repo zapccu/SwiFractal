@@ -12,7 +12,8 @@ import Numerics
 
 
 ///
-/// Lightning. Created from LigthningParameters
+/// Implement lightning.
+/// Lightning struct is created from LigthningParameters.
 ///
 @dynamicMemberLookup
 struct Lightning {
@@ -92,7 +93,6 @@ struct Lightning {
     func simple3D(_ normal: Vector3<Double>) -> Float {
         let diffuseLight = normal.dot(vecSimple) + height
         let brightness = diffuseLight / (1.0 + height)
-        
         return Float(max(brightness, 0.0))
     }
     
@@ -137,4 +137,5 @@ struct Lightning {
         
         return Float(max(brightness, 0.0))
     }
+    
 }

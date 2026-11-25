@@ -42,9 +42,9 @@ struct SACoefficients {
     }
 }
 
-//
-// Extend FractalCalculation by support for Perturbation method
-//
+///
+/// Extend FractalCalculation by iteration function supporting series approximation and perturbation method
+///
 extension FractalCalculation {
     
     /// Check for perturbation glitch (ref. Pauldelbrot)

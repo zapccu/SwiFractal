@@ -26,9 +26,10 @@ struct CosineColoring : Coloring, FractalParameters {
         case name, defColor, parameters
     }
 
+    /// Name of coloring
     var name: String = "Cosine_Rainbow"
 
-    // Cosine coloring parameters a, b, c, d
+    /// Cosine coloring parameters a, b, c, d
     var parameters: CosineColoringParameters = CosineColoringParameters(
         offset: SIMD3f(0.5, 0.5, 0.5),
         amplitude: SIMD3f(0.5, 0.5, 0.5),

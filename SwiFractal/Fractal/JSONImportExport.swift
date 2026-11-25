@@ -64,9 +64,9 @@ enum FractalIOError: LocalizedError {
 }
 
 
-//
-// Enhance FractalProtcol to support export to JSON
-//
+///
+/// Enhance FractalProtcol to support export to JSON
+///
 extension FractalProtocol {
     
     func exportJSONString() throws -> String {

@@ -18,7 +18,7 @@ import Accelerate
 //
 @Observable
 @MainActor
-class Julia<RT: PreciseFloatingPoint> : FractalProtocol {
+final class Julia<RT: PreciseFloatingPoint> : FractalProtocol {
 
     typealias DataType = JuliaParameters<RT>
     typealias ResultType = MandelbrotResult

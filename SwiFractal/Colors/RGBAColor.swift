@@ -57,7 +57,7 @@ struct RGBAColor: FractalParameters {
         case red, green, blue, alpha
     }
     
-    // Color channels: Float values in range 0..1
+    /// Color channels: Float values in range 0..1
     var colorValue: SIMD4<Float>
     
     /// Access red component of RGBAColor value
@@ -102,13 +102,6 @@ struct RGBAColor: FractalParameters {
     /// Return alpha channel as UInt8 value in range 0..255
     var alphai: UInt8 { return UInt8(alpha * 255.0) }
     
-    /// Return color channels as 32 bit integer in format 0xRRGGBBAA
-    /*
-    var rgbi32: UInt32 {
-        return UInt32((UInt32(redi) << 24) | (UInt32(greeni) << 16) | (UInt32(bluei) << 8) | UInt32(alphai))
-    }
-     */
-    
     /// Return color channels as 32 bit integer in format 0xAARRGGBB
     var argb8888: UInt32 {
         return UInt32((UInt32(bluei) << 24) | (UInt32(greeni) << 16) | (UInt32(redi) << 8) | UInt32(alphai))
@@ -141,13 +134,6 @@ struct RGBAColor: FractalParameters {
     var array: [Float] {
         return [red, green, blue]
     }
-
-    /// Return color channels as pixel / UInt8 array in order RGBA
-    /*
-    var pixelRGBA: [UInt8] {
-        return [redi, greeni, bluei, alphai]
-    }
-     */
     
     /// Return color channels as pixel / UInt8 array in order ARGB
     var pixelARGB: [UInt8] {

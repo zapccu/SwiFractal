@@ -48,7 +48,8 @@ struct FractalDynamicLimits: FractalParameters {
     
     let iterations: Int
     
-    let logBailout: Double                          // log(bailout)
+    /// Logarithm of bailout
+    let logBailout: Double
     
     let t1: Double
     let t2: Double

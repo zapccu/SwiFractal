@@ -9,6 +9,9 @@
 import Foundation
 
 
+///
+/// Calculation states
+///
 enum EnumCalculationState: Int, NamedBit {
     case idle
     case completed
@@ -19,10 +22,13 @@ enum EnumCalculationState: Int, NamedBit {
 typealias CalculationState = BitSet<EnumCalculationState>
 
 
+///
+/// Calculation result content
+///
 enum EnumResultContains: Int, NamedBit {
-    case none
-    case orbits
-    case stripes
+    case standard   // Result contains only standard values
+    case orbits     // Result contains orbit/period values
+    case stripes    // Result contains stripe values
 }
 typealias ResultContains = BitSet<EnumResultContains>
 

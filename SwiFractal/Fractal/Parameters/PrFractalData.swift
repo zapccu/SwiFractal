@@ -86,9 +86,9 @@ extension FractalData {
 }
 
 
-//
-// Make all decodable types initializable by JSON string
-//
+///
+/// Make all decodable types initializable by JSON string
+///
 extension Decodable {
     
     init?(jsonString: String) {

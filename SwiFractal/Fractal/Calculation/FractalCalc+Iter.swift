@@ -11,6 +11,9 @@ import SwiftUI
 import SwiftMPx
 
 
+///
+/// Extend FractalCalculation by iteration function
+///
 extension FractalCalculation {
     
     /// Calculate normal. Normalize in RT before converting to Double (otherwise underflow at deep zoom)

@@ -13,8 +13,7 @@ import MetalCompute
 
 
 ///
-/// Dynamic fractal calculation parameters
-///
+/// Dynamic fractal calculation parameters.
 /// Contains fractal parameters needed for calculation and color mapping.
 ///
 nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
@@ -138,6 +137,8 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
         if anypar.colorParameters.colorizeInside.isNone(of: [.defaultColor, .fastOrbits]) { self.extendedInfo |= .orbits }
     }
     
+    /// Create Metal compute parameters from DynamicParameters
+    /// - Returns: Metal compute parameters.
     func toMetal() -> MetalComputeParameters {
         MetalComputeParameters(
             iterations: Int32(limits.iterations),
