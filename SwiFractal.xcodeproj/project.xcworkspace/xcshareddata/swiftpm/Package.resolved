@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/zapccu/Metal64",
       "state" : {
-        "revision" : "79ab6555d9bb8c3144b57bbe38ec8fb8f9951cea",
-        "version" : "1.1.0"
+        "revision" : "7aa1fc0b6e2ab6557832867a38be7a6b1e5f22f8",
+        "version" : "1.1.1"
       }
     },
     {
