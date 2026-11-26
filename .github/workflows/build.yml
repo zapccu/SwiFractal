@@ -1,0 +1,57 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: xcodebuild (macOS)
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select newest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
+
+      - name: Install MPFR and GMP (needed by SwiftMPx)
+        run: brew install mpfr gmp pkgconf
+
+      - name: Install Metal toolchain
+        run: xcodebuild -downloadComponent MetalToolchain || echo "Metal toolchain already installed or not required"
+
+      - name: Build Debug
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project SwiFractal.xcodeproj \
+            -scheme "SwiFractal Debug" \
+            -configuration Debug \
+            -destination "platform=macOS" \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            2>&1 | tee build.log
+
+      - name: Show errors and warnings
+        if: always()
+        run: grep -E "(error|warning):" build.log | sort -u | head -200 || true
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
