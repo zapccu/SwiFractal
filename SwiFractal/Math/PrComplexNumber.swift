@@ -44,6 +44,9 @@ protocol ComplexNumber : Sendable {
     /// Return maximum of real and imaginary part
     var max: RT { get }
     
+    /// Return true if value is zero
+    var isZero: Bool { get }
+    
     /// Return complex value as String
     var description: String { get }
         

@@ -25,7 +25,7 @@ extension FractalCalculation {
     nonisolated static func normalize<C: ComplexNumber>(Z: C, D: C) -> Cplx {
         let u = Z / D
         let len = u.length
-        return len.sign == .plus ? (u / len).toCplx() : .zero
+        return !len.isZero ? (u / len).toCplx() : .zero
     }
 
     /// Calculate point of Mandelbrot or Julia set
@@ -89,7 +89,7 @@ extension FractalCalculation {
                 var logPixelDist: Double = .greatestFiniteMagnitude
                 var filamentStrength: Double = 0.0
                 var normal: Cplx = .zero
-                if dLength.sign == .plus {
+                if !dLength.isZero {
                     // Normalize
                     normal = normalize(Z: Z, D: D)
                     

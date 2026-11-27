@@ -30,6 +30,9 @@ protocol PreciseFloatingPoint: BasicCalculations & RealFunctions & Codable & Sen
     // Number of bits
     var precision: Int { get }
     
+    // Check for zero
+    var isZero: Bool { get }
+    
     // Check for infinity
     var isInfinite: Bool { get }
     
