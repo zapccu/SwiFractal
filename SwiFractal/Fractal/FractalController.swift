@@ -135,7 +135,7 @@ class FractalController {
     
     /// Return complex location as formatted string
     var fmtComplexLocation: String {
-        let (r, i) = dimensions.mapPoint(cursorLocation.location, resolution: resolution)
+        let (r, i) = dimensions.mapPoint(cursorLocation.location, resolution: resolution, oversampling: 1)
         return "C: \(MPComplex(r, i).toString(digits: 5))"
     }
     
@@ -228,7 +228,9 @@ class FractalController {
     /// Reset parameters
     func reset() {
         fractal.reset()
-        self.dimensions = initialDimensions
+        // initialDimensions is updated by applyNewParameters(), so take the dimensions from the reset fractal
+        self.dimensions = fractal.getDimensions()
+        self.initialDimensions = self.dimensions
     }
     
     /// Apply new parameters. Create new fractal object if precision is changing between Double and MPFloat

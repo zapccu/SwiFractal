@@ -91,12 +91,16 @@ MandelbrotResult iterateJulia(c64 C, c64 J, constant MetalComputeParameters *MP)
                 // - Logarithm must be calculated with arbitrary precision
                 // - MandelbrotResult supports only Double values
                 // - We need the logarithm of the distance for color mapping
-                f64 absZ = sqrt(nZ);     // abs(Z), only needed for the distance estimate
-                f64 distance = absZ * logAbsZ * 2.0 / dLength;
-                logPixelDist = log(distance) - logPixel;
-                
+                // D is stored scaled (D_true = D * 2^dExp), so the distance is calculated in log space
+                f64 logAbsD = log(dLength) + f64(dExp) * F64_LOG2;    // log|D_true|
+                // log(distance) = log(|Z| * log|Z| * 2) - log|D_true|
+                f64 logDist = log(sqrt(nZ) * logAbsZ * 2.0) - logAbsD;
+                logPixelDist = logDist - logPixel;
+
                 // Calculate filament: dimensionless ratio in RT, the rest in Double
-                f64 ratio = distance * invDistThreshold;
+                // ratio = distance * invDistThreshold, in log space (underflow protection)
+                f64 logRatio = logDist + log(invDistThreshold);
+                f64 ratio = (flt(logRatio) < -80.0f) ? f64(0.0) : exp(logRatio);
                 f64 t = min(max(1.5 - ratio, 0.0), 1.0);      // 1 for ratio <= 0.5, 0 for ratio >= 1.5
                 filamentStrength = t * t * (3.0 - 2.0 * t);
             }
