@@ -18,8 +18,6 @@ enum SettingsKeys {
     static let resolutionWidth = "settings.resolution.width"
     static let resolutionHeight = "settings.resolution.height"
     static let useSeriesApproximation = "settings.useSeriesApproximation"
-    static let perturbationPasses = "settings.perturbationPasses"
-    static let fixGlitches = "settings.fixGlitches"
 }
 
 ///
@@ -38,12 +36,6 @@ struct SettingsSnapshot: Sendable {
     
     /// Use series approximation in perturbation algorithm
     let useSeriesApproximation: Bool
-    
-    /// Number of perturbation passes for fixing of glitches
-    let perturbationPasses: Int
-    
-    /// Fix glitches in perturbation results
-    let fixGlitches: Bool
 }
 
 ///
@@ -108,16 +100,6 @@ final class AppSettings {
     var useSeriesApproximation: Bool {
         didSet { defaults.set(useSeriesApproximation, forKey: SettingsKeys.useSeriesApproximation) }
     }
-    
-    /// Number of perturbation passes
-    var perturbationPasses: Int {
-        didSet { defaults.set(perturbationPasses, forKey: SettingsKeys.perturbationPasses) }
-    }
-    
-    /// Fix remaining glitches after perturbation passes completed
-    var fixGlitches: Bool {
-        didSet { defaults.set(fixGlitches, forKey: SettingsKeys.fixGlitches) }
-    }
 
     /// Initialize settings with current or default values
     init(defaults: UserDefaults = .standard) {
@@ -128,8 +110,6 @@ final class AppSettings {
         let height = defaults.object(forKey: SettingsKeys.resolutionHeight) as? Int ?? Int(Self.defaultResolution.height)
         self.resolution = CGSize(width: Double(width), height: Double(height))
         self.useSeriesApproximation = defaults.object(forKey: SettingsKeys.useSeriesApproximation) as? Bool ?? false
-        self.perturbationPasses = defaults.object(forKey: SettingsKeys.perturbationPasses) as? Int ?? 5
-        self.fixGlitches = defaults.object(forKey: SettingsKeys.fixGlitches) as? Bool ?? false
     }
     
     /// Return snapshot of current settings
@@ -138,9 +118,7 @@ final class AppSettings {
             cpuCount: cpuCount,
             oversubscription: oversubscription,
             resolution: resolution,
-            useSeriesApproximation: useSeriesApproximation,
-            perturbationPasses: perturbationPasses,
-            fixGlitches: fixGlitches
+            useSeriesApproximation: useSeriesApproximation
         )
     }
     
