@@ -22,7 +22,7 @@ struct FractalLimits: FractalParameters {
     /// Bailout radius. Default = 1e10
     var bailout: Double = 1e10
     
-    /// Orbit detection: 1st delta. Default = 1e-15
+    /// Orbit detection: 1st delta. Default = 1e-4
     var orbitDelta1: Double = 1e-4
     
     /// Orbit detection: Delta factor for 2nd pass. Default = 1e4
