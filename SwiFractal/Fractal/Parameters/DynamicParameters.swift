@@ -13,6 +13,18 @@ import MetalCompute
 
 
 ///
+/// Some constants. Prevent memory allocation in iteration loop for high precision data types
+///
+nonisolated struct DynamicConstantValues<PT: FractalData> {
+    let ctZero: PT.CT
+    let ctOne: PT.CT
+    let ctTwo: PT.CT
+    let rtZero: PT.RT
+    let rtOne: PT.RT
+    let rtTwo: PT.RT
+}
+
+///
 /// Dynamic fractal calculation parameters.
 /// Contains fractal parameters needed for calculation and color mapping.
 ///
@@ -21,7 +33,8 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
     typealias RT = PT.RT
     typealias CT = PT.CT
     
-    //static var output: Bool = false
+    /// Constant values
+    let constantValues: DynamicConstantValues<PT>
     
     /// Snapshot of application settings
     let settings: SettingsSnapshot
@@ -96,7 +109,16 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
         self.progress = progress
         self.settings = settings
         
-        self.precision = anypar.dimensions.precision.bits
+        let precision = anypar.dimensions.precision.bits
+        self.constantValues = DynamicConstantValues(
+            ctZero: CT(0.0, 0.0, precision: precision),
+            ctOne: CT(1.0, 0.0, precision: precision),
+            ctTwo: CT(2.0, 0.0, precision: precision),
+            rtZero: RT(0.0, precision: precision),
+            rtOne: RT(1.0, precision: precision),
+            rtTwo: RT(2.0, precision: precision)
+        )
+        self.precision = precision
         
         // Mapping of initial iteration values
         self.initial = anypar.initialMapping
@@ -106,7 +128,7 @@ nonisolated struct DynamicParameters<PT: FractalData>: MetalEncodable {
         self.osImageWidth  = Int(resolution.width) * anypar.dimensions.oversampling
         self.osImageHeight = Int(resolution.height) * anypar.dimensions.oversampling
         self.osSize        = ISize(width: osImageWidth, height: osImageHeight)
-        
+
         // Dimensions
         self.dimensions = anypar.dimensions
         let sx = anypar.dimensions.sizeX

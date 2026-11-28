@@ -122,10 +122,10 @@ extension FractalCalculation {
     /// p iterations of z → z² + c, dabei werden die Ableitungen mitgeführt.
     /// Order of updates is important! Old values on the right hand side.
     @inline(__always)
-    nonisolated static func iterateCycle(from z0: CT, c: CT, period p: Int) -> CycleDerivatives {
-        let zero = CT.zero(precision: c.precision)
-        let one = CT(1.0, 0.0, precision: c.precision)
-        let two = CT(2.0, 0.0, precision: c.precision)
+    nonisolated static func iterateCycle(from z0: CT, c: CT, period p: Int, P: DynamicParameters<PT>) -> CycleDerivatives {
+        let zero = P.constantValues.ctZero
+        let one = P.constantValues.ctOne
+        let two = P.constantValues.ctTwo
         var z = z0
         var dz = one
         var dc = zero
@@ -151,13 +151,13 @@ extension FractalCalculation {
         let one = CT(1.0, 0.0, precision: Z.precision)
         var z = Z
         for _ in 0..<P.limits.newtonSteps {
-            let r = iterateCycle(from: z, c: C, period: q)
+            let r = iterateCycle(from: z, c: C, period: q, P: P)
             let denom = r.dz - one
             if denom.lengthSquared.toDouble() < 1e-20 { return nil }     // λ ≈ 1: parabolic, no decision
             let delta = (r.z - z) / denom
             z = z - delta
             if delta.lengthSquared.toDouble() < P.limits.tNewton {
-                return (z, iterateCycle(from: z, c: C, period: q))       // Derivatives at z*
+                return (z, iterateCycle(from: z, c: C, period: q, P: P))       // Derivatives at z*
             }
         }
         return nil
