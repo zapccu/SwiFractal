@@ -163,7 +163,8 @@ enum FractalCalculation<PT: FractalData> {
     ///   - P: Calculation parameters
     /// - Returns: Combined calculation result
     @concurrent nonisolated static func calculateSequentialPT(P: DynamicParameters<PT>) async -> CombinedResult {
-        var refPoint: CT = P.dimensions.refPoint
+        // Reference point = center of the image
+        let refPoint: CT = P.dimensions.refPoint
                 
         // Create result buffer
         let outBuffer = LinearBuffer<MandelbrotResult>(width: P.osImageWidth, height: P.osImageHeight, initialValue: .initialValue)
@@ -174,114 +175,61 @@ enum FractalCalculation<PT: FractalData> {
         // Create sendable output buffer
         let outChunk = SendableMutableRow(buffer: UnsafeMutableBufferPointer(rebasing: outBuffer.pointer[0..<totalCount]))
 
-        // Progress counter
+        // Reset the calculation progress. Glitches are avoided by rebasing, so one pass is sufficient.
         let progress = P.progress
+        progress.reset(total: totalCount)
+        progress.pass(1)
+
+        // Map screen coordinates to relative complex coordinates (array of ΔC values)
+        let inBuffer = P.dimensions.mapDeltaScreenCoordinates(refPoint: refPoint, resolution: P.resolution, osSize: P.osSize)
+
+        // Compute reference orbit
+        let refOrbit = generateReferenceOrbit(refPoint: refPoint, limits: P.limits.parameters)
         
-        // Maximum number of Perturbation passes
-        let maxP: Int = P.settings.perturbationPasses
-
-        // Counter for glitches in Perturbation iteration pass
-        var glitchCount: Int = 0
-        
-        // Perturbation passes
-        for p in 0..<maxP {
-            // Reset progress counter with each perturbation pass
-            progress.reset(total: totalCount)
-            
-            // Set current calculation pass number
-            progress.pass(p + 1)
-
-            var sa: SACoefficients = .initial           // Series approximation coefficients
-            var maxGlitchIterationCount: Double = 0     // Take the point with the highest iteration count as new refPoint
-            var newRefPoint: CT = refPoint              // New reference point
-            
-            glitchCount = 0
-
-            // Map screen coordinates to relative complex coordinates (array of ΔC values)
-            let inBuffer = P.dimensions.mapDeltaScreenCoordinates(refPoint: refPoint, resolution: P.resolution, osSize: P.osSize)
-
-            // Compute reference orbit
-            let refOrbit = generateReferenceOrbit(refPoint: refPoint, limits: P.limits.parameters)
-            
-            // Compute series approximation coefficients for reference orbit
-            if P.settings.useSeriesApproximation {
-                sa = computeSACoefficients(refOrbit: refOrbit, dC: P.minPixelDistance.asDouble)
-            }
-
-            // Create sendable input buffer
-            let inChunk = SendableRow(buffer: UnsafeBufferPointer(rebasing: inBuffer.pointer[0..<totalCount]))
-        
-            // Update progress batch size
-            let batch = 4096
-            
-            for start in stride(from: 0, to: totalCount, by: batch) {
-                let end = min(start + batch, totalCount)
-                
-                for i in start..<end {
-                    guard outChunk.buffer[i].flags.isSet(.calculate) else { continue }
-                    
-                    var result = calculatePointZ2PT(deltaC: inChunk.buffer[i].toCplx(), refC: refPoint, refOrbit: refOrbit, sa: sa, P: P)
-                    
-                    if result.flags.isSet(.error) {
-                        // Point must be recalculated
-                        result.flags = [.calculate]
-                        glitchCount += 1
-                        
-                        if result.smoothIter > maxGlitchIterationCount {
-                            newRefPoint = refPoint + inChunk.buffer[i]
-                            maxGlitchIterationCount = result.smoothIter
-                        }
-                    }
-                    
-                    outChunk.buffer[i] = result
-                }
-
-                // Update progress
-                progress.add(end - start)
-                
-                // Calculation cancelled by customer via UI button
-                if Task.isCancelled { return (nil, CalculationInfo(state: .cancelled)) }
-            }
-
-            debugPrint("Perturbation pass \(p): Number of glitches = \(glitchCount)")
-
-            // Stop the calculation if number of glitches is 0
-            if glitchCount == 0 { break }
-            
-            // Use new reference point for next perturbation pass
-            refPoint = newRefPoint
+        // Compute series approximation coefficients for reference orbit.
+        // The series must be valid for the largest |ΔC| = half diagonal of the image.
+        var sa: SACoefficients = .initial
+        if P.settings.useSeriesApproximation {
+            let halfWidth = P.dimensions.sizeX.toDouble() * 0.5
+            let halfHeight = P.dimensions.sizeY.toDouble() * 0.5
+            sa = computeSACoefficients(refOrbit: refOrbit, maxDeltaC: (halfWidth * halfWidth + halfHeight * halfHeight).squareRoot())
         }
+
+        // Create sendable input buffer
+        let inChunk = SendableRow(buffer: UnsafeBufferPointer(rebasing: inBuffer.pointer[0..<totalCount]))
+    
+        var errorCount: Int = 0
         
-        // Fix remaining glitches.
-        // We cannot use calculateSequential() or calculateParallel() because existing results must be preserved.
-        if glitchCount > 0 && P.settings.fixGlitches {
-            // Reset progress counter
-            progress.reset(total: totalCount)
+        // Update progress batch size
+        let batch = 4096
+        
+        for start in stride(from: 0, to: totalCount, by: batch) {
+            let end = min(start + batch, totalCount)
             
-            // Final calculation pass
-            progress.pass(maxP + 1)
-            
-            // Map screen coordinates to absolute complex coordinates
-            let inBuffer = P.dimensions.mapScreenCoordinates(resolution: P.resolution, osSize: P.osSize)
+            for i in start..<end {
+                guard outChunk.buffer[i].flags.isSet(.calculate) else { continue }
+                
+                let result = calculatePointZ2PT(deltaC: inChunk.buffer[i].toCplx(), refC: refPoint, refOrbit: refOrbit, sa: sa, P: P)
+                if result.flags.isSet(.error) {
+                    errorCount += 1
+                }
+                
+                outChunk.buffer[i] = result
+            }
 
-            // Create sendable input buffer. Keep output buffer with existing results
-            let inChunk  = SendableRow(buffer: UnsafeBufferPointer(rebasing: inBuffer.pointer[0..<totalCount]))
-
-            calculateChunk(P: P, progress: progress, inRow: inChunk.buffer, outRow: outChunk.buffer)
+            // Update progress
+            progress.add(end - start)
             
-            glitchCount = 0     // No more glitches
+            // Calculation cancelled by customer via UI button
+            if Task.isCancelled { return (nil, CalculationInfo(state: .cancelled)) }
         }
                 
         return CombinedResult(
             Matrix<MandelbrotResult>((P.osImageHeight, P.osImageWidth), grid: Array(outBuffer.pointer)),
-            CalculationInfo(state: .completed, extendedInfo: P.extendedInfo, errorCount: glitchCount)
+            CalculationInfo(state: .completed, extendedInfo: P.extendedInfo, errorCount: errorCount)
         )
     }
 
-    /// Parallel calculation of Mandelbrot set
-    /// - Parameters:
-    ///   - P: Calculation parameters
-    /// - Returns: Matrix of calculation results in dimensions (height, width)
     @concurrent nonisolated static func calculateParallel(P: DynamicParameters<PT>) async -> CombinedResult {
         // Create input and output buffers
         let inBuffer: LinearBuffer<CT> = P.dimensions.mapScreenCoordinates(resolution: P.resolution, osSize: P.osSize)

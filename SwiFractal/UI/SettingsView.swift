@@ -32,10 +32,6 @@ struct SettingsView: View {
                 GridRow {
                     Toggle(isOn: $settings.useSeriesApproximation) { Text("Use series approximation") }
                 }
-                GridRow {
-                    Text("Perturbation passes")
-                    Stepper("\(settings.perturbationPasses)", value: $settings.perturbationPasses, in: 1...10)
-                }
             }.padding(.horizontal, 5)
         }.padding([.top], 10)
         
