@@ -297,38 +297,17 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
         }
     }
     
-    /// Adjust complex area to consider aspect ratio of drawing area
-    /// Assumption: No need to change precision
-    /// - Parameter resolution: Image resolution in pixel
-    func adjustAspectRatio(resolution: CGSize) -> FractalDimensions<RT> {
-        let imageRatio   = RT(Int(resolution.width), precision: precision.bits) / RT(Int(resolution.height), precision: precision.bits)
-        let fractalRatio = sizeX / sizeY
-        
-        if fractalRatio == imageRatio { return self }
-           
-        let fractalHeight = sizeX / imageRatio
-        return FractalDimensions<RT>(
-            cornerX: cornerX,
-            cornerY: cornerY + (sizeY - fractalHeight) * 0.5,
-            sizeX: sizeX,
-            sizeY: fractalHeight
-        )
-    }
-    
     /// Map screen coordinates to complex coordinates of type Cplx or MPComplex.
     /// Supports real datatypes Double and MPFloat
     /// - Parameters:
-    ///   - resolution: Screen resolution without oversampling
     ///   - osSize: Screen resolution considering oversampling
-    ///   - aspectRatio: Adjust aspect ratio
     /// - Returns: Linebuffer with complex coordinates
-    func mapScreenCoordinates(resolution: CGSize, osSize: ISize, aspectRatio: Bool = false) -> LinearBuffer<CT> {
+    func mapScreenCoordinates(osSize: ISize) -> LinearBuffer<CT> {
         let buffer = LinearBuffer<CT>(width: osSize.width, height: osSize.height,
                                       initialValue: .zero(precision: precision.bits))
         
-        let newDimensions = aspectRatio ? adjustAspectRatio(resolution: resolution) : self
-        let start = newDimensions.corner
-        let end   = newDimensions.corner + newDimensions.size
+        let start = corner
+        let end   = corner + size
         let realParts = RT.linspace(start.real, end.real, osSize.width)
         let imagParts = RT.linspace(start.imaginary, end.imaginary, osSize.height)
         
@@ -348,17 +327,14 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
     /// The resulting buffer is used by perturbation algorithm.
     /// - Parameters:
     ///   - refPoint: Reference point
-    ///   - resolution: Screen resolution without oversampling
     ///   - osSize: Screen resolution considering oversampling
-    ///   - aspectRatio: Adjust aspect ratio
     /// - Returns: Linebuffer with complex distance values
-    func mapDeltaScreenCoordinates(refPoint: CT, resolution: CGSize, osSize: ISize, aspectRatio: Bool = false) -> LinearBuffer<CT> {
+    func mapDeltaScreenCoordinates(refPoint: CT, osSize: ISize) -> LinearBuffer<CT> {
         let buffer = LinearBuffer<CT>(width: osSize.width, height: osSize.height,
                                       initialValue: .zero(precision: precision.bits))
         
-        let newDimensions = aspectRatio ? adjustAspectRatio(resolution: resolution) : self
-        let startDelta = newDimensions.corner - refPoint
-        let endDelta   = startDelta + newDimensions.size
+        let startDelta = corner - refPoint
+        let endDelta   = startDelta + size
         let realParts = RT.linspace(startDelta.real, endDelta.real, osSize.width)
         let imagParts = RT.linspace(startDelta.imaginary, endDelta.imaginary, osSize.height)
         
@@ -377,16 +353,13 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
     /// Map screen coordinates to complex coordinates of type Complex2.
     /// Supports real datatype Float2
     /// - Parameters:
-    ///   - resolution: Screen resolution without oversampling
     ///   - osSize: Screen resolution considering oversampling
-    ///   - aspectRatio: Adjust aspect ratio
     /// - Returns: Linebuffer with complex coordinates
-    func mapScreenCoordinates(resolution: CGSize, osSize: ISize, aspectRatio: Bool = false) -> LinearBuffer<Complex2> where RT == Double {
+    func mapScreenCoordinates(osSize: ISize) -> LinearBuffer<Complex2> where RT == Double {
         let buffer = LinearBuffer<Complex2>(width: osSize.width, height: osSize.height, initialValue: .zero)
         
-        let newDimensions = aspectRatio ? adjustAspectRatio(resolution: resolution) : self
-        let start = newDimensions.corner
-        let end   = newDimensions.corner + newDimensions.size
+        let start = corner
+        let end   = corner + size
         let realParts = Double.linspace(start.real, end.real, osSize.width)
         let imagParts = Double.linspace(start.imaginary, end.imaginary, osSize.height)
         
@@ -402,36 +375,6 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
         return buffer
     }
     
-    /// Map screen coordinates to complex distance values to reference point.
-    /// The resulting buffer is used by perturbation algorithm.
-    /// - Parameters:
-    ///   - refPoint: Reference point as MPComplex value
-    ///   - resolution: Screen resolution without oversampling
-    ///   - osSize: Screen resolution considering oversampling
-    ///   - aspectRatio: Adjust aspect ratio
-    /// - Returns: Linebuffer with complex distance values as Float2 where x = real, y = imaginary
-    /*
-    func mapScreenCoordinates(refPoint: Double, resolution: CGSize, osSize: ISize, aspectRatio: Bool = false) -> LinearBuffer<Float2> where RT == Double {
-        let buffer = LinearBuffer<Float2>(width: osSize.width, height: osSize.height, initialValue: .zero)
-        
-        let newDimensions = aspectRatio ? adjustAspectRatio(resolution: resolution) : self
-        let startDelta = newDimensions.corner - refPoint
-        let endDelta   = refPoint + startDelta
-        let realParts = RT.linspace(startDelta.real, endDelta.real, osSize.width)
-        let imagParts = RT.linspace(startDelta.imaginary, endDelta.imaginary, osSize.height)
-        
-        // Initialize linear buffer
-        var i = 0
-        for y in 0..<osSize.height {
-            for x in 0..<osSize.width {
-                buffer.pointer[i] = Float2(Float32(realParts[x]), Float32(imagParts[y]))
-                i += 1
-            }
-        }
-
-        return buffer
-    }
-     */
 
 }
 

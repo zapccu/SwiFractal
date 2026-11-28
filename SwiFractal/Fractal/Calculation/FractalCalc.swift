@@ -104,7 +104,7 @@ enum FractalCalculation<PT: FractalData> {
     /// - Returns: Combined calculation result
     @concurrent nonisolated static func calculateSequential(P: DynamicParameters<PT>) async -> CombinedResult {
         // Map screen coordinates to absolute complex coordinates
-        let inBuffer = P.dimensions.mapScreenCoordinates(resolution: P.resolution, osSize: P.osSize)
+        let inBuffer = P.dimensions.mapScreenCoordinates(osSize: P.osSize)
         
         // Create result buffer
         let outBuffer = LinearBuffer<MandelbrotResult>(width: P.osImageWidth, height: P.osImageHeight, initialValue: .initialValue)
@@ -181,7 +181,7 @@ enum FractalCalculation<PT: FractalData> {
         progress.pass(1)
 
         // Map screen coordinates to relative complex coordinates (array of ΔC values)
-        let inBuffer = P.dimensions.mapDeltaScreenCoordinates(refPoint: refPoint, resolution: P.resolution, osSize: P.osSize)
+        let inBuffer = P.dimensions.mapDeltaScreenCoordinates(refPoint: refPoint, osSize: P.osSize)
 
         // Compute reference orbit
         let refOrbit = generateReferenceOrbit(refPoint: refPoint, limits: P.limits.parameters)
@@ -232,7 +232,7 @@ enum FractalCalculation<PT: FractalData> {
 
     @concurrent nonisolated static func calculateParallel(P: DynamicParameters<PT>) async -> CombinedResult {
         // Create input and output buffers
-        let inBuffer: LinearBuffer<CT> = P.dimensions.mapScreenCoordinates(resolution: P.resolution, osSize: P.osSize)
+        let inBuffer: LinearBuffer<CT> = P.dimensions.mapScreenCoordinates(osSize: P.osSize)
         let outBuffer = LinearBuffer<MandelbrotResult>(width: P.osImageWidth, height: P.osImageHeight, initialValue: .initialValue)
 
         // Total number of points to be calculated
@@ -285,8 +285,7 @@ enum FractalCalculation<PT: FractalData> {
     /// - Returns: Matrix of calculation results in dimensions (height, width)
     @concurrent nonisolated static func calculateMetal(P: DynamicParameters<PT>) async -> CombinedResult {
         // Create the input buffer
-        let cplx2Grid: LinearBuffer<Complex2> = P.dimensions.asDouble.mapScreenCoordinates(
-            resolution: P.resolution, osSize: P.osSize)
+        let cplx2Grid: LinearBuffer<Complex2> = P.dimensions.asDouble.mapScreenCoordinates(osSize: P.osSize)
         
         do {
             let metal = try MetalCompute()
