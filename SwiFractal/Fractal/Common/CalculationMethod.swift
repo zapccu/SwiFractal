@@ -9,6 +9,7 @@
 /// Calculation methods
 ///
 enum CalculationMethod : String, CaseIterable, Identifiable {
+    case automatic              // Selected by FractalController.resolveMethod() depending on the required precision
     case sequential
     case sequentialPerturbation
     case parallel

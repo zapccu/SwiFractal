@@ -82,19 +82,26 @@ struct ControlButtonView: View {
                         calculationTask = Task {
                             // Render fractal
                             controller.beginCalculation()
-                            await controller.calculate(method: method)
-                            if controller.showsProgress {
+                            let completed = await controller.calculate(method: method)
+                            if completed && controller.showsProgress {
                                 // Main Thread einen Frame lang freigeben, damit 100 % gezeichnet wird,
                                 // bevor drawResultSet ihn wieder blockiert
                                 try? await Task.sleep(for: .milliseconds(20))
                             }
                             controller.endCalculation()
-                            await controller.drawResultSet()
+                            
+                            // Draw only a new result. On error or cancellation the current image is kept.
+                            if completed {
+                                await controller.drawResultSet()
+                            }
                             controller.showsProgress = false
 
+                            let methodInfo = method == .automatic ? "Method: automatic (\(controller.lastMethod.rawValue)) " : ""
                             controller.info.setState(currentAction: controller.calcInfo.getMessage(),
-                                statusMessage: "Calculation time: \(controller.fmtCalculationTime) " +
-                                "Rendering time: \(controller.fmtDrawingTime) "
+                                statusMessage: completed
+                                    ? "Calculation time: \(controller.fmtCalculationTime) " +
+                                      "Rendering time: \(controller.fmtDrawingTime) " + methodInfo
+                                    : methodInfo
                             )
                         }
 

@@ -107,7 +107,15 @@ class FractalController {
     var isCalculating: Bool = false
     
     /// Calculation state
+    /// State of the last calculation (shown in status bar)
     @ObservationIgnored var calcInfo: CalculationInfo = CalculationInfo(state: .idle)
+    
+    /// Information about the calculation result in `result` (state completed). Unlike calcInfo it
+    /// is not changed by failed or cancelled calculations, which don't replace the result.
+    @ObservationIgnored var resultInfo: CalculationInfo = CalculationInfo(state: .idle)
+    
+    /// Calculation method used by the last calculation (automatic resolved)
+    @ObservationIgnored var lastMethod: CalculationMethod = .sequential
 
     /// Clock for time measurement
     @ObservationIgnored let clock: ContinuousClock = ContinuousClock()
@@ -171,6 +179,7 @@ class FractalController {
         image = nil
         result = nil
         calcInfo = CalculationInfo(state: .idle)
+        resultInfo = CalculationInfo(state: .idle)
         histogram = nil
     }
     
@@ -236,9 +245,7 @@ class FractalController {
     /// Apply new parameters. Create new fractal object if precision is changing between Double and MPFloat
     func applyNewParameters() {        
         // Detect rendering strategy and required precision
-        let (strategy, precision) = RenderPrecisionStrategy.getRenderStrategy(
-            resolution: resolution, size: dimensions.minSize
-        )
+        let (strategy, precision) = dimensions.renderStrategy(resolution: resolution)
         
         switch kind {
         case .mandelbrotDP(let f):
@@ -356,7 +363,49 @@ class FractalController {
     /// Calculate fractal
     /// - Parameter method: Calculation method
     /// - Returns: Calculation state
-    func calculate(method: CalculationMethod) async {
+    /// Resolve calculation method .automatic depending on the required precision.
+    ///
+    /// - Metal (Metal64) if its 48 bit mantissa is sufficient and the GPU supports the
+    ///   interior coloring mode
+    /// - Double precision on CPU (parallel) if Double is sufficient
+    /// - Perturbation if Double's exponent range is sufficient for the deltas (Mandelbrot only)
+    /// - Arbitrary precision on CPU (parallel) otherwise
+    ///
+    /// Other methods are returned unchanged.
+    /// - Parameter method: Selected calculation method
+    /// - Returns: Calculation method to be used
+    func resolveMethod(_ method: CalculationMethod) -> CalculationMethod {
+        guard method == .automatic else { return method }
+        
+        let supported = fractal.getSupportedCalculationMethods()
+        let (strategy, _) = dimensions.renderStrategy(resolution: resolution)
+        
+        // Interior coloring modes implemented in the Metal kernels
+        let metalColorizeInside: [ColorizeInside] = [.defaultColor, .orbits, .fastOrbits]
+        let colorizeInside = fractal.getColorParameters().colorizeInside
+        
+        if supported.contains(.metalcompute)
+            && dimensions.isMetal64Sufficient(resolution: resolution)
+            && metalColorizeInside.contains(colorizeInside) {
+            return .metalcompute
+        }
+        
+        switch strategy {
+        case .double, .arbitrary:
+            return supported.contains(.parallel) ? .parallel : .sequential
+        case .perturbation:
+            if supported.contains(.sequentialPerturbation) { return .sequentialPerturbation }
+            return supported.contains(.parallel) ? .parallel : .sequential
+        }
+    }
+    
+    /// Calculate fractal
+    ///
+    /// calcInfo is always updated. The current result is replaced only if the calculation completed.
+    /// - Parameter method: Calculation method, .automatic is resolved by resolveMethod()
+    /// - Returns: True if calculation completed and a new result is available
+    @discardableResult
+    func calculate(method: CalculationMethod) async -> Bool {
         let poller = Task { [progress] in
             // Short calculations: Don't show the progress if calculation finished within 500 ms
             try? await Task.sleep(for: .milliseconds(500))
@@ -379,13 +428,23 @@ class FractalController {
             poller.cancel()
         }
         
-        let combinedResult = await fractal.calculate(method: method, resolution: resolution, progress: progress)
-        if combinedResult.info.state.isSet(.completed) && combinedResult.result != nil {
-            self.result = combinedResult.result!
-            self.calcInfo = combinedResult.info
-            self.histogram = Histogram(result: combinedResult.result!, maxValue: fractal.getLimits().iterations)
-            progressFraction = 1
+        let resolvedMethod = resolveMethod(method)
+        lastMethod = resolvedMethod
+        
+        let combinedResult = await fractal.calculate(method: resolvedMethod, resolution: resolution, progress: progress)
+        
+        // Always store the state, so errors and cancellation are reported
+        self.calcInfo = combinedResult.info
+        
+        guard combinedResult.info.state.isSet(.completed), let newResult = combinedResult.result else {
+            return false
         }
+        
+        self.result = newResult
+        self.resultInfo = combinedResult.info
+        self.histogram = Histogram(result: newResult, maxValue: fractal.getLimits().iterations)
+        progressFraction = 1
+        return true
     }
     
     /// Return statistical information for calculation result
@@ -407,7 +466,7 @@ class FractalController {
     /// Draw results into graphics
     func drawResultSet() async {
         // Check for existing calculation results
-        guard let result = result, let histogram = histogram else {
+        guard self.result != nil, self.histogram != nil else {
             debugPrint("No results to draw")
             return
         }
@@ -415,21 +474,28 @@ class FractalController {
         let colorParameters = fractal.getColorParameters()
         
         // Check if result contains stripe average values
-        if colorParameters.colorizeMode == .stripes && self.calcInfo.extendedInfo.notSet(.stripes) {
-            ToastCenter.shared.show("Results do not contain stripe data. Image must be recalculated", systemImage: "checkmark.circle.fill")
+        if colorParameters.colorizeMode == .stripes && self.resultInfo.extendedInfo.notSet(.stripes) {
+            ToastCenter.shared.show("Results do not contain stripe data. Image must be recalculated", systemImage: "exclamationmark.triangle.fill")
             debugPrint("No stripe average values in results")
             return
         }
         
         // Check if result contains orbit length values
-        if colorParameters.colorizeInside.isNone(of: [.defaultColor, .fastOrbits]) && self.calcInfo.extendedInfo.notSet(.orbits) {
-            if await ToastCenter.shared.showAndWait("Results do not contain orbit data. Image must be recalculated", actionTitle: "Calculate") {
-                await calculate(method: .sequential)
-            }
-            else {
+        if colorParameters.colorizeInside.isNone(of: [.defaultColor, .fastOrbits]) && self.resultInfo.extendedInfo.notSet(.orbits) {
+            guard await ToastCenter.shared.showAndWait("Results do not contain orbit data. Image must be recalculated", actionTitle: "Calculate") else {
                 return
             }
+            
+            // Recalculate with the method of the last calculation
+            beginCalculation()
+            let completed = await calculate(method: lastMethod)
+            endCalculation()
+            info.setState(currentAction: calcInfo.getMessage(), statusMessage: "Calculation time: \(fmtCalculationTime)")
+            guard completed else { return }
         }
+        
+        // Bind results after a possible recalculation
+        guard let result = self.result, let histogram = self.histogram else { return }
         
         // Measure drawing time
         let time1: ContinuousClock.Instant = .now
