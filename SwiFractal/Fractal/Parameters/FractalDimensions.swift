@@ -352,7 +352,7 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
     ///   - osSize: Screen resolution considering oversampling
     ///   - aspectRatio: Adjust aspect ratio
     /// - Returns: Linebuffer with complex distance values
-    func mapDeltaScreenCoordinates(refPoint: CT, resolution: CGSize, osSize: ISize, aspectRatio: Bool = true) -> LinearBuffer<CT> {
+    func mapDeltaScreenCoordinates(refPoint: CT, resolution: CGSize, osSize: ISize, aspectRatio: Bool = false) -> LinearBuffer<CT> {
         let buffer = LinearBuffer<CT>(width: osSize.width, height: osSize.height,
                                       initialValue: .zero(precision: precision.bits))
         
