@@ -68,6 +68,9 @@ protocol FractalProtocol: AnyObject {
     // Return lightning parameters
     func getLightningParameters() -> LightningParameters
     
+    // Return calculation methods supported by the fractal type
+    func getSupportedCalculationMethods() -> [CalculationMethod]
+    
     func fitDimensionsToImageSize(resolution: CGSize)
     
     func fitImageSizeToDimensions(resolution: CGSize) -> CGSize
@@ -136,6 +139,9 @@ extension FractalProtocol {
     
     /// Return lightning parameters
     func getLightningParameters() -> LightningParameters { FP.lightParameters }
+    
+    /// Return calculation methods supported by the fractal type
+    func getSupportedCalculationMethods() -> [CalculationMethod] { FP.current.supportedCalculationMethods }
     
     /// Map fractal dimensions to image resolution
     /// - Parameter resolution: Image resolution

@@ -14,7 +14,7 @@ struct ControlView: View {
     let controller: FractalController
 
     @State var linkResolution: Bool = true
-    @State var method: CalculationMethod = .sequential
+    @State var method: CalculationMethod = .automatic
 
     /// Binding for FractalController
     var bController: Bindable<FractalController> {
