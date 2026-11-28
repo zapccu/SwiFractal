@@ -21,46 +21,29 @@ struct SACoefficients {
     var a: Cplx         // Coefficient for Δc¹
     var b: Cplx         // Coefficient for Δc²
     var c: Cplx         // Coefficient for Δc³
-    let skipIndex: Int  // First valid iteration for SA (0 = SA makes not sense)
+    let skipIndex: Int  // Number of iterations replaced by the series (0 = no SA)
 
-    /// Initial SA coefficients
     static let initial = SACoefficients(
         a: Cplx(1.0, 0.0), b: Cplx.zero, c: Cplx.zero, skipIndex: 0
     )
     
-    /// Calculate new ΔC
-    /// - Parameter deltaC: ΔC of current point
-    /// - Returns: New ΔC if skipIndex greater than 0. Otherwise deltaC.
-    func getDeltaC(deltaC: Cplx) -> Cplx {
-        guard skipIndex > 0 else { return deltaC }
-        
-        let aDc  = a * deltaC
-        let bDc2 = b * deltaC.squared
-        let cDc3 = c * deltaC.squared * deltaC
-
-        return aDc + bDc2 + cDc3
+    /// Perturbation δz at iteration skipIndex: δz ≈ A·Δc + B·Δc² + C·Δc³
+    @inline(__always)
+    func deltaZ(deltaC: Cplx) -> Cplx {
+        guard skipIndex > 0 else { return .zero }
+        let dC2 = deltaC.squared
+        return a * deltaC + b * dC2 + c * dC2 * deltaC
+    }
+    
+    /// Derivative dz/dc at iteration skipIndex: d(δz)/dΔc ≈ A + 2·B·Δc + 3·C·Δc²
+    @inline(__always)
+    func derivative(deltaC: Cplx) -> Cplx {
+        guard skipIndex > 0 else { return .zero }
+        return a + b * deltaC * 2.0 + c * deltaC.squared * 3.0
     }
 }
 
-///
-/// Extend FractalCalculation by iteration function supporting series approximation and perturbation method
-///
 extension FractalCalculation {
-    
-    /// Check for perturbation glitch (ref. Pauldelbrot)
-    /// - Parameters:
-    ///   - delta: Complex delta
-    ///   - Z: Current Z
-    /// - Returns: True if glitch detected
-    @inline(__always)
-    nonisolated static func isGlitch(delta: Cplx, Z: Cplx) -> Bool {
-        let magDelta = delta.magnitude
-        let magZ = Z.magnitude
-        
-        // If delta is very small compared to Z, we loose precision
-        // in addition (floating point cancellation)
-        return magDelta > 0 && magDelta < magZ * 1e-15
-    }
     
     /// Generate reference orbit for perturbation algorithm.
     /// Reference orbit is calculated with arbitrary precision and converted to double precision.
@@ -101,24 +84,32 @@ extension FractalCalculation {
     ///   C{n+1} = 2·Zn·Cn + 2·An·Bn
     ///  
     /// Stop recursion when higher terms dominate the error (SA collapses).
-    /// 
+    ///
+    /// The series must be valid for every pixel, so the check uses the largest |Δc| of the image
+    /// (distance of the farthest image corner from the reference point), not the pixel distance.
+    /// The returned coefficients belong to iteration skipIndex: δz_skip ≈ A·Δc + B·Δc² + C·Δc³.
+    /// skipIndex is at most refOrbit.count - 2, so at least one iteration step with the
+    /// reference orbit remains.
     /// - Parameters:
-    ///   - refOrbit: Reference orbit
-    ///   - dC: |Δc| of the pixel = min(size.real, size.imaginary) / max(width, height)
-    /// - Returns: SA coefficients + skipIndex (0 if SA makes no sense)
-    nonisolated static func computeSACoefficients(refOrbit: [Cplx], dC: Double) -> SACoefficients {
-        guard refOrbit.count > 1 else { return SACoefficients.initial }
+    ///   - refOrbit: Reference orbit Z_0 ... Z_n
+    ///   - maxDeltaC: Largest |Δc| of the image
+    /// - Returns: Coefficients and number of skipped iterations
+    nonisolated static func computeSACoefficients(refOrbit: [Cplx], maxDeltaC: Double) -> SACoefficients {
+        guard refOrbit.count > 2, maxDeltaC > 0 else { return SACoefficients.initial }
         
         let tolerance: Double = 1e-6    // relative error threshold
 
-        var a = Cplx(1.0, 0.0)
+        var a = Cplx(1.0, 0.0)          // A_1 = 1, B_1 = 0, C_1 = 0 (δz_1 = Δc)
         var b = Cplx.zero
         var c = Cplx.zero
 
+        let dC = maxDeltaC
         let dC2 = dC * dC
         let dC3 = dC2 * dC
-
-        for n in 0..<refOrbit.count - 1 {
+        
+        let lastIndex = refOrbit.count - 2
+        
+        for n in 1..<lastIndex {
             let z2 = refOrbit[n] * 2.0
 
             // A_{n+1} = 2·Z_n·A_n + 1
@@ -128,7 +119,7 @@ extension FractalCalculation {
             // C_{n+1} = 2·Z_n·C_n + 2·A_n·B_n
             let newC: Cplx = z2 * c + a * b * 2.0
 
-            // Contribution of terms for typical |Δc|:
+            // Contribution of terms for the largest |Δc|:
             // |A·Δc| vs |B·Δc²| vs |C·Δc³|
             let aContrib = newA.length * dC
             let bContrib = newB.length * dC2
@@ -137,7 +128,7 @@ extension FractalCalculation {
             // SA collapses if higher terms are getting big
             let aContribTolerance = tolerance * aContrib
             if bContrib > aContribTolerance || cContrib > aContribTolerance {
-                // n is the last valid skip index
+                // n is the last valid skip index, a, b, c belong to n
                 return SACoefficients(a: a, b: b, c: c, skipIndex: n)
             }
 
@@ -146,65 +137,52 @@ extension FractalCalculation {
             c = newC
         }
 
-        // SA is valid for full reference orbit
-        return SACoefficients(a: a, b: b, c: c, skipIndex: refOrbit.count - 1)
+        // SA is valid up to the last usable index of the reference orbit
+        return SACoefficients(a: a, b: b, c: c, skipIndex: lastIndex)
     }
     
-    /// Calculate point of Mandelbrot set with perturbation
-    /// - Parameters:
-    ///   - deltaC: Offset of the pixel to the reference point (Double)
-    ///   - refC: C of the reference point in calculation precision (CT)
-    ///   - refOrbit: Reference orbit
-    ///   - sa: Series approximation coefficients
-    ///   - P: Dynamic parameter structure
-    /// - Returns: Mandelbrot result
     nonisolated static func calculatePointZ2PT(deltaC: Cplx, refC: CT, refOrbit: [Cplx],
                                                sa: SACoefficients, P: DynamicParameters<PT>) -> MandelbrotResult
     {
         let maxRefIter = refOrbit.count - 1 // Length of reference orbit
-        var refIndex: Int = 0               // Index to reference orbit
-        
+
         var stripeAvg: Double = 0.0         // Stripe average value
         var stripet: Double = 0.0           // Current stripe value
         
-        var Z: Cplx = .zero                 // Start of iteration: Z = 0
-        var dZ: Cplx = .zero
+        // Start values. Without SA: Z = 0, δz = 0, D = 0 at iteration 0.
+        // With SA the iteration starts at skipIndex with δz and D from the series.
+        let skipIndex = min(sa.skipIndex, P.limits.iterations)
+        var refIndex: Int = skipIndex       // Index to reference orbit
+        var dZ: Cplx = sa.deltaZ(deltaC: deltaC)
+        var D: Cplx = sa.derivative(deltaC: deltaC)    // 1st derivation of Z
+        var Z: Cplx = refOrbit[refIndex] + dZ
         var ndZ: Double = 0.0
         var nZ: Double = 0.0                // Norm of Z: Z.imaginary * Z.imaginary + Z.real * Z.real
         var Z1: Cplx = Cplx(10.0)           // Old value of Z for fast orbit detection
         
         var period: Int = 0                 // Period counter for fast orbit detection
-        var D: Cplx = .zero                 // 1st derivation of Z
         
         // Period detectors (only the one matching colorizeInside is used).
         // Detection on the full Z = refOrbit + dZ in Double; delta alone is not periodic.
-        var orbitBuffer = OrbitBuffer(Z0: Cplx.zero, capacity: P.limits.orbitLength)   // Ring buffer
-        var brent = BrentState(Z0: Cplx.zero, startIter: sa.skipIndex)                  // Brent
+        var orbitBuffer = OrbitBuffer(Z0: Z, capacity: P.limits.orbitLength)   // Ring buffer
+        var brent = BrentState(Z0: Z, startIter: skipIndex)                     // Brent
         
         // Full C in calculation precision. Needed only for cycle verification (Newton, |λ|,
         // interior distance). In Double all pixels would collapse to the same C at deep zoom.
-        // Uses the raw deltaC, not the SA-adjusted dC.
         let cFull: CT = refC + CT(deltaC.real, deltaC.imaginary, precision: P.precision)
         
         /// Converts the full Z from Double to CT for verification and result
         @inline(__always)
         func toCT(_ z: Cplx) -> CT { CT(z.real, z.imaginary, precision: P.precision) }
         
-        let dC = sa.getDeltaC(deltaC: deltaC)
-        
-        for i in sa.skipIndex...P.limits.iterations {
+        for i in skipIndex...P.limits.iterations {
             // Derivation D of old Z
             D = (D + D) * Z + 1.0
             
             // Iteration step
-            dZ = (2.0 * refOrbit[refIndex] + dZ) * dZ + dC
+            dZ = (2.0 * refOrbit[refIndex] + dZ) * dZ + deltaC
             refIndex += 1
             Z = refOrbit[refIndex] + dZ
-            
-            // Check for glitch
-            if isGlitch(delta: dZ, Z: Z) {
-                return MandelbrotResult(smoothIter: Double(i), flags: [.error])
-            }
             
             if P.bStripes {
                 // Double precision is sufficient
@@ -256,7 +234,7 @@ extension FractalCalculation {
                     // stripeAvg = stripeAvg /
                     //             (1 - pow(P.colorParameters.stripeSig, Double(i))
                     //             * (1 + smoothIter * (P.colorParameters.stripeSig - 1)))
-                    stripeAvg = biasCorrect(previousAvg: stripeAvg, smooth: P.stripeSig, iter: i, smoothIter: frac)
+                    stripeAvg = biasCorrect(previousAvg: stripeAvg, smooth: P.stripeSig, iter: i - skipIndex, smoothIter: frac)
                 }
                 
                 // Calculate normal
