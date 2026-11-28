@@ -118,7 +118,6 @@ extension FractalController {
                     "sizeY": 3,
                     "sizeX": 3,
                     "oversampling": 1,
-                    "renderPrecision": "double",
                     "precision": {
                         "isDbl": true,
                         "bits": 53
@@ -197,7 +196,6 @@ extension FractalController {
                     "sizeX": 2.0374013587343143e-07,
                     "sizeY": 1.1458947946074716e-07,
                     "oversampling": 1,
-                    "renderPrecision": "double",
                     "precision": {
                         "isDbl": true,
                         "bits": 53
@@ -276,7 +274,6 @@ extension FractalController {
                     "sizeX": 1.6118262280429008e-10,
                     "sizeY": 9.065738833463968e-11,
                     "oversampling": 1,
-                    "renderPrecision": "double",
                     "precision": {
                         "isDbl": true,
                         "bits": 53
@@ -366,7 +363,6 @@ extension FractalController {
                     "sizeY": 3,
                     "sizeX": 3,
                     "oversampling": 1,
-                    "renderPrecision": "double",
                     "precision": {
                         "isDbl": true,
                         "bits": 53
@@ -447,7 +443,6 @@ extension FractalController {
                     "sizeY": 3,
                     "sizeX": 3,
                     "oversampling": 1,
-                    "renderPrecision": "double",
                     "precision": {
                         "isDbl": true,
                         "bits": 53

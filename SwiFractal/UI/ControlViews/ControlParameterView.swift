@@ -77,8 +77,9 @@ struct ControlParameterView<T: FractalProtocol & Observable>: View {
                 }
                 GridRow {
                     let dimensions = fractal.FP.dimensions
+                    let (strategy, required) = dimensions.renderStrategy(resolution: controller.resolution)
                     Text("Rendering")
-                    Text("\(dimensions.renderPrecision.rawValue) (\(dimensions.precision.bits.description) bits)")
+                    Text("\(strategy.rawValue) (\(dimensions.precision.bits.description) bits, required \(required.bits))")
                 }
             }.padding(.horizontal, 5)
         }.padding([.top], 10)

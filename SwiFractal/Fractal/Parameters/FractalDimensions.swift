@@ -60,9 +60,6 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
     /// Precision information
     var precision: MPFloat.Precision
     
-    /// Render precision strategy
-    var renderPrecision: RenderPrecisionStrategy
-    
     /// Return dimensions in Double precision
     var asDouble: FractalDimensions<Double> {
         toDouble()
@@ -101,6 +98,19 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
         return ar.toDouble()
     }
     
+    /// Render precision strategy and required precision for an image resolution.
+    /// The strategy depends on the resolution, so it is derived and not stored.
+    /// - Parameter resolution: Image resolution in pixel (without oversampling)
+    func renderStrategy(resolution: CGSize) -> (RenderPrecisionStrategy, MPFloat.Precision) {
+        RenderPrecisionStrategy.getRenderStrategy(resolution: resolution, size: minSize.asMPFloat)
+    }
+    
+    /// Check if Metal64 is precise enough for this area and an image resolution
+    /// - Parameter resolution: Image resolution in pixel (without oversampling)
+    func isMetal64Sufficient(resolution: CGSize) -> Bool {
+        RenderPrecisionStrategy.isMetal64Sufficient(resolution: resolution, size: minSize.asMPFloat)
+    }
+    
     /// Return dimensions as FractalDimensions of type MPFloat
     var asMPFloat: FractalDimensions<MPFloat> {
         toMPFloat(precision: precision.bits)
@@ -120,15 +130,7 @@ struct FractalDimensions<RT: PreciseFloatingPoint>: FractalPrecisionParameters, 
         
         let bits = sx.precision
         
-        if sx is Double {
-            let size = min(sx, sy).asMPFloat
-            self.precision = .init(isDbl: true, bits: bits)
-            self.renderPrecision = abs(size.exponent) + 8 <= 53 ? .double : .perturbation
-        }
-        else {
-            self.precision = .init(isDbl: false, bits: bits)
-            self.renderPrecision = .arbitrary
-        }
+        self.precision = .init(isDbl: sx is Double, bits: bits)
         
         self.cornerX = cornerX
         self.cornerY = cornerY
